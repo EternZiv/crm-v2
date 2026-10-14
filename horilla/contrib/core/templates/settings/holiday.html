@@ -1,0 +1,25 @@
+<div class="h-full min-h-0 w-full flex flex-col">
+    <button
+        id="reloadHolidayButton"
+        hidden
+        hx-get="{% url 'core:holiday_view' %}?{{ request.GET.urlencode }}"
+        hx-target="#inner-tab-holidays-view-content"
+        hx-swap="innerHTML"
+    >
+        reload
+    </button>
+    <div
+        id="navBar"
+        class="flex-shrink-0"
+        hx-get="{% url 'core:holiday_nav' %}?{{ request.GET.urlencode }}"
+        hx-trigger="load"
+    >
+    </div>
+    <div
+        id="mainSession"
+        class="pt-3 flex-1 min-h-0 flex flex-col"
+        hx-get="{% url 'core:holiday_list_view' %}?{{ request.GET.urlencode }}"
+        hx-trigger="load"
+    >
+    </div>
+</div>
