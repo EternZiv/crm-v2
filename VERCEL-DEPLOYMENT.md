@@ -145,7 +145,9 @@ records as part of the initial smoke test.
   handling are configured.
 - **Calendar and email:** External providers, credentials, callbacks, delivery,
   and related background behavior have not been verified. Calendar signal work
-  may run inline on Vercel and increase request latency.
+  uses a daemon thread in this deployment commit; serverless functions may stop
+  it when the invocation ends. Do not rely on calendar synchronization during
+  this UAT.
 - **Long-running work:** Reports, exports, imports, and other synchronous work
   must finish within the Function duration/memory limits. Large workloads are
   out of scope for this temporary smoke test.
