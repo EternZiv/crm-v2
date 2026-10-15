@@ -14,22 +14,27 @@ import os
 from pathlib import Path
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 # -----------------------------------------------------------------------------
 #   Environment & Configuration Management
 # -----------------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 BASE_APP_DIR = BASE_DIR / "horilla"
+IS_VERCEL = os.environ.get("VERCEL", "").lower() in {"1", "true"}
 
 
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 # Initialize environment variables
 env = environ.Env(
-    DEBUG=(bool, True),
-    ENVIRONMENT=(str, "development"),  # production/staging/development
-    SECRET_KEY=(str, "django-insecure-default-key"),
-    ALLOWED_HOSTS=(list, ["*"]),
-    CSRF_TRUSTED_ORIGINS=(list, ["http://localhost:8000"]),
+    DEBUG=(bool, not IS_VERCEL),
+    ENVIRONMENT=(str, "production" if IS_VERCEL else "development"),
+    SECRET_KEY=(str, "" if IS_VERCEL else "django-insecure-default-key"),
+    ALLOWED_HOSTS=(list, [] if IS_VERCEL else ["*"]),
+    CSRF_TRUSTED_ORIGINS=(
+        list,
+        [] if IS_VERCEL else ["http://localhost:8000"],
+    ),
     SITE_URL=(str, ""),
 )
 
@@ -48,6 +53,38 @@ CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
 CSRF_FAILURE_VIEW = "horilla.contrib.core.views.error_pages.csrf_failure"
 # Public-facing HTTPS URL for Google Calendar webhook push notifications.
 SITE_URL = env("SITE_URL")
+
+if IS_VERCEL:
+    if DEBUG:
+        raise ImproperlyConfigured("DEBUG must be false on Vercel.")
+    if len(SECRET_KEY) < 50 or SECRET_KEY == "django-insecure-default-key":
+        raise ImproperlyConfigured(
+            "Set SECRET_KEY to a strong, unique value of at least 50 characters in Vercel."
+        )
+    if "*" in ALLOWED_HOSTS:
+        raise ImproperlyConfigured(
+            "Wildcard ALLOWED_HOSTS is not permitted on Vercel."
+        )
+
+    vercel_host = os.environ.get("VERCEL_URL", "").strip()
+    if vercel_host:
+        vercel_host = vercel_host.removeprefix("https://").removeprefix("http://")
+        vercel_host = vercel_host.split("/", 1)[0]
+        ALLOWED_HOSTS = list(dict.fromkeys([*ALLOWED_HOSTS, vercel_host]))
+        CSRF_TRUSTED_ORIGINS = list(
+            dict.fromkeys([*CSRF_TRUSTED_ORIGINS, f"https://{vercel_host}"])
+        )
+
+    if not ALLOWED_HOSTS:
+        raise ImproperlyConfigured(
+            "Set ALLOWED_HOSTS or deploy with VERCEL_URL configured."
+        )
+
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 3600
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # -----------------------------------------------------------------------------
 #  Installed Apps Organization
@@ -219,7 +256,13 @@ CHANNEL_LAYERS = {
 # Database and Performance Enhancements
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 # -----------------------------------------------------------------------------
-if env("DATABASE_URL", default=None):
+_database_url = env("DATABASE_URL", default=None)
+if IS_VERCEL and not _database_url:
+    raise ImproperlyConfigured(
+        "Set DATABASE_URL to a persistent PostgreSQL database for Vercel."
+    )
+
+if _database_url:
     DATABASES = {
         "default": env.db(),
     }
@@ -239,13 +282,20 @@ else:
     }
 
 # Connection persistence for better performance
-DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
+DATABASES["default"]["CONN_MAX_AGE"] = env.int(
+    "DB_CONN_MAX_AGE", default=0 if IS_VERCEL else 60
+)
 DATABASES["default"]["CONN_HEALTH_CHECKS"] = env.bool(
     "DB_CONN_HEALTH_CHECKS", default=True
+)
+DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = env.bool(
+    "DISABLE_SERVER_SIDE_CURSORS", default=IS_VERCEL
 )
 
 if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
     DATABASES["default"].setdefault("OPTIONS", {})["sslmode"] = "require"
+elif IS_VERCEL:
+    raise ImproperlyConfigured("Vercel deployments must use PostgreSQL.")
 
 
 # Password validation

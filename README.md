@@ -101,6 +101,13 @@
    **Horilla version** (from `horilla.__version__`) instead of Django’s version line.
    See [docs/horilla/utils/startup.md](docs/horilla/utils/startup.md).
 
+### Deploying on Vercel
+
+Vercel detects this Django project from `manage.py`, uses the configured ASGI
+application, and collects static assets during its build. See
+[VERCEL-DEPLOYMENT.md](VERCEL-DEPLOYMENT.md) for required environment variables,
+database and Redis setup, and serverless storage and worker limitations.
+
 ## ⬆️ Upgrading from v1.9 to v1.10.0
 
 > Existing users on **Horilla CRM v1.9** must follow these steps once before starting the v1.10.0 server. Migrations alone are **not** enough — the v1.10.0 release renames several app labels (e.g. `horilla_activity` → `activity`, `horilla_core` → `core`), and the `sync_db` management command rewrites the migration history and content-type references to match.
