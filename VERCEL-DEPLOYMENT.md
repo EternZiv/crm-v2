@@ -31,7 +31,8 @@ runtime.
 | `DEBUG` | `0` |
 | `SECRET_KEY` | A new, unique Django secret (at least 50 characters); store only in Vercel. |
 | `DATABASE_URL` | Supabase PostgreSQL transaction-pooler URL on port `6543`, with TLS required. Obtain a fresh URL after password rotation; URL-encode reserved password characters. |
-| `REDIS_URL` | A real, managed Redis URL reachable from Vercel. Current Vercel settings fail startup without it; it configures Channels and is the default Celery broker/result backend. |
+| `VERCEL_UAT_MODE` | Set to `1` only for the temporary, limited UAT mode described below. Omit it for normal deployments. |
+| `REDIS_URL` | Required for normal Vercel deployments. A real, managed Redis URL reachable from Vercel; it configures Channels and is the default Celery broker/result backend. Not required in the limited UAT mode. |
 | `ENVIRONMENT` | `production` |
 | `DB_CONN_MAX_AGE` | `0` for short-lived serverless database connections. |
 | `DISABLE_SERVER_SIDE_CURSORS` | `1` for transaction-pooler compatibility. |
@@ -43,6 +44,34 @@ Only set `ALLOWED_HOSTS` or `CSRF_TRUSTED_ORIGINS` if extra hostnames/origins ar
 needed. `CHANNEL_REDIS_URL` and `SITE_URL` are optional; the former can point
 Channels to a separate Redis service and the latter is relevant to calendar
 webhooks.
+
+### Redis-free UAT mode
+
+For a short, access-restricted core CRM smoke test only, set
+`VERCEL_UAT_MODE=1` in the Vercel **Preview** environment and omit `REDIS_URL`.
+The flag is rejected outside Vercel and is disabled by default. In this mode,
+Django Channels uses its in-memory channel layer, and asynchronous automation
+and scoring dispatch are disabled in favor of their existing synchronous
+execution paths. Django authentication, sessions, CSRF, role permissions, and
+the PostgreSQL database configuration are unchanged. Celery workers and
+schedulers are not started.
+
+This mode is not full CRM compatibility:
+
+- CRM notification records remain database-backed and visible in the
+  application inbox. Real-time delivery is process-local and not reliable
+  across Vercel Functions or WebSocket reconnects.
+- Scheduled mail, scheduled exports, workflow time triggers, and any other
+  Celery task that requires a worker are unsupported. No worker or scheduler
+  runs in this mode; attempts to enqueue a task may fail because no broker is
+  available, and queued work is not guaranteed to execute. Do not invoke those
+  operations during UAT.
+- Synchronous automation and scoring can run during writes. Audit active
+  automation rules before write-based testing; automation actions may send
+  email or change CRM records. Do not use this mode if those effects cannot be
+  safely controlled.
+- Channels and Celery retain the Redis-backed production configuration when
+  this flag is absent. Use a real managed Redis service for normal operation.
 
 The database URL must use the intended UAT database, not a production database.
 Confirm the credential was rotated and the target URL was reviewed before
@@ -131,10 +160,11 @@ records as part of the initial smoke test.
 
 ## Temporary deployment limitations
 
-- **Celery and Redis:** `REDIS_URL` supplies a broker/channel backend; it does
-  not start a persistent Celery worker or Celery Beat service. Existing queued
-  automations and scheduled jobs are not guaranteed to execute. Do not rely on
-  them during this core CRM UAT.
+- **Celery and Redis:** In Redis-free UAT mode no Celery worker or Celery Beat
+  service is started. Scheduled mail, exports, workflow time triggers, and
+  worker-dependent tasks are unsupported. Automation and scoring use
+  synchronous execution, which can increase request time; audit configured
+  automations for external side effects before any writes.
 - **WebSockets:** Vercel documents Python WebSocket support, but a connection is
   tied to a Function instance and closes at its maximum duration. Reconnects can
   reach another instance. Treat live notifications and calls as best-effort and
