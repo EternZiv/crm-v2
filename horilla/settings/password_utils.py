@@ -5,9 +5,12 @@ Place this file in: <project_root>/horilla/settings/password_utils.py
 This module handles password creation automatically on first use.
 """
 
+import logging
 import os
 import secrets
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def get_project_root():
@@ -22,7 +25,7 @@ def get_project_root():
 
     manage_py = project_root / "manage.py"
     if not manage_py.exists():
-        print(f"Warning: manage.py not found at {manage_py}")
+        logger.warning("manage.py not found at %s", manage_py)
 
     return project_root
 
@@ -46,24 +49,16 @@ def create_password_file():
     password_file = get_password_file_path()
     password = generate_secure_password()
 
-    try:
-        # Ensure parent directory exists
-        password_file.parent.mkdir(parents=True, exist_ok=True)
+    # Ensure parent directory exists
+    password_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write password to file
-        with open(password_file, "w", encoding="utf-8") as f:
-            f.write(password)
+    # Write password to file
+    with open(password_file, "w", encoding="utf-8") as f:
+        f.write(password)
 
-        # Set secure file permissions (Unix/Linux/Mac only)
-        try:
-            os.chmod(password_file, 0o600)  # Read/write for owner only
-        except Exception:
-            pass  # Windows doesn't support chmod
-
-        print("Init password auto-generated and saved to .init_password")
-
-    except Exception as e:
-        print(e)
+    # Set secure file permissions where supported.
+    if os.name != "nt":
+        os.chmod(password_file, 0o600)
 
     return password
 
@@ -71,20 +66,17 @@ def create_password_file():
 def read_password_from_file():
     """
     Read the password from the file.
-    Returns None if file doesn't exist or can't be read.
+    Returns None if file doesn't exist or is empty.
     """
     password_file = get_password_file_path()
 
     if not password_file.exists():
         return None
 
-    try:
-        with open(password_file, "r", encoding="utf-8") as f:
-            password = f.read().strip()
-            if password:  # Ensure it's not empty
-                return password
-    except Exception as e:
-        print(e)
+    with open(password_file, "r", encoding="utf-8") as f:
+        password = f.read().strip()
+        if password:  # Ensure it's not empty
+            return password
     return None
 
 
