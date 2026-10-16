@@ -64,19 +64,24 @@ def _check_record_permission(user, obj, action: str) -> bool:
     if permitted(action):
         return True
     if permitted(f"{action}_own"):
-        allowed_ids = _get_allowed_user_ids(user)
-        for field in getattr(obj.__class__, "OWNER_FIELDS", []):
-            try:
-                v = getattr(obj, field, None)
-                if v:
-                    if hasattr(v, "all"):
-                        if any(m.pk in allowed_ids for m in v.all()):
-                            return True
-                    elif hasattr(v, "pk"):
-                        if v.pk in allowed_ids:
-                            return True
-            except Exception:
-                pass
+        is_owned_by = getattr(obj, "is_owned_by", None)
+        if is_owned_by is not None:
+            if is_owned_by(user):
+                return True
+        else:
+            allowed_ids = _get_allowed_user_ids(user)
+            for field in getattr(obj.__class__, "OWNER_FIELDS", []):
+                try:
+                    v = getattr(obj, field, None)
+                    if v:
+                        if hasattr(v, "all"):
+                            if any(m.pk in allowed_ids for m in v.all()):
+                                return True
+                        elif hasattr(v, "pk"):
+                            if v.pk in allowed_ids:
+                                return True
+                except Exception:
+                    pass
         from .helpers.queryset_utils import user_has_granted_access
 
         if user_has_granted_access(obj, user, action):
@@ -1368,8 +1373,8 @@ class HorillaModalDetailView(DetailView):
     title = _("Detailed View")
     template_name = "single_detail_view.html"
     header: dict = {
-        "title": "Horilla",
-        "subtitle": "Horilla Detailed View",
+        "title": "Finlo CRM",
+        "subtitle": "Finlo CRM Detailed View",
         "avatar": "",
     }
     body: list = []

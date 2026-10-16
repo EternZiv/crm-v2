@@ -1,4 +1,4 @@
-"""Lead Conversion View for Horilla CRM"""
+"""Lead Conversion View for Finlo CRM"""
 
 # Third-party imports (other)
 from dateutil.relativedelta import relativedelta

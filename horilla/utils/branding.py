@@ -1,4 +1,4 @@
-"""Branding configuration utilities for Horilla."""
+"""Branding configuration utilities for Finlo CRM."""
 
 from importlib import import_module
 
@@ -6,13 +6,13 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 DEFAULTS = {
-    "TITLE": _("FINLONEXA"),
-    "LOGIN_WELCOME_LINE": _("Welcome to FINLONEXA"),
+    "TITLE": _("Finlo CRM"),
+    "LOGIN_WELCOME_LINE": _("Welcome to Finlo CRM"),
     "LOGIN_TAG_LINE": _("Please sign in to access your dashboard"),
-    "SIGNUP_TAG_LINE": _("Please sign up to access FINLONEXA"),
+    "SIGNUP_TAG_LINE": _("Please sign up to access Finlo CRM"),
     "LOGO_PATH": "assets/img/finlo-crm-logo.png",
     "FAVICON_PATH": "assets/img/finlo-favicon.ico",
-    "PAGE_HEADER": _("FINLONEXA"),
+    "PAGE_HEADER": _("Finlo CRM"),
 }
 
 

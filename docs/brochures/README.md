@@ -1,4 +1,4 @@
-# Horilla CRM product brochures
+# Finlo CRM product brochures
 
 Self-contained HTML product brochures for print and PDF. These are **not** Django templates — open them in a browser; do not serve them through the app.
 

@@ -137,13 +137,5 @@
             {% endif %}
         {% endif %}
 
-        <script>
-            if (!window._horillaListHistoryRestoreHandlerAdded) {
-                window._horillaListHistoryRestoreHandlerAdded = true;
-                document.addEventListener('htmx:historyRestore', function() {
-                    window.location.reload();
-                });
-            }
-        </script>
     </div>
 {% endwith %}

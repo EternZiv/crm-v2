@@ -1,4 +1,4 @@
-"""Admin configuration for the leads app in Horilla CRM."""
+"""Admin configuration for the leads app in Finlo CRM."""
 
 # Third-party imports (Django)
 # Third-party imports (other)

@@ -1,6 +1,6 @@
 """
 This module registers Floating, Settings, My Settings, and Main Section menus
-for the Horilla CRM Campaigns app
+for the Finlo CRM Campaigns app
 """
 
 # First party imports (Horilla)

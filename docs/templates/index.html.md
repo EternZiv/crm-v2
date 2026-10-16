@@ -1,6 +1,6 @@
 # Base layout: `templates/index.html`
 
-This document describes the **root HTML shell** for authenticated Horilla CRM pages. Almost every in-app template ultimately extends this file (directly or via `modelcontent_layout.html`).
+This document describes the **root HTML shell** for authenticated Finlo CRM pages. Almost every in-app template ultimately extends this file (directly or via `modelcontent_layout.html`).
 
 ## Location
 

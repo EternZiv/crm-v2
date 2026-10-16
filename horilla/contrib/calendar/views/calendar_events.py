@@ -32,6 +32,7 @@ from .helpers import (
     _requested_member_ids,
     _team_scope_available,
     _whole_day_span,
+    get_calendar_company_id,
     events_for_custom_calendar,
 )
 
@@ -46,6 +47,7 @@ class GetCalendarEventsView(LoginRequiredMixin, View):
             return render(request, "405.html", status=405)
 
         try:
+            company_id = get_calendar_company_id(request)
             selected_types = request.GET.getlist("calendar_types[]")
             if not selected_types and "calendar_types[]" in request.GET:
                 return JsonResponse({"status": "success", "events": []})
@@ -54,7 +56,9 @@ class GetCalendarEventsView(LoginRequiredMixin, View):
                 # Same rule as the sidebar: a type without a row is checked.
                 unchecked = set(
                     UserCalendarPreference.objects.filter(
-                        user=request.user, is_selected=False
+                        user=request.user,
+                        company_id=company_id,
+                        is_selected=False,
                     ).values_list("calendar_type", flat=True)
                 )
                 selected_types = [
@@ -63,7 +67,10 @@ class GetCalendarEventsView(LoginRequiredMixin, View):
                 selected_types += [
                     f"custom_{pk}"
                     for pk in CustomCalendar.objects.filter(
-                        user=request.user, is_selected=True, is_active=True
+                        user=request.user,
+                        company_id=company_id,
+                        is_selected=True,
+                        is_active=True,
                     ).values_list("id", flat=True)
                 ]
 
@@ -92,7 +99,10 @@ class GetCalendarEventsView(LoginRequiredMixin, View):
                             continue
                 if custom_ids:
                     for cc in CustomCalendar.objects.filter(
-                        user=request.user, pk__in=custom_ids, is_active=True
+                        user=request.user,
+                        company_id=company_id,
+                        pk__in=custom_ids,
+                        is_active=True,
                     ).select_related("module"):
                         custom_events.extend(
                             events_for_custom_calendar(

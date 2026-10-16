@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import re
 from pathlib import Path
 
 import environ
@@ -54,6 +55,38 @@ CSRF_FAILURE_VIEW = "horilla.contrib.core.views.error_pages.csrf_failure"
 # Public-facing HTTPS URL for Google Calendar webhook push notifications.
 SITE_URL = env("SITE_URL")
 
+
+def _get_vercel_deployment_hostnames():
+    """Return exact hostnames supplied by Vercel for this project deployment."""
+    hostname_pattern = re.compile(
+        r"(?=.{1,253}\Z)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)"
+        r"(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*\Z",
+        re.IGNORECASE,
+    )
+    hostnames = []
+    for variable in (
+        "VERCEL_URL",
+        "VERCEL_BRANCH_URL",
+        "VERCEL_PROJECT_PRODUCTION_URL",
+    ):
+        hostname = os.environ.get(variable, "").strip().lower()
+        if not hostname:
+            continue
+        if "." not in hostname or not hostname_pattern.fullmatch(hostname):
+            raise ImproperlyConfigured(
+                f"{variable} must contain a valid hostname without a scheme or path."
+            )
+        if variable in {"VERCEL_URL", "VERCEL_BRANCH_URL"} and not hostname.endswith(
+            ".vercel.app"
+        ):
+            raise ImproperlyConfigured(
+                f"{variable} must be a Vercel deployment hostname."
+            )
+        if hostname not in hostnames:
+            hostnames.append(hostname)
+    return hostnames
+
+
 if IS_VERCEL:
     if DEBUG:
         raise ImproperlyConfigured("DEBUG must be false on Vercel.")
@@ -66,18 +99,21 @@ if IS_VERCEL:
             "Wildcard ALLOWED_HOSTS is not permitted on Vercel."
         )
 
-    vercel_host = os.environ.get("VERCEL_URL", "").strip()
-    if vercel_host:
-        vercel_host = vercel_host.removeprefix("https://").removeprefix("http://")
-        vercel_host = vercel_host.split("/", 1)[0]
-        ALLOWED_HOSTS = list(dict.fromkeys([*ALLOWED_HOSTS, vercel_host]))
+    vercel_hostnames = _get_vercel_deployment_hostnames()
+    if vercel_hostnames:
+        ALLOWED_HOSTS = list(dict.fromkeys([*ALLOWED_HOSTS, *vercel_hostnames]))
         CSRF_TRUSTED_ORIGINS = list(
-            dict.fromkeys([*CSRF_TRUSTED_ORIGINS, f"https://{vercel_host}"])
+            dict.fromkeys(
+                [
+                    *CSRF_TRUSTED_ORIGINS,
+                    *(f"https://{hostname}" for hostname in vercel_hostnames),
+                ]
+            )
         )
 
     if not ALLOWED_HOSTS:
         raise ImproperlyConfigured(
-            "Set ALLOWED_HOSTS or deploy with VERCEL_URL configured."
+            "Set ALLOWED_HOSTS or deploy with a Vercel hostname configured."
         )
 
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -256,13 +292,17 @@ CHANNEL_LAYERS = {
 # Database and Performance Enhancements
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 # -----------------------------------------------------------------------------
+USE_POSTGRES = env.bool("USE_POSTGRES", default=IS_VERCEL)
+if IS_VERCEL:
+    USE_POSTGRES = True
+
 _database_url = env("DATABASE_URL", default=None)
-if IS_VERCEL and not _database_url:
+if USE_POSTGRES and not _database_url:
     raise ImproperlyConfigured(
-        "Set DATABASE_URL to a persistent PostgreSQL database for Vercel."
+        "Set DATABASE_URL to a persistent PostgreSQL database when USE_POSTGRES=True."
     )
 
-if _database_url:
+if USE_POSTGRES and _database_url:
     DATABASES = {
         "default": env.db(),
     }

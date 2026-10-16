@@ -24,6 +24,7 @@ from .helpers import (
     TEXT_COLOR_PREFIX,
     _save_unchecked_calendar_types,
     _team_scope_available,
+    get_calendar_company_id,
 )
 
 
@@ -57,7 +58,10 @@ class CalendarView(LoginRequiredMixin, TemplateView):
                 "default_color": DEFAULT_CALENDAR_TYPE_COLORS["unavailability"],
             },
         ]
-        preferences = UserCalendarPreference.objects.filter(user=self.request.user)
+        company_id = get_calendar_company_id(self.request)
+        preferences = UserCalendarPreference.objects.filter(
+            user=self.request.user, company_id=company_id
+        )
         preferences_by_type = {pref.calendar_type: pref for pref in preferences}
         context["user_preferences"] = {
             pref.calendar_type: pref.color for pref in preferences
@@ -83,26 +87,27 @@ class CalendarView(LoginRequiredMixin, TemplateView):
         ]
 
         display_only = self.request.GET.get("display_only")
-        company = (
-            getattr(self.request, "active_company", None) or self.request.user.company
-        )
         custom_calendars = CustomCalendar.objects.filter(
-            user=self.request.user, is_active=True
+            user=self.request.user, company_id=company_id, is_active=True
         ).order_by("name")
 
         if display_only and display_only in [cal["id"] for cal in context["calendars"]]:
-            UserCalendarPreference.objects.filter(user=self.request.user).update(
-                is_selected=False
-            )
             UserCalendarPreference.objects.filter(
-                user=self.request.user, calendar_type=display_only
+                user=self.request.user, company_id=company_id
+            ).update(is_selected=False)
+            UserCalendarPreference.objects.filter(
+                user=self.request.user,
+                company_id=company_id,
+                calendar_type=display_only,
             ).update(is_selected=True)
-            _save_unchecked_calendar_types(self.request.user, company, [display_only])
+            _save_unchecked_calendar_types(
+                self.request.user, company_id, [display_only]
+            )
             for calendar in context["calendars"]:
                 calendar["selected"] = calendar["id"] == display_only
-            CustomCalendar.objects.filter(user=self.request.user).update(
-                is_selected=False
-            )
+            CustomCalendar.objects.filter(
+                user=self.request.user, company_id=company_id
+            ).update(is_selected=False)
         elif (
             display_only
             and isinstance(display_only, str)
@@ -113,17 +118,17 @@ class CalendarView(LoginRequiredMixin, TemplateView):
             except ValueError:
                 custom_pk = None
             if custom_pk is not None and custom_calendars.filter(pk=custom_pk).exists():
-                UserCalendarPreference.objects.filter(user=self.request.user).update(
-                    is_selected=False
-                )
-                _save_unchecked_calendar_types(self.request.user, company, [])
+                UserCalendarPreference.objects.filter(
+                    user=self.request.user, company_id=company_id
+                ).update(is_selected=False)
+                _save_unchecked_calendar_types(self.request.user, company_id, [])
                 for calendar in context["calendars"]:
                     calendar["selected"] = False
-                CustomCalendar.objects.filter(user=self.request.user).update(
-                    is_selected=False
-                )
                 CustomCalendar.objects.filter(
-                    user=self.request.user, pk=custom_pk
+                    user=self.request.user, company_id=company_id
+                ).update(is_selected=False)
+                CustomCalendar.objects.filter(
+                    user=self.request.user, company_id=company_id, pk=custom_pk
                 ).update(is_selected=True)
         else:
             for calendar in context["calendars"]:
@@ -137,7 +142,7 @@ class CalendarView(LoginRequiredMixin, TemplateView):
         context["team_scope_available"] = _team_scope_available(self.request.user)
 
         context["custom_calendars"] = CustomCalendar.objects.filter(
-            user=self.request.user, is_active=True
+            user=self.request.user, company_id=company_id, is_active=True
         ).order_by("name")
 
         return context
@@ -154,7 +159,7 @@ class SaveCalendarPreferencesView(LoginRequiredMixin, View):
             calendar_type = data.get("calendar_type")
             color = data.get("color")
             valid_types = {"task", "event", "meeting", "unavailability"}
-            company = getattr(request, "active_company", None) or request.user.company
+            company_id = get_calendar_company_id(request)
 
             if calendar_type and color:
                 if calendar_type in valid_types:
@@ -162,7 +167,7 @@ class SaveCalendarPreferencesView(LoginRequiredMixin, View):
                         UserCalendarPreference.objects.update_or_create(
                             user=request.user,
                             calendar_type=calendar_type,
-                            company=company,
+                            company_id=company_id,
                             defaults={
                                 "color": color,
                                 "is_selected": True,
@@ -177,7 +182,7 @@ class SaveCalendarPreferencesView(LoginRequiredMixin, View):
                     UserCalendarPreference.objects.update_or_create(
                         user=request.user,
                         calendar_type=calendar_type,
-                        company=company,
+                        company_id=company_id,
                         defaults={"color": color, "is_selected": False},
                     )
                 elif isinstance(calendar_type, str) and calendar_type.startswith(
@@ -188,9 +193,9 @@ class SaveCalendarPreferencesView(LoginRequiredMixin, View):
                     except ValueError:
                         pk = None
                     if pk is not None:
-                        CustomCalendar.objects.filter(user=request.user, pk=pk).update(
-                            color=color, is_selected=True
-                        )
+                        CustomCalendar.objects.filter(
+                            user=request.user, company_id=company_id, pk=pk
+                        ).update(color=color, is_selected=True)
 
             text_color = data.get("text_color")
             if calendar_type and text_color and HEX_COLOR_RE.match(str(text_color)):
@@ -209,7 +214,9 @@ class SaveCalendarPreferencesView(LoginRequiredMixin, View):
                     text_key_ok = (
                         custom_pk is not None
                         and CustomCalendar.objects.filter(
-                            user=request.user, pk=custom_pk
+                            user=request.user,
+                            company_id=company_id,
+                            pk=custom_pk,
                         ).exists()
                     )
                 if text_key_ok:
@@ -217,17 +224,17 @@ class SaveCalendarPreferencesView(LoginRequiredMixin, View):
                     UserCalendarPreference.objects.update_or_create(
                         user=request.user,
                         calendar_type=f"{TEXT_COLOR_PREFIX}{calendar_type}",
-                        company=company,
+                        company_id=company_id,
                         defaults={"color": text_color, "is_selected": False},
                     )
 
             if "calendar_types" in data:
-                UserCalendarPreference.objects.filter(user=request.user).update(
-                    is_selected=False
-                )
-                CustomCalendar.objects.filter(user=request.user).update(
-                    is_selected=False
-                )
+                UserCalendarPreference.objects.filter(
+                    user=request.user, company_id=company_id
+                ).update(is_selected=False)
+                CustomCalendar.objects.filter(
+                    user=request.user, company_id=company_id
+                ).update(is_selected=False)
                 calendar_types = data.get("calendar_types") or []
                 standard_types = [ct for ct in calendar_types if ct in valid_types]
                 custom_pks = []
@@ -241,32 +248,36 @@ class SaveCalendarPreferencesView(LoginRequiredMixin, View):
                 for ct in standard_types:
                     defaults = {
                         "is_selected": True,
-                        "company": company,
+                        "company_id": company_id,
                     }
                     if not UserCalendarPreference.objects.filter(
-                        user=request.user, calendar_type=ct
+                        user=request.user,
+                        calendar_type=ct,
+                        company_id=company_id,
                     ).exists():
                         defaults["color"] = DEFAULT_CALENDAR_TYPE_COLORS[ct]
                     preference, created = (
                         UserCalendarPreference.objects.update_or_create(
                             user=request.user,
                             calendar_type=ct,
-                            company=company,
+                            company_id=company_id,
                             defaults=defaults,
                         )
                     )
 
                     if not created:
                         preference.is_selected = True
-                        if not preference.company:
-                            preference.company = company
-                        preference.save(update_fields=["is_selected", "company"])
+                        preference.save(update_fields=["is_selected"])
 
-                _save_unchecked_calendar_types(request.user, company, standard_types)
+                _save_unchecked_calendar_types(
+                    request.user, company_id, standard_types
+                )
 
                 if custom_pks:
                     CustomCalendar.objects.filter(
-                        user=request.user, pk__in=custom_pks
+                        user=request.user,
+                        company_id=company_id,
+                        pk__in=custom_pks,
                     ).update(is_selected=True)
 
             messages.success(request, _("Preferences saved successfully"))

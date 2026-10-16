@@ -16,6 +16,7 @@
         {% endfor %}
 
         <!-- Theme Initialization (Blocking) -->
+        <script src="{% static 'assets/js/htmx_session_history.js' %}"></script>
         <script>
             (function () {
                 const theme = localStorage.getItem("theme") || "light";
@@ -82,7 +83,7 @@
         {% endfor %}
     </head>
 
-    <body class="bg-[#f8f8f9] font-[Inter,_sans-serif]">
+    <body class="bg-[#f8f8f9] font-[Inter,_sans-serif]" data-user-id="0">
         <!-- Body Start: Early body initialization -->
         {% load_registered_html "body_start" "login" as body_start_html %}
         {% for tpl in body_start_html %}
@@ -107,7 +108,7 @@
             {% block login %}
                 <!-- LOGIN FORM -->
                 <div id="sec1" class="bg-white p-[50px] rounded-md [box-shadow:0px_0px_20px_#ebebeb] w-[450px]">
-                    <img src="{% static LOGO_PATH %}" alt="{% trans 'FINLONEXA logo' %}" class="m-auto mb-4 max-w-[280px]">
+                    <img src="{% static LOGO_PATH %}" alt="{% trans 'Finlo CRM logo' %}" class="m-auto mb-4 max-w-[280px]">
                     <h1 class="text-3xl font-bold mb-2 text-center">{{ LOGIN_WELCOME_LINE }}</h1>
                     <p class="mb-5 text-center text-sm text-color-600">
                         {{ LOGIN_TAG_LINE }}

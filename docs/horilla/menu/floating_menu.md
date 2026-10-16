@@ -114,7 +114,7 @@ items = {
 "perm": "campaigns.add_campaign",
 }
 ### Ensure menu.py is loaded
-Horilla CRM apps usually list **"menu"** in **auto_import_modules** on the app’s AppLauncher config (e.g. horilla_crm/contacts/apps.py). Without importing menu.py at startup, registrations never run and **floating_registry** stays empty.
+Finlo CRM apps usually list **"menu"** in **auto_import_modules** on the app’s AppLauncher config (e.g. horilla_crm/contacts/apps.py). Without importing menu.py at startup, registrations never run and **floating_registry** stays empty.
 If you add a new app, include **menu** in auto_import_modules (or import menu from AppConfig.ready()) so decorators execute.
 ---
 ## Apps that register a floating menu today

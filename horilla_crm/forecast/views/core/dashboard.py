@@ -1,6 +1,6 @@
 """
 
-Django class-based views for managing and displaying sales forecast data in Horilla CRM.
+Django class-based views for managing and displaying sales forecast data in Finlo CRM.
 Features: Period-based forecasts, trend analysis, user/aggregated views, optimized queries.
 """
 

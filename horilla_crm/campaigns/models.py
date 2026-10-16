@@ -75,11 +75,14 @@ class CampaignMember(HorillaCoreModel):
     OWNER_FIELDS = ["created_by"]
 
     def is_owned_by(self, user):
-        """Check if this campaign member is owned by the user"""
+        """Check ownership through the related lead/contact sales scope."""
+        from horilla.contrib.core.utils import get_allowed_user_ids
+
+        allowed_user_ids = get_allowed_user_ids(user)
         if self.lead and hasattr(self.lead, "lead_owner"):
-            return self.lead.lead_owner == user
+            return self.lead.lead_owner_id in allowed_user_ids
         if self.contact and hasattr(self.contact, "contact_owner"):
-            return self.contact.contact_owner == user
+            return self.contact.contact_owner_id in allowed_user_ids
         return False
 
     @classmethod

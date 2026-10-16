@@ -1,5 +1,5 @@
 """
-Menu registration for the Horilla CRM Scoring Rules app.
+Menu registration for the Finlo CRM Scoring Rules app.
 """
 
 from horilla.contrib.core.menu import BaseSettings

@@ -1,7 +1,7 @@
 """
 Accounts Views Module
 
-Django views for managing accounts in Horilla CRM.
+Django views for managing accounts in Finlo CRM.
 Handles listing, creating, updating, deleting, and viewing accounts.
 """
 

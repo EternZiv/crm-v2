@@ -44,6 +44,7 @@ from horilla.contrib.generics.templatetags.horilla_tags.history_i18n import (
 )
 from horilla.contrib.generics.views.core import HorillaHistorySectionView
 from horilla.contrib.generics.views.helpers.list_column import get_view_columns
+from horilla.menu import MAIN_CONTENT_HX_ATTRS
 from horilla.registry.history_registry import (
     HISTORY_DATETIME_FORMATTERS,
     get_history_datetime_formatters,
@@ -93,6 +94,58 @@ class ListViewSortPartialTests(SimpleTestCase):
                 / template_name
             ).read_text(encoding="utf-8")
             self.assertNotIn("filter_reload.js", template)
+
+    def test_navigation_cache_is_per_tab_and_refreshes_history_restores(self):
+        base_dir = Path(settings.BASE_DIR)
+        shell_template = (base_dir / "templates" / "index.html").read_text(
+            encoding="utf-8"
+        )
+        login_template = (base_dir / "templates" / "login.html").read_text(
+            encoding="utf-8"
+        )
+        cache_adapter = (
+            base_dir / "static" / "assets" / "js" / "htmx_session_history.js"
+        ).read_text(encoding="utf-8")
+        navigation_script = (
+            base_dir / "static" / "assets" / "js" / "navigation_history.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertLess(
+            shell_template.index("assets/js/htmx_session_history.js"),
+            shell_template.index("assets/js/cloudflare/htmx.min.js"),
+        )
+        self.assertLess(
+            login_template.index("assets/js/htmx_session_history.js"),
+            login_template.index("assets/js/htmx/htmx.min.js"),
+        )
+        self.assertIn("hx-history-elt", shell_template)
+        self.assertIn('tabStorage.setItem(key, value)', cache_adapter)
+        self.assertIn("tabStorage.removeItem(historyCacheKey)", cache_adapter)
+        self.assertIn('htmx.config.historyCacheSize = 20', navigation_script)
+        self.assertIn('document.addEventListener(\n        "click"', navigation_script)
+        self.assertIn('"htmx:historyRestore"', navigation_script)
+        self.assertIn('id="navigationHistoryRefresh"', shell_template)
+        self.assertIn('hx-select="#mainContent"', shell_template)
+        self.assertIn("source: refreshSource", navigation_script)
+        self.assertNotIn('select: "#mainContent"', navigation_script)
+        self.assertIn('htmx.ajax("GET"', navigation_script)
+
+    def test_boosted_menu_navigation_pushes_urls_for_history_cache(self):
+        self.assertEqual(MAIN_CONTENT_HX_ATTRS["hx-push-url"], "true")
+
+    def test_list_history_restore_does_not_force_a_full_page_reload(self):
+        base_dir = Path(settings.BASE_DIR)
+        for template_name in ("list_view.html", "card_view.html"):
+            template = (
+                base_dir
+                / "horilla"
+                / "contrib"
+                / "generics"
+                / "templates"
+                / template_name
+            ).read_text(encoding="utf-8")
+            self.assertNotIn("htmx:historyRestore", template)
+            self.assertNotIn("window.location.reload()", template)
 
 
 class GetViewColumnsVerboseNameTests(SimpleTestCase):

@@ -1,6 +1,6 @@
 """
 This module registers Floating, Settings, My Settings, and Main Section menus
-for the Horilla CRM Accounts app
+for the Finlo CRM Accounts app
 """
 
 # First party imports (Horilla)

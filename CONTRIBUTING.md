@@ -1,6 +1,6 @@
-# Contributing to Horilla CRM
+# Contributing to Finlo CRM
 
-Thank you for considering a contribution to Horilla CRM.
+Thank you for considering a contribution to Finlo CRM.
 
 ## Issues
 

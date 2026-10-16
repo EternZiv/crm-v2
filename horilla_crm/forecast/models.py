@@ -1,5 +1,5 @@
 """
-Forecast models for Horilla CRM.
+Forecast models for Finlo CRM.
 
 This module defines models related to forecasts, including forecast types,
 conditions, main forecasts, targets, individual user targets, and historical tracking.

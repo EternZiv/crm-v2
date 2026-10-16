@@ -254,11 +254,9 @@ class ApiPrefixSchemaGenerator(OpenAPISchemaGenerator):
 # Get server URL from request in view instead of hardcoding
 schema_view = get_schema_view(
     openapi.Info(
-        title="HORILLA API",
+        title="Finlo CRM API",
         default_version="v1",
-        description="API documentation for HORILLA system",
-        terms_of_service="https://www.horilla.com/privacy-policy/",
-        contact=openapi.Contact(email="support@horilla.com"),
+        description="API documentation for Finlo CRM",
         license=openapi.License(name="LGPL2.1 License"),
     ),
     public=True,

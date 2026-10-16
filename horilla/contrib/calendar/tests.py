@@ -740,7 +740,7 @@ class CalendarTypeSelectionTests(TestCase):
 
     def _row(self, calendar_type):
         return UserCalendarPreference.objects.get(
-            user=self.user, calendar_type=calendar_type
+            user=self.user, calendar_type=calendar_type, company=self.company
         )
 
     def test_unchecked_type_without_a_row_stays_unchecked(self):
@@ -812,17 +812,62 @@ class CalendarTypeSelectionTests(TestCase):
         other = Company.objects.create(
             name="Other", email="other@example.com", country="US"
         )
+        original_task_preference = UserCalendarPreference.objects.create(
+            user=self.user,
+            calendar_type="task",
+            color=views.DEFAULT_CALENDAR_TYPE_COLORS["task"],
+            is_selected=False,
+            company=self.company,
+        )
+        self.user.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label="core",
+                codename="can_switch_company",
+            )
+        )
         session = self.client.session
         session["active_company_id"] = other.pk
         session.save()
         self._save(["event", "meeting", "unavailability"])
+        other_task_preference = UserCalendarPreference.objects.get(
+            user=self.user, calendar_type="task", company=other
+        )
+        self.assertFalse(other_task_preference.is_selected)
 
-        self.assertEqual(self._checked(), ["event", "meeting", "unavailability"])
-        self.assertEqual(self._row("task").company, other)
+        response = self.client.get(
+            reverse("calendar:calendar_view"), HTTP_HX_REQUEST="true"
+        )
+        self.assertEqual(response.wsgi_request.active_company, other)
+        self.assertEqual(
+            [
+                cal["id"]
+                for cal in response.context["calendars"]
+                if cal["selected"]
+            ],
+            ["event", "meeting", "unavailability"],
+        )
+        self.assertEqual(
+            other_task_preference.company,
+            other,
+        )
 
+        session = self.client.session
         session["active_company_id"] = self.company.pk
         session.save()
-        self.assertEqual(self._checked(), ALL_TYPES)
+        response = self.client.get(
+            reverse("calendar:calendar_view"), HTTP_HX_REQUEST="true"
+        )
+        self.assertEqual(response.wsgi_request.active_company, self.company)
+        self.assertEqual(
+            [
+                cal["id"]
+                for cal in response.context["calendars"]
+                if cal["selected"]
+            ],
+            ["event", "meeting", "unavailability"],
+        )
+        original_task_preference.refresh_from_db()
+        self.assertFalse(original_task_preference.is_selected)
 
     def test_display_this_only_sticks(self):
         """Display This Only on a type is still applied on the next load."""

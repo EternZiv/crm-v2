@@ -44,7 +44,7 @@ Small/supporting HTTP endpoints if present (read file for current exports).
 
 ### `management/commands/start_horilla_app.py`
 
-Scaffolds a new Horilla CRM app with `AppLauncher`, `registration.py`, `menu.py`, etc.—the recommended starting point for modules.
+Scaffolds a new Finlo CRM app with `AppLauncher`, `registration.py`, `menu.py`, etc.—the recommended starting point for modules.
 
 ### `models.py`
 

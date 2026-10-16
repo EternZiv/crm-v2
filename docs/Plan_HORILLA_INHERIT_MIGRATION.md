@@ -1,8 +1,8 @@
-# Horilla CRM — `_inherit` Model Extension Migration Plan
+# Finlo CRM — `_inherit` Model Extension Migration Plan
 
 > **Version:** 1.3
 > **Status:** Implemented (core package)
-> **Scope:** Port the Horilla HRMS `_inherit` feature into Horilla CRM
+> **Scope:** Port the Horilla HRMS `_inherit` feature into Finlo CRM
 > **Target package:** `horilla/extension/`
 
 ---
@@ -29,7 +29,7 @@
 
 ### Objective
 
-Build a native **`_inherit` model extension system** for Horilla CRM so third-party and in-house apps can add columns and methods to existing CRM models **without**:
+Build a native **`_inherit` model extension system** for Finlo CRM so third-party and in-house apps can add columns and methods to existing CRM models **without**:
 
 - Creating new database tables for extension classes
 - Modifying upstream migration folders (`horilla_crm/*/migrations/`, `horilla/contrib/*/migrations/`)
@@ -293,7 +293,7 @@ def ready(self):
 
 ### 4.6 HR → CRM file mapping
 
-| Horilla HRMS (flat) | Horilla CRM |
+| Horilla HRMS (flat) | Finlo CRM |
 |---------------------|-------------|
 | `horilla/extension_registry.py` | `horilla/extension/models/registry.py` |
 | `horilla/migration_ops.py` | `horilla/extension/models/migration_ops.py` |
@@ -306,7 +306,7 @@ def ready(self):
 
 ## 5. Current state
 
-### 5.1 Horilla CRM (target)
+### 5.1 Finlo CRM (target)
 
 | Item | Status |
 |------|--------|
@@ -322,7 +322,7 @@ def ready(self):
 
 ### 5.2 HR vs CRM mapping
 
-| Horilla HRMS | Horilla CRM |
+| Horilla HRMS | Finlo CRM |
 |--------------|-------------|
 | `HorillaModel` | `HorillaCoreModel` (abstract) |
 | `from horilla.models import HorillaModel` | `from horilla.contrib.core.models import HorillaCoreModel` |
@@ -728,7 +728,7 @@ INSTALLED_APPS += ["my_lead_extensions"]
 
 ### Appendix C — Vision
 
-This feature introduces ERP-style, upgrade-safe extensibility for Horilla CRM:
+This feature introduces ERP-style, upgrade-safe extensibility for Finlo CRM:
 
 - Third-party extensions without core patches
 - Isolated migration ownership per extension app
@@ -737,4 +737,4 @@ This feature introduces ERP-style, upgrade-safe extensibility for Horilla CRM:
 
 ---
 
-*End of document — Horilla CRM `_inherit` migration plan v1.3*
+*End of document — Finlo CRM `_inherit` migration plan v1.3*

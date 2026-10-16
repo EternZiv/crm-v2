@@ -37,13 +37,17 @@ runtime.
 | `DB_CONN_MAX_AGE` | `0` for short-lived serverless database connections. |
 | `DISABLE_SERVER_SIDE_CURSORS` | `1` for transaction-pooler compatibility. |
 
-Vercel supplies `VERCEL` and `VERCEL_URL` as system environment variables. The
-settings use `VERCEL_URL` to add the deployment hostname to `ALLOWED_HOSTS` and
-its HTTPS origin to `CSRF_TRUSTED_ORIGINS`. Do not override system variables.
-Only set `ALLOWED_HOSTS` or `CSRF_TRUSTED_ORIGINS` if extra hostnames/origins are
-needed. `CHANNEL_REDIS_URL` and `SITE_URL` are optional; the former can point
-Channels to a separate Redis service and the latter is relevant to calendar
-webhooks.
+Vercel supplies `VERCEL`, `VERCEL_URL`, `VERCEL_BRANCH_URL`, and
+`VERCEL_PROJECT_PRODUCTION_URL` as system environment variables. The settings
+add only the exact hostnames Vercel supplies for the deployment, branch, and
+project production domain to `ALLOWED_HOSTS`, and add their HTTPS origins to
+`CSRF_TRUSTED_ORIGINS`. This allows the stable project domain
+(`crm-v2-ochre.vercel.app`) as well as the current deployment URL without
+allowing arbitrary Vercel or external domains. Do not override system variables.
+Only set `ALLOWED_HOSTS` or `CSRF_TRUSTED_ORIGINS` if additional, explicitly
+owned hostnames/origins are needed. `CHANNEL_REDIS_URL` and `SITE_URL` are
+optional; the former can point Channels to a separate Redis service and the
+latter is relevant to calendar webhooks.
 
 ### Redis-free UAT mode
 

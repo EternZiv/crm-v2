@@ -1,1 +1,1 @@
-"""Jalali (Shamsi) calendar extension for Horilla CRM."""
+"""Jalali (Shamsi) calendar extension for Finlo CRM."""

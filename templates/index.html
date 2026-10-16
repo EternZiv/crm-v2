@@ -34,6 +34,7 @@
         <!-- Core Scripts -->
         <script src="{% static 'assets/js/tailwind/tailwind.js' %}"></script>
         <script src="{% static 'assets/js/tailwind.config.js' %}"></script>
+        <script src="{% static 'assets/js/htmx_session_history.js' %}"></script>
         <script src="{% static 'assets/js/cloudflare/htmx.min.js' %}"></script>
         <script src="{% static 'assets/js/htmx/htmx-download.js' %}"></script>
         <script src="{% static 'assets/js/cloudflare/jquery.min.js' %}"></script>
@@ -90,7 +91,10 @@
         </script>
 
         <!-- Main Content Wrapper -->
-        <div class="{% if LANGUAGE_BIDI %}mr-[5rem]{% else %}ml-[5rem]{% endif %} h-screen">
+        <div
+            class="{% if LANGUAGE_BIDI %}mr-[5rem]{% else %}ml-[5rem]{% endif %} h-screen"
+            hx-history-elt
+        >
             <!-- Header -->
             <div id="header">
                 {% include 'components/header.html' %}
@@ -117,6 +121,11 @@
             hidden
         >
         </button>
+        <button
+            id="navigationHistoryRefresh"
+            hx-select="#mainContent"
+            hidden
+        ></button>
         <div id="reloadMessages">
             {% include "messages.html" %}
         </div>
@@ -130,6 +139,7 @@
 
         <!-- Global Scripts (Defer) -->
         <script src="{% url 'javascript-catalog' %}"></script>
+        <script src="{% static 'assets/js/navigation_history.js' %}"></script>
         <script src="{% static 'assets/js/global.js' %}"></script>
         <script src="{% static 'assets/js/filter_reload.js' %}"></script>
         <script src="{% static 'assets/js/list_view.js' %}"></script>

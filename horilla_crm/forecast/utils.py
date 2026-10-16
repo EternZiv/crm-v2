@@ -1,5 +1,5 @@
 """
-ForecastCalculator Utility for Horilla CRM
+ForecastCalculator Utility for Finlo CRM
 
 Provides automatic calculation, creation, and updating of forecasts
 (amount, expected revenue, or quantity) for users and periods based on

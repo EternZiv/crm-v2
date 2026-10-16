@@ -1,5 +1,5 @@
 """
-Signal handlers for leads in Horilla CRM.
+Signal handlers for leads in Finlo CRM.
 Handles automatic updates when company-related events occur, e.g., currency change.
 """
 

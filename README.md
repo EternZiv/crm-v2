@@ -1,7 +1,7 @@
-# FINLONEXA
+# Finlo CRM
 
 <div align="center">
-  <img src="static/assets/img/finlo-crm-logo.png" alt="FINLONEXA Logo" width="232" height="57">
+  <img src="static/assets/img/finlo-crm-logo.png" alt="Finlo CRM logo" width="232" height="57">
   <h3>Customer Relationship Management System</h3>
   <p>A comprehensive CRM solution designed for enterprise-level customer engagement, sales tracking, and business process automation.</p>
   <p><em>Finlo CRM is built on the <strong>Horilla platform</strong>; shared support apps live under <code>horilla.contrib</code>.</em></p>
@@ -72,16 +72,20 @@
 
 3. **Configure environment and database**
 
-   Local settings use `db.sqlite3` when `DATABASE_URL` is unset. In-memory WebSockets
-   are used in local development by default; configure `CHANNEL_REDIS_URL` to
-   use a Redis 5+ server when running multiple application processes.
+   Local development defaults to SQLite. To use PostgreSQL locally, set
+   `USE_POSTGRES=1` and provide `DATABASE_URL`. In-memory WebSockets are used in
+   local development by default; configure `CHANNEL_REDIS_URL` to use a Redis 5+
+   server when running multiple application processes.
    ```bash
-   DATABASE_URL=sqlite:///db.sqlite3
+   USE_POSTGRES=0
    REDIS_URL=redis://127.0.0.1:6379/0
    CHANNEL_REDIS_URL=
    CELERY_BROKER_URL=redis://127.0.0.1:6379/0
    CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0
    ```
+
+   For Supabase or Vercel production use, set `USE_POSTGRES=1` and configure a
+   valid `DATABASE_URL`.
 
 4. **Initialize the database and create an admin**
    ```bash
@@ -97,9 +101,9 @@
    Open http://localhost:8000. For an existing SQLite database migration to
    Supabase, see [SUPABASE-MIGRATION.md](SUPABASE-MIGRATION.md).
 
-   On start you will see a one-line Horilla loading progress bar, then a banner with
-   **Horilla version** (from `horilla.__version__`) instead of Django’s version line.
-   See [docs/horilla/utils/startup.md](docs/horilla/utils/startup.md).
+   On start you will see a one-line Finlo CRM loading progress bar, then a banner
+   with the Finlo CRM version instead of Django’s version line.
+   See [docs/horilla/utils/startup.md](docs/horilla/utils/startup.md) for startup details.
 
 ### Deploying on Vercel
 

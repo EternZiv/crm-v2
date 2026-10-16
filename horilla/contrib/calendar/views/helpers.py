@@ -13,6 +13,7 @@ from django.utils.encoding import force_str
 from horilla.auth.models import User
 from horilla.contrib.activity.methods import get_related_record_urls
 from horilla.contrib.activity.models import Activity
+from horilla.contrib.core.authorization import get_company_scope
 from horilla.contrib.core.utils import get_allowed_user_ids
 from horilla.contrib.generics.templatetags.horilla_tags._shared import (
     format_datetime_value,
@@ -47,6 +48,15 @@ DEFAULT_STATUS_COLORS = {
 
 
 TEXT_COLOR_PREFIX = "text_"
+
+
+def get_calendar_company_id(request):
+    """Return the company boundary authorized for this request."""
+    scope = get_company_scope(request.user, request)
+    if scope.all_companies:
+        active_company = getattr(request, "active_company", None)
+        return getattr(active_company, "pk", None) or request.user.company_id
+    return scope.company_id
 
 
 DEFAULT_TEXT_COLOR = "#FFFFFF"
@@ -477,7 +487,7 @@ def events_for_custom_calendar(request, cc, team=False, member_ids=None):
     return _activity_events(request, activities, team, custom_calendar=cc)
 
 
-def _save_unchecked_calendar_types(user, company, checked_types):
+def _save_unchecked_calendar_types(user, company_id, checked_types):
     """
     Give each standard calendar type not in ``checked_types`` an unselected
     preference row if it has none. The sidebar shows a type without a row as
@@ -485,9 +495,9 @@ def _save_unchecked_calendar_types(user, company, checked_types):
     user's existing rows first.
     """
     saved_types = set(
-        UserCalendarPreference.objects.filter(user=user, company=company).values_list(
-            "calendar_type", flat=True
-        )
+        UserCalendarPreference.objects.filter(
+            user=user, company_id=company_id
+        ).values_list("calendar_type", flat=True)
     )
     for calendar_type, color in DEFAULT_CALENDAR_TYPE_COLORS.items():
         if calendar_type in checked_types or calendar_type in saved_types:
@@ -496,6 +506,6 @@ def _save_unchecked_calendar_types(user, company, checked_types):
         UserCalendarPreference.objects.get_or_create(
             user=user,
             calendar_type=calendar_type,
-            company=company,
+            company_id=company_id,
             defaults={"color": color, "is_selected": False},
         )

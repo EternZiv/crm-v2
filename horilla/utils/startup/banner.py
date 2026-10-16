@@ -1,5 +1,5 @@
 """
-Replace only the runserver ``Django version …`` banner line with Horilla's version.
+Replace only the runserver ``Django version …`` banner line with Finlo CRM's version.
 
 Installed from ``manage.py`` — no extra INSTALLED_APPS entry required.
 """
@@ -10,7 +10,7 @@ _installed = False
 
 
 def install() -> None:
-    """Patch Daphne runserver to show ``Horilla version`` from ``horilla.__version__``."""
+    """Patch Daphne runserver to show the Finlo CRM version."""
     global _installed
     if _installed:
         return
@@ -30,7 +30,7 @@ def install() -> None:
 
         def write(msg="", *a, **kw):
             if isinstance(msg, str) and msg.startswith("Django version "):
-                msg = "Horilla version " + msg[len("Django version ") :]
+                msg = "Finlo CRM version " + msg[len("Django version ") :]
             return original_write(msg, *a, **kw)
 
         self.stdout.write = write

@@ -40,7 +40,7 @@ from horilla import celery_app
 
 ### 🎯 Purpose
 
-**This file is the Horilla CRM product / platform version for the entire project**
+**This file is the Finlo CRM product version on the Horilla platform for the entire project**
 (git tag, About / Modules & Versions). It is **not** limited to code
 under the `horilla/` directory — weekly platform changelog entries should cover
 project-wide highlights (new apps like Custom Fields, CRM, contrib, etc.).

@@ -18,7 +18,7 @@ import win32serviceutil
 
 
 class HorillaCRMService(win32serviceutil.ServiceFramework):
-    """Windows Service wrapper for Horilla CRM application.
+    """Windows Service wrapper for the Finlo CRM application.
 
     This service manages the Django application server lifecycle on Windows,
     including starting/stopping the Gunicorn server, running migrations,
@@ -27,7 +27,7 @@ class HorillaCRMService(win32serviceutil.ServiceFramework):
     """
 
     _svc_name_ = "HorillaCRM"
-    _svc_display_name_ = "Horilla CRM Application Server"
+    _svc_display_name_ = "Finlo CRM Application Server"
     _svc_description_ = "Enterprise Customer Relationship Management System"
 
     def __init__(self, args):

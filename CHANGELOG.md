@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Horilla CRM are recorded here.
+All notable changes to Finlo CRM are recorded here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -17,7 +17,7 @@ is the single source of truth for the **whole CRM product** version (not only th
 `horilla/` package directory); the release workflow refuses to publish an image whose
 tag disagrees with it. See [docs/versioning.md](docs/versioning.md).
 
-Horilla CRM also versions its applications independently — each app carries its own
+Finlo CRM also versions its applications independently — each app carries its own
 `__version__.py`, surfaced together by `horilla/utils/version.py`. Those app versions
 move on their own cadence and are not tracked in this file.
 

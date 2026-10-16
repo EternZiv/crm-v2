@@ -31,6 +31,7 @@ MAIN_CONTENT_HX_ATTRS = {
     "hx-target": "#mainContent",
     "hx-select": "#mainContent",
     "hx-swap": "outerHTML",
+    "hx-push-url": "true",
 }
 
 MAIN_SECTION_HX_ATTRS = {

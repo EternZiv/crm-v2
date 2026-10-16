@@ -97,7 +97,7 @@ list/retrieve responses.
 
 ## Channels / real-time
 
-Horilla CRM pushes notification creates over **Django Channels**
+Finlo CRM pushes notification creates over **Django Channels**
 (`horilla.contrib.notifications.consumers` / project ASGI routing). The shell
 may also poll unread counts via HTMX.
 

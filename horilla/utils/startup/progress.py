@@ -59,7 +59,7 @@ def _ensure_state(total_apps: int | None = None) -> dict:
 def _format_line(done: int, total: int, detail: str) -> str:
     pct = int(done * 100 / total) if total else 0
     return (
-        f"Horilla loading [{_bar(done, total)}] "
+        f"Finlo CRM loading [{_bar(done, total)}] "
         f"{pct:3d}% ({done}/{total}) {detail:<34}"
     )
 
@@ -100,7 +100,7 @@ def _render(app_config=None, phase: str = "", *, force: bool = False) -> None:
     if done >= total and not state["finished"]:
         state["finished"] = True
         try:
-            _STREAM.write("\nHorilla apps ready.\n")
+            _STREAM.write("\nFinlo CRM apps ready.\n")
             _STREAM.flush()
         except Exception:
             pass

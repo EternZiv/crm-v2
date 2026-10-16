@@ -1,4 +1,4 @@
-# Horilla CRM versioning
+# Finlo CRM versioning
 
 Source of truth for humans and AI assistants that update `__version__.py` files.
 
@@ -8,7 +8,7 @@ Related: [CHANGELOG.md](../CHANGELOG.md) · collection UI: `horilla/utils/versio
 
 ## Rule 1 — Platform version = whole CRM product (not the `horilla/` folder)
 
-**`horilla/__version__.py` is the Horilla CRM product / platform version for the entire project.**
+**`horilla/__version__.py` is the Finlo CRM product version on the Horilla platform for the entire project.**
 
 It is **not** “the version of code only under the `horilla/` directory.”
 

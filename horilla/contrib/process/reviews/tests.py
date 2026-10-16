@@ -5,6 +5,7 @@ Tests for the reviews app
 # Third-party imports (Django)
 from types import SimpleNamespace
 
+from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase
 
 # First party imports (Horilla)
@@ -226,7 +227,9 @@ class ReviewTriggerTests(TestCase):
         )
         self._criteria(self._process(), qualified)
         lead = self._lead()
-        _thread_local.request = SimpleNamespace(session={})
+        _thread_local.request = SimpleNamespace(
+            session={}, user=AnonymousUser()
+        )
         self.addCleanup(lambda: delattr(_thread_local, "request"))
 
         lead.email = "other@example.com"
@@ -241,7 +244,9 @@ class ReviewTriggerTests(TestCase):
         self._process()
         lead = self._lead()
         self._approve(lead)
-        _thread_local.request = SimpleNamespace(session={})
+        _thread_local.request = SimpleNamespace(
+            session={}, user=AnonymousUser()
+        )
         self.addCleanup(lambda: delattr(_thread_local, "request"))
 
         lead.email = "other@example.com"

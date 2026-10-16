@@ -1,4 +1,4 @@
-"""Lead Actions Views for Horilla CRM"""
+"""Lead Actions Views for Finlo CRM"""
 
 # Third-party imports (Django)
 from django.contrib.auth.mixins import LoginRequiredMixin
