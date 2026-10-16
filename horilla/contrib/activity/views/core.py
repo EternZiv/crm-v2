@@ -704,6 +704,14 @@ def can_view_related_record(user, activity, related):
     other records of that model. The record must also be in the active
     company, otherwise its section view 404s.
     """
+    activity_company_id = getattr(activity, "company_id", None)
+    related_company_id = getattr(related, "company_id", None)
+    if (
+        activity_company_id is not None
+        and related_company_id is not None
+        and activity_company_id != related_company_id
+    ):
+        return False
     return check_record_access(user, activity) and is_related_record_visible(related)
 
 

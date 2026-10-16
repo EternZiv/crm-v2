@@ -14,7 +14,6 @@ from django.utils.encoding import force_str
 
 from horilla.contrib.utils.methods import get_section_info_for_model
 from horilla.contrib.utils.middlewares import _thread_local
-from horilla.db.models import Q
 
 # First party imports (Horilla)
 from horilla.utils import timezone
@@ -409,37 +408,12 @@ class DefaultDashboardGenerator:
 
     def get_queryset(self, model_class):
         """Get filtered queryset for a model"""
-        queryset = model_class.objects.all()
+        from horilla.contrib.generics.views.helpers.queryset_utils import (
+            get_queryset_for_module,
+        )
 
-        app_label = model_class._meta.app_label
-        model_name = model_class._meta.model_name
-
-        has_view_all = self.user.has_perm(f"{app_label}.view_{model_name}")
-        has_view_own = self.user.has_perm(f"{app_label}.view_own_{model_name}")
-
-        if has_view_all:
-            queryset = self.apply_date_range_filter(queryset, model_class)
-            return queryset
-
-        if has_view_own:
-            if hasattr(model_class, "company") and self.company:
-                queryset = queryset.filter(company=self.company)
-
-            if hasattr(model_class, "OWNER_FIELDS"):
-                owner_fields = model_class.OWNER_FIELDS
-                if owner_fields and len(owner_fields) > 0:
-                    q_objects = Q()
-                    for field_name in owner_fields:
-                        if hasattr(model_class, field_name):
-                            q_objects |= Q(**{field_name: self.user})
-
-                    if q_objects:
-                        queryset = queryset.filter(q_objects)
-
-            queryset = self.apply_date_range_filter(queryset, model_class)
-            return queryset
-
-        return queryset.none()
+        queryset = get_queryset_for_module(self.user, model_class)
+        return self.apply_date_range_filter(queryset, model_class)
 
     def get_model_count(self, model_class):
         """Count a model's scoped queryset once per dashboard generation."""

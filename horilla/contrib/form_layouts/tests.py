@@ -256,7 +256,7 @@ class LayoutResolutionTests(CompanyOptInMixin, TestCase):
         self._row("fax", 1, is_visible=False, company=self.company_b)
         self.assertIsNone(get_form_layout(Company))
 
-        _activate_company(self.company_b)
+        _thread_local.request.active_company = self.company_b
         self.assertEqual(get_form_layout(Company).hidden, frozenset({"fax"}))
 
     def test_inactive_rows_are_ignored(self):

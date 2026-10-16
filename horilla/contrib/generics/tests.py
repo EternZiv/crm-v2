@@ -55,6 +55,46 @@ from horilla.utils import timezone
 from horilla.utils.translation import override
 
 
+class ListViewSortPartialTests(SimpleTestCase):
+    """Keep list sorting requests scoped to the rendered list fragment."""
+
+    def test_sort_links_use_the_partial_endpoint_and_view_target(self):
+        base_dir = Path(settings.BASE_DIR)
+        list_template = (
+            base_dir / "horilla" / "contrib" / "generics" / "templates" / "list_view.html"
+        ).read_text(encoding="utf-8")
+        sort_script = (
+            base_dir / "static" / "assets" / "js" / "list_view.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('data-search-url="{{ search_url }}"', list_template)
+        self.assertNotIn("function horillaMultiSort", list_template)
+        self.assertIn(
+            "const searchUrl = anchor.dataset.searchUrl || mainUrl;", sort_script
+        )
+        self.assertIn('const target = sortingTarget || "#" + viewId;', sort_script)
+        self.assertIn("select: target", sort_script)
+
+    def test_shared_list_scripts_are_loaded_once_from_the_application_shell(self):
+        base_dir = Path(settings.BASE_DIR)
+        shell_template = (base_dir / "templates" / "index.html").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertEqual(shell_template.count("assets/js/filter_reload.js"), 1)
+        self.assertEqual(shell_template.count("assets/js/list_view.js"), 1)
+        for template_name in ("list_view.html", "card_view.html", "split_view.html"):
+            template = (
+                base_dir
+                / "horilla"
+                / "contrib"
+                / "generics"
+                / "templates"
+                / template_name
+            ).read_text(encoding="utf-8")
+            self.assertNotIn("filter_reload.js", template)
+
+
 class GetViewColumnsVerboseNameTests(SimpleTestCase):
     """get_view_columns() must resolve a string column's real verbose_name.
 

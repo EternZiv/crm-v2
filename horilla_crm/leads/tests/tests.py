@@ -13,7 +13,7 @@ from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.template.loader import render_to_string
-from django.test import SimpleTestCase, TestCase, override_settings
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from login_history.models import post_login, post_logout
 
 # First party imports (Horilla)
@@ -493,7 +493,7 @@ class FieldRequirementResolverTests(TestCase):
             {"email": False},
         )
 
-        _activate_company(self.company_b)
+        _thread_local.request.active_company = self.company_b
         self.assertEqual(
             get_field_requirements_for_model(self.lead),
             {"title": True},
@@ -870,12 +870,24 @@ class LeadFieldRequirementFormExtensionTests(TestCase):
     def _lead_single_form(self, data=None):
         from ..forms import LeadSingleForm
 
-        return resolve_form_class(LeadSingleForm)(data=data)
+        request = RequestFactory().get("/")
+        request.user = self.user
+        request.active_company = getattr(
+            getattr(_thread_local, "request", None), "active_company", self.company
+        )
+        return resolve_form_class(LeadSingleForm)(data=data, request=request)
 
     def _lead_multi_form(self, *, step, data=None):
         from ..forms import LeadFormClass
 
-        return resolve_form_class(LeadFormClass)(data=data, step=step)
+        request = RequestFactory().get("/")
+        request.user = self.user
+        request.active_company = getattr(
+            getattr(_thread_local, "request", None), "active_company", self.company
+        )
+        return resolve_form_class(LeadFormClass)(
+            data=data, step=step, request=request
+        )
 
     def _lead_payload(self, email=""):
         return {

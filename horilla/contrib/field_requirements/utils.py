@@ -31,8 +31,13 @@ def get_field_requirements_for_model(model):
     if model is None or not is_requirement_configurable(model):
         return {}
 
-    cache_key = model._meta.label_lower
     request = get_current_request()
+    active_company = getattr(request, "active_company", None)
+    company_id = getattr(active_company, "pk", None)
+    if company_id is None:
+        user = getattr(request, "user", None)
+        company_id = getattr(user, "company_id", None)
+    cache_key = (model._meta.label_lower, company_id)
     if request is not None:
         cache = getattr(request, _REQUEST_CACHE_ATTR, None)
         if cache is None:
@@ -43,9 +48,15 @@ def get_field_requirements_for_model(model):
 
     content_type = HorillaContentType.objects.get_for_model(model)
     requirements = {}
-    rows = FieldRequirement.objects.filter(
-        content_type=content_type, is_active=True
-    ).values_list("field_name", "is_required")
+    rows = (
+        FieldRequirement.all_objects.filter(
+            content_type=content_type,
+            company_id=company_id,
+            is_active=True,
+        ).values_list("field_name", "is_required")
+        if company_id is not None
+        else ()
+    )
 
     for field_name, is_required in rows:
         if is_required:

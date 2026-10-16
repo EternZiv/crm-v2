@@ -35,7 +35,7 @@
         data-viewport-fit
     {% endif %}
 >
-    <div id="loading-indicator" class="htmx-indicator tabloading" style="z-index: 30">
+    <div id="loading-indicator" class="htmx-indicator tabloading" style="display: none; z-index: 30">
         <div class="flex justify-center items-center p-4">
             <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
         </div>
@@ -426,6 +426,7 @@
                                             data-sort-field="{{ cell.1 }}"
                                             data-sort-keys="{{ sort_keys_raw }}"
                                             data-main-url="{{ main_url }}"
+                                            data-search-url="{{ search_url }}"
                                             data-sort-target="{{ sorting_target|default:'' }}"
                                             data-view-id="{{ view_id|safe }}"
                                             onclick="horillaMultiSort(event, this)"
@@ -566,96 +567,11 @@
         </div>
     {% endif %}
 
-    <script src="{% static 'assets/js/filter_reload.js' %}"></script>
-
     <script>
-        document.addEventListener('htmx:historyRestore', function() {
-            window.location.reload();
-        });
-    </script>
-
-    <script>
-        /**
-         * Multi-column sorting for HorillaListView.
-         * - Click a column header: sort by that column (reset others).
-         * - Shift+Click: add/toggle column to existing multi-sort.
-         * Cycle per column: none -> asc -> desc -> none (on shift+click removes it).
-         */
-        function horillaMultiSort(event, anchor) {
-            event.preventDefault();
-
-            var field = anchor.dataset.sortField;
-            var mainUrl = anchor.dataset.mainUrl;
-            var sortingTarget = anchor.dataset.sortTarget;
-            var viewId = anchor.dataset.viewId;
-
-            // mainUrl may already carry required query params (e.g. related-list's
-            // field_name/model_name/class_name) — split those off so they aren't lost.
-            var mainUrlParts = mainUrl.split('?');
-            var mainUrlBase = mainUrlParts[0];
-            var params = new URLSearchParams(mainUrlParts[1] || '');
-            // Layer in current URL bar params (filters, search, etc. are pushed there)
-            new URLSearchParams(window.location.search).forEach(function(value, key) {
-                params.set(key, value);
-            });
-            // Sort keys come from server-rendered data attribute (more reliable than URL bar since sort doesn't push URL)
-            var currentSortKeys = anchor.dataset.sortKeys || '';
-
-            // Parse existing sort_keys into ordered list of {field, direction}
-            var pairs = [];
-            if (currentSortKeys) {
-                currentSortKeys.split(',').forEach(function(token) {
-                    token = token.trim();
-                    if (!token) return;
-                    var idx = token.lastIndexOf(':');
-                    if (idx > 0) {
-                        pairs.push({ field: token.substring(0, idx), dir: token.substring(idx + 1) });
-                    } else {
-                        pairs.push({ field: token, dir: 'asc' });
-                    }
-                });
-            }
-
-            var existingIdx = pairs.findIndex(function(p) { return p.field === field; });
-
-            if (event.shiftKey) {
-                // Shift+Click: add/toggle this column while keeping others
-                if (existingIdx === -1) {
-                    pairs.push({ field: field, dir: 'asc' });
-                } else if (pairs[existingIdx].dir === 'asc') {
-                    pairs[existingIdx].dir = 'desc';
-                } else {
-                    // Remove this column from sort
-                    pairs.splice(existingIdx, 1);
-                }
-            } else {
-                // Normal click: single-column sort (reset all others)
-                if (existingIdx === -1 || pairs.length > 1) {
-                    pairs = [{ field: field, dir: 'asc' }];
-                } else if (pairs[0].dir === 'asc') {
-                    pairs = [{ field: field, dir: 'desc' }];
-                } else {
-                    pairs = [];
-                }
-            }
-
-            // Remove legacy single-sort params
-            params.delete('sort');
-            params.delete('direction');
-            params.delete('sort_keys');
-
-            if (pairs.length > 0) {
-                params.set('sort_keys', pairs.map(function(p) { return p.field + ':' + p.dir; }).join(','));
-            }
-
-            var url = mainUrlBase + '?' + params.toString();
-            var mainSessionId = '{{ main_session_id|default:"mainSession" }}';
-            var target = sortingTarget || '#' + mainSessionId;
-
-            htmx.ajax('GET', url, {
-                target: target,
-                select: '#' + mainSessionId,
-                swap: 'outerHTML'
+        if (!window._horillaListHistoryRestoreHandlerAdded) {
+            window._horillaListHistoryRestoreHandlerAdded = true;
+            document.addEventListener('htmx:historyRestore', function() {
+                window.location.reload();
             });
         }
     </script>

@@ -140,8 +140,8 @@ class LeadAssignmentRuleCustomFieldTimingTests(TransactionTestCase):
         lead = Lead.objects.get(email="sara@example.com")
         self.assertEqual(lead.lead_owner_id, self.rule_target.pk)
 
-    def test_non_matching_custom_field_keeps_manual_pick_on_create(self):
-        """No rule match on create must leave the manually picked owner alone."""
+    def test_non_matching_custom_field_keeps_creator_as_owner(self):
+        """No rule match preserves the form's locked-in creator ownership."""
         response = self.client.post(
             reverse("leads:leads_create_single"),
             self._payload(**{f"cf_{self.product_field.pk}": ["Other"]}),
@@ -150,4 +150,4 @@ class LeadAssignmentRuleCustomFieldTimingTests(TransactionTestCase):
 
         self.assertIn("HX-Redirect", response)
         lead = Lead.objects.get(email="sara@example.com")
-        self.assertEqual(lead.lead_owner_id, self.manual_pick.pk)
+        self.assertEqual(lead.lead_owner_id, self.admin.pk)

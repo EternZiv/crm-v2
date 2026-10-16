@@ -137,11 +137,13 @@
             {% endif %}
         {% endif %}
 
-        <script src="{% static 'assets/js/filter_reload.js' %}"></script>
         <script>
-            document.addEventListener('htmx:historyRestore', function () {
-                window.location.reload();
-            });
+            if (!window._horillaListHistoryRestoreHandlerAdded) {
+                window._horillaListHistoryRestoreHandlerAdded = true;
+                document.addEventListener('htmx:historyRestore', function() {
+                    window.location.reload();
+                });
+            }
         </script>
     </div>
 {% endwith %}

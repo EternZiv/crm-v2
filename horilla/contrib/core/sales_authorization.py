@@ -86,8 +86,30 @@ def has_effective_permission(user, permission):
 def get_sales_scope_user_ids(user):
     """Return scoped employee IDs, or ``None`` for non-sales roles."""
     role_key = _role_key(user)
+
+    from horilla.contrib.utils.middlewares import get_current_request
+
+    request = get_current_request()
+    cache = None
+    if request is not None and getattr(request, "method", None) in {"GET", "HEAD"}:
+        cache = getattr(request, "_sales_scope_user_ids_cache", None)
+        if cache is None:
+            cache = {}
+            request._sales_scope_user_ids_cache = cache
+        cache_key = (user.pk, getattr(user, "company_id", None), role_key)
+        if cache_key in cache:
+            cached_scope = cache[cache_key]
+            return set(cached_scope) if cached_scope is not None else None
+    else:
+        cache_key = None
+
+    def remember(scope):
+        if cache is not None:
+            cache[cache_key] = frozenset(scope) if scope is not None else None
+        return scope
+
     if role_key not in SALES_ROLE_KEYS:
-        return None
+        return remember(None)
 
     from horilla.contrib.core.models import SalesAssignment
 
@@ -100,19 +122,21 @@ def get_sales_scope_user_ids(user):
     assignment_rows = list(assignments)
     by_user = {user_id: (region_id, manager_id) for user_id, region_id, manager_id in assignment_rows}
     if role_key in {"SUPER_ADMIN", "HEAD_OF_SALES"}:
-        return set(by_user)
+        return remember(set(by_user))
     own = by_user.get(user.pk)
     if own is None:
-        return set()
+        return remember(set())
 
     if role_key == "RSM":
-        return {
-            user_id
-            for user_id, (region_id, _manager_id) in by_user.items()
-            if region_id == own[0]
-        }
+        return remember(
+            {
+                user_id
+                for user_id, (region_id, _manager_id) in by_user.items()
+                if region_id == own[0]
+            }
+        )
     if role_key == "BDO":
-        return {user.pk} if own[1] is not None else set()
+        return remember({user.pk} if own[1] is not None else set())
 
     children_by_manager = {}
     for user_id, (_region_id, manager_id) in by_user.items():
@@ -127,7 +151,7 @@ def get_sales_scope_user_ids(user):
             continue
         allowed.add(report_id)
         pending.extend(children_by_manager.get(report_id, ()))
-    return allowed
+    return remember(allowed)
 
 
 def get_sales_scope_region_ids(user):

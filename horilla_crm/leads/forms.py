@@ -62,7 +62,6 @@ class LeadFormClass(OwnerQuerysetMixin, HorillaMultiStepForm):
     }
 
     def __init__(self, *args, **kwargs):
-        self.request = kwargs.pop("request", None)
         super().__init__(*args, **kwargs)
         self._lock_lead_owner()
         self.fields["lead_status"].queryset = LeadStatus.objects.filter(is_final=False)
@@ -140,7 +139,6 @@ class LeadSingleForm(OwnerQuerysetMixin, HorillaModelForm):
         exclude = ["lead_score", "sub_owner"]
 
     def __init__(self, *args, **kwargs):
-        self.request = kwargs.pop("request", None)
         super().__init__(*args, **kwargs)
         owner_field = self.fields.get("lead_owner")
         if owner_field is not None:

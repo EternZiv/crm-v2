@@ -34,11 +34,9 @@
         <!-- Core Scripts -->
         <script src="{% static 'assets/js/tailwind/tailwind.js' %}"></script>
         <script src="{% static 'assets/js/tailwind.config.js' %}"></script>
-        <script src="{% static 'assets/js/htmx/htmx.min.js' %}"></script>
         <script src="{% static 'assets/js/cloudflare/htmx.min.js' %}"></script>
         <script src="{% static 'assets/js/htmx/htmx-download.js' %}"></script>
         <script src="{% static 'assets/js/cloudflare/jquery.min.js' %}"></script>
-        <script src="{% static 'assets/js/jquery/jquery-3.7.1.js' %}"></script>
         <script src="{% static 'assets/js/hyperscript/hyperscript.min.js' %}"></script>
 
         <!-- UI Libraries (Defer Non-Critical) -->
@@ -133,6 +131,8 @@
         <!-- Global Scripts (Defer) -->
         <script src="{% url 'javascript-catalog' %}"></script>
         <script src="{% static 'assets/js/global.js' %}"></script>
+        <script src="{% static 'assets/js/filter_reload.js' %}"></script>
+        <script src="{% static 'assets/js/list_view.js' %}"></script>
         <script src="{% static 'assets/js/select2_htmx_cleanup.js' %}"></script>
         <script src="{% static 'assets/js/action_tooltip.js' %}"></script>
         <script src="{% static 'assets/js/horilla_charts.js' %}"></script>

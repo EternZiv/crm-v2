@@ -56,8 +56,13 @@ def get_form_layout(model):
     if model is None or not is_layout_configurable(model):
         return None
 
-    cache_key = model._meta.label_lower
     request = get_current_request()
+    active_company = getattr(request, "active_company", None)
+    company_id = getattr(active_company, "pk", None)
+    if company_id is None:
+        user = getattr(request, "user", None)
+        company_id = getattr(user, "company_id", None)
+    cache_key = (model._meta.label_lower, company_id)
     cache = None
     if request is not None:
         cache = getattr(request, _REQUEST_CACHE_ATTR, None)
@@ -68,10 +73,18 @@ def get_form_layout(model):
             return cache[cache_key]
 
     content_type = HorillaContentType.objects.get_for_model(model)
-    rows = list(
-        FormLayoutField.objects.filter(content_type=content_type, is_active=True)
-        .order_by("sequence", "pk")
-        .values_list("field_name", "is_visible")
+    rows = (
+        list(
+            FormLayoutField.all_objects.filter(
+                content_type=content_type,
+                company_id=company_id,
+                is_active=True,
+            )
+            .order_by("sequence", "pk")
+            .values_list("field_name", "is_visible")
+        )
+        if company_id is not None
+        else []
     )
     layout = None
     if rows:

@@ -6,7 +6,9 @@ from unittest.mock import Mock, patch
 
 from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.db import connection
+from django.test import RequestFactory, TestCase
+from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 from horilla.auth.models import User
@@ -30,6 +32,8 @@ from horilla_crm.leads.authorization import assign_lead_to_bdo
 from horilla.contrib.core.views.export_data import get_export_queryset
 from horilla.api.permissions import HorillaModelPermissions
 from horilla.contrib.dashboard.views.component import DashboardComponentFormView
+from horilla.contrib.dashboard.utils import DefaultDashboardGenerator
+from horilla.contrib.generics.views.list import HorillaListView
 from horilla.contrib.generics.views.details import (
     check_record_access,
     check_record_change_access,
@@ -38,6 +42,8 @@ from horilla.contrib.generics.views.details import (
 from horilla_crm.leads.forms import LeadSubOwnerForm
 from horilla_crm.leads.models import Lead, LeadStatus
 from horilla_crm.leads.signals import apply_assignment_rules
+from horilla.urls import reverse
+from horilla_crm.leads.dashboard import lead_kpi_cards
 from horilla.contrib.reports.views.export_views import ReportExportView
 from horilla.contrib.dashboard.views.dashboard_helper import get_kpi_data
 
@@ -229,6 +235,169 @@ class SalesHierarchyTests(TestCase):
             get_sales_scope_region_ids(self.head_of_sales),
             {self.region.pk, self.other_region.pk},
         )
+
+    def test_sales_scope_is_cached_per_user_for_get_requests(self):
+        request = RequestFactory().get("/")
+        had_previous_request = hasattr(_thread_local, "request")
+        previous_request = getattr(_thread_local, "request", None)
+        _thread_local.request = request
+        try:
+            with CaptureQueriesContext(connection) as captured:
+                asm_scope = get_sales_scope_user_ids(self.asm)
+                self.assertEqual(get_sales_scope_user_ids(self.asm), asm_scope)
+                unrelated_scope = get_sales_scope_user_ids(self.unrelated_asm)
+
+            self.assertEqual(len(captured), 2)
+            self.assertEqual(asm_scope, {self.asm.pk, self.bdo.pk})
+            self.assertEqual(unrelated_scope, {self.unrelated_asm.pk})
+        finally:
+            if had_previous_request:
+                _thread_local.request = previous_request
+            else:
+                delattr(_thread_local, "request")
+
+    def test_sales_scope_is_not_cached_for_post_requests(self):
+        request = RequestFactory().post("/")
+        had_previous_request = hasattr(_thread_local, "request")
+        previous_request = getattr(_thread_local, "request", None)
+        _thread_local.request = request
+        try:
+            with CaptureQueriesContext(connection) as captured:
+                get_sales_scope_user_ids(self.asm)
+                get_sales_scope_user_ids(self.asm)
+            self.assertEqual(len(captured), 2)
+        finally:
+            if had_previous_request:
+                _thread_local.request = previous_request
+            else:
+                delattr(_thread_local, "request")
+
+    def test_sales_scope_cache_isolated_by_company_role_and_request(self):
+        request = RequestFactory().get("/")
+        had_previous_request = hasattr(_thread_local, "request")
+        previous_request = getattr(_thread_local, "request", None)
+        _thread_local.request = request
+        try:
+            with CaptureQueriesContext(connection) as captured:
+                self.assertEqual(
+                    get_sales_scope_user_ids(self.asm), {self.asm.pk, self.bdo.pk}
+                )
+
+                self.asm.company_id = self.other_company.pk
+                self.assertEqual(get_sales_scope_user_ids(self.asm), set())
+
+                self.asm.company_id = self.company.pk
+                self.asm.role.system_key = "BDO"
+                self.assertEqual(get_sales_scope_user_ids(self.asm), {self.asm.pk})
+
+                SalesAssignment.all_objects.filter(user=self.asm).update(manager=None)
+                next_request = RequestFactory().get("/")
+                _thread_local.request = next_request
+                self.assertEqual(get_sales_scope_user_ids(self.asm), set())
+
+            assignment_selects = [
+                query
+                for query in captured
+                if query["sql"].lstrip().upper().startswith("SELECT")
+                and "core_salesassignment" in query["sql"].lower()
+            ]
+            self.assertEqual(len(assignment_selects), 4)
+        finally:
+            if had_previous_request:
+                _thread_local.request = previous_request
+            else:
+                delattr(_thread_local, "request")
+
+    def test_list_bulk_context_uses_materialized_ids_for_total_count(self):
+        first = self.make_lead(self.asm)
+        second = self.make_lead(self.bdo)
+        view = HorillaListView()
+        view.model = Lead
+        view.object_list = Lead.all_objects.filter(pk__in=[first.pk, second.pk])
+        view.request = SimpleNamespace(
+            user=SimpleNamespace(
+                is_superuser=False,
+                has_perm=lambda _permission: False,
+            ),
+            session={},
+        )
+        view.bulk_update_fields = []
+        view.bulk_export_option = False
+        view.bulk_update_option = False
+        view.bulk_delete_enabled = False
+        view.custom_bulk_actions = []
+        view.bulk_select_option = True
+        view.track_list_navigation = False
+
+        with patch(
+            "horilla.contrib.generics.views.list.get_editable_fields",
+            return_value=[],
+        ):
+            with CaptureQueriesContext(connection) as captured:
+                context = {}
+                view._build_bulk_context(context, [])
+
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(context["total_records_count"], 2)
+        self.assertCountEqual(context["selected_ids"], [first.pk, second.pk])
+
+    def test_default_dashboard_lead_kpi_respects_all_six_role_scopes(self):
+        role_users = (
+            self.head,
+            self.head_of_sales,
+            self.rsm,
+            self.ssm,
+            self.asm,
+            self.bdo,
+            self.other_rsm,
+            self.other_ssm,
+            self.other_asm,
+            self.unrelated_asm,
+            self.other_bdo,
+        )
+        for owner in role_users:
+            self.make_lead(owner)
+            self.grant(owner, "view_lead", "view_own_lead")
+        self.make_lead(self.asm, self.other_company)
+
+        expected_counts = {
+            self.head.pk: 12,
+            self.head_of_sales.pk: 11,
+            self.rsm.pk: 5,
+            self.ssm.pk: 4,
+            self.asm.pk: 2,
+            self.bdo.pk: 1,
+        }
+
+        for user in role_users[:6]:
+            with self.subTest(role=user.role.system_key):
+                request = RequestFactory().get("/")
+                request.user = user
+                had_previous_request = hasattr(_thread_local, "request")
+                previous_request = getattr(_thread_local, "request", None)
+                _thread_local.request = request
+                try:
+                    with CaptureQueriesContext(connection) as captured:
+                        generator = DefaultDashboardGenerator(user, user.company)
+                        kpi = lead_kpi_cards(generator, {"model": Lead})[0]
+                    assignment_queries = [
+                        query
+                        for query in captured
+                        if "core_salesassignment" in query["sql"].lower()
+                    ]
+                finally:
+                    if had_previous_request:
+                        _thread_local.request = previous_request
+                    else:
+                        delattr(_thread_local, "request")
+
+                self.assertEqual(kpi["value"], expected_counts[user.pk])
+                expected_assignment_queries = (
+                    0 if user.role.system_key == "SUPER_ADMIN" else 1
+                )
+                self.assertEqual(
+                    len(assignment_queries), expected_assignment_queries
+                )
 
     def test_role_permission_matrix_is_a_ceiling_over_django_grants(self):
         modules = {
