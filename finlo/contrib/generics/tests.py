@@ -171,6 +171,27 @@ class ListViewSortPartialTests(SimpleTestCase):
             global_script,
         )
         self.assertIn(
+            '"nav a.nav-link, #subSidebar a.sidebar-link"',
+            global_script,
+        )
+        self.assertIn(
+            'document.body.addEventListener("htmx:historyRestore", function () {',
+            global_script,
+        )
+        self.assertIn("initializedSidebarMainContent = null;", global_script)
+        self.assertIn(
+            'document.body.addEventListener("htmx:pushedIntoHistory", function (event) {',
+            global_script,
+        )
+        pushed_history_handler = global_script.split(
+            'document.body.addEventListener("htmx:pushedIntoHistory"',
+            maxsplit=1,
+        )[1].split('document.body.addEventListener("htmx:afterSwap"', maxsplit=1)[0]
+        self.assertIn(
+            "SidebarManager.activateFirstSubsectionItem(currentSection);",
+            pushed_history_handler,
+        )
+        self.assertIn(
             "pendingSectionNavigation?.xhr === event.detail.xhr",
             global_script,
         )
@@ -205,6 +226,7 @@ class ListViewSortPartialTests(SimpleTestCase):
             "SidebarManager.setActiveNavLink($clickedLink, clickedSection)",
             global_script,
         )
+        self.assertIn("collapseSidebarAfterMobileNavigation?.();", global_script)
 
     def test_stale_subsection_selection_does_not_reload_the_section(self):
         base_dir = Path(settings.BASE_DIR)
@@ -233,6 +255,14 @@ class ListViewSortPartialTests(SimpleTestCase):
                 'document.body.addEventListener("htmx:afterSettle"',
                 maxsplit=1,
             )[1],
+        )
+        history_restore = global_script.split(
+            'document.addEventListener("htmx:historyRestore"',
+            maxsplit=1,
+        )[1]
+        self.assertIn(
+            "SidebarManager.activateFirstSubsectionItem(currentSection);",
+            history_restore,
         )
 
     def test_boosted_menu_navigation_pushes_urls_for_history_cache(self):

@@ -535,6 +535,7 @@ window.addEventListener("finlo:cachedNavigation", function () {
 // Sidebar collapse/expand
 let initializedSidebarMainContent = null;
 let initialSidebarTransitionSuppressed = false;
+let collapseSidebarAfterMobileNavigation = null;
 
 function initSidebar() {
     const sideMenu = document.getElementById("sideMenu");
@@ -597,6 +598,12 @@ function initSidebar() {
         }
         isCollapsed = false;
     }
+
+    collapseSidebarAfterMobileNavigation = () => {
+        if (window.innerWidth < 992 && !isCollapsed) {
+            collapseMenu();
+        }
+    };
 
     toggleBtn.onclick = () => {
         if (isCollapsed) {
@@ -1980,6 +1987,10 @@ document.body.addEventListener("htmx:afterSettle", function (event) {
         initSidebar();
     }
 });
+document.body.addEventListener("htmx:historyRestore", function () {
+    initializedSidebarMainContent = null;
+    initSidebar();
+});
 
 /* ==========================================================================
    HTMX network failure → full-page connection error (ERR_CONNECTION_REFUSED)
@@ -2066,7 +2077,21 @@ document.addEventListener("htmx:historyRestore", function (event) {
     if ($sectionLink.length) {
         SidebarManager.setActiveNavLink($sectionLink, currentSection);
     }
+    SidebarManager.activateFirstSubsectionItem(currentSection);
     localStorage.setItem("lastActiveSection", currentSection);
+});
+
+document.body.addEventListener("htmx:pushedIntoHistory", function (event) {
+    const currentSection = SidebarManager.getActiveSection(
+        event.detail?.path || window.location.href,
+    );
+    const $sectionLink = $("nav a.nav-link").filter(
+        `#${CSS.escape(currentSection)}`,
+    );
+    if ($sectionLink.length) {
+        SidebarManager.setActiveNavLink($sectionLink, currentSection);
+    }
+    SidebarManager.activateFirstSubsectionItem(currentSection);
 });
 
 document.body.addEventListener("htmx:afterSwap", function (event) {
@@ -2115,6 +2140,7 @@ document.body.addEventListener("htmx:afterSettle", function (event) {
         SidebarManager.activateFirstSubsectionItem(currentSection);
         if (settledSectionNavigation) {
             pendingSectionNavigation = null;
+            collapseSidebarAfterMobileNavigation?.();
         }
     }
 
