@@ -125,9 +125,11 @@
                     method="get"
                     action="{{ request.path }}"
                 >
-                    {% for k, v in request.GET.items %}
-                        {% if k != 'timeline_group_by' and k != 'group_by' %}
-                            <input type="hidden" name="{{ k }}" value="{{ v }}">
+                    {% for k, values in request.GET.lists %}
+                        {% if k != 'timeline_group_by' and k != 'group_by' and k != 'page' %}
+                            {% for v in values %}
+                                <input type="hidden" name="{{ k }}" value="{{ v }}">
+                            {% endfor %}
                         {% endif %}
                     {% endfor %}
 
@@ -167,9 +169,11 @@
                     method="get"
                     action="{{ request.path }}"
                 >
-                    {% for k, v in request.GET.items %}
-                        {% if k != 'timeline_scale' %}
-                            <input type="hidden" name="{{ k }}" value="{{ v }}">
+                    {% for k, values in request.GET.lists %}
+                        {% if k != 'timeline_scale' and k != 'page' %}
+                            {% for v in values %}
+                                <input type="hidden" name="{{ k }}" value="{{ v }}">
+                            {% endfor %}
                         {% endif %}
                     {% endfor %}
 

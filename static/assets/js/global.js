@@ -1858,9 +1858,8 @@ $(document).ready(function () {
     });
 
     $("body").on("click", "ul a.sidebar-link", function () {
-        const $link = $(this);
-        const currentSection = SidebarManager.getActiveSection();
-        SidebarManager.setActiveSubsectionLink($link, currentSection);
+        // Keep the current item active until HTMX has successfully settled the
+        // destination page; afterSettle selects the link matching the new URL.
         localStorage.setItem('last-visited-url', window.location.href);
     });
 

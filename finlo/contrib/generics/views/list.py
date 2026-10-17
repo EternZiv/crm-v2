@@ -835,21 +835,30 @@ class FinloListView(FinloListViewMixin, ListView):
         Handle GET requests and ensure an HttpResponse is returned.
         """
 
-        self.object_list = self.get_queryset()
-        context = self.get_context_data()
-
         # Handle filter row addition
         if request.GET.get("add_filter_row") == "true":
             curr_row_id = int(request.GET.get("row_id"))
             new_row_id = curr_row_id + 1
-            filter_rows = [{"row_id": new_row_id, "logic": "AND"}]
-            context["filter_rows"] = filter_rows
-            context["is_appended_row"] = True
+            context = {
+                "filter_fields": self._get_model_fields(),
+                "filter_rows": [{"row_id": new_row_id, "logic": "AND"}],
+                "is_appended_row": True,
+                "search_url": self.search_url or request.path,
+            }
             return render(request, "partials/filter_row.html", context)
 
         # Return pre-filled filter rows partial (used by save_filter_form modal)
         if request.GET.get("render_filter_rows") == "true":
             row_id_offset = int(request.GET.get("row_id_offset", 0))
+            filter_fields = self._get_model_fields()
+            query_params = {
+                key: request.GET.getlist(key) for key in request.GET
+            }
+            context = {
+                "filter_fields": filter_fields,
+                "search_url": self.search_url or request.path,
+            }
+            self._build_filter_context(context, filter_fields, query_params)
             if row_id_offset:
                 for row in context.get("filter_rows", []):
                     row["row_id"] = row["row_id"] + row_id_offset
@@ -890,6 +899,10 @@ class FinloListView(FinloListViewMixin, ListView):
                     request, field_name, operator, row_id
                 )
 
+        self.object_list = self.get_queryset()
+        context = self.get_context_data()
+
+        if request.headers.get("HX-Request") == "true":
             return render(request, self.template_name, context)
 
         return self.render_to_response(context)
@@ -1317,6 +1330,29 @@ class FinloListView(FinloListViewMixin, ListView):
                 context["next_page"] = context["page_obj"].next_page_number()
         context["search_url"] = self.search_url or self.request.path
         context["main_url"] = self.main_url or self.request.path
+        clear_filter_params = self.request.GET.copy()
+        filter_param_names = {
+            "field",
+            "operator",
+            "value",
+            "start_value",
+            "end_value",
+            "logic",
+            "apply_filter",
+            "clear_all_filters",
+            "remove_filter",
+            "page",
+            "search",
+            "hx_trigger",
+        }
+        for key in list(clear_filter_params):
+            if key in filter_param_names or key.startswith("qf_"):
+                clear_filter_params.pop(key, None)
+        context["clear_filters_url"] = context["main_url"]
+        separator = "&" if "?" in context["clear_filters_url"] else "?"
+        context["clear_filters_url"] += f"{separator}clear_all_filters=true"
+        if clear_filter_params:
+            context["clear_filters_url"] += f"&{clear_filter_params.urlencode()}"
         from finlo.urls import resolve as _resolve
 
         try:

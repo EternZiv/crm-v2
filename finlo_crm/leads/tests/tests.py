@@ -6,7 +6,7 @@ import json
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from unittest import skipUnless
+from unittest import mock, skipUnless
 
 # Third-party imports (Django)
 from django.conf import settings
@@ -31,9 +31,56 @@ from finlo.utils import timezone
 
 # Local imports
 from ..models import Lead, LeadCaptureForm, LeadStatus
+from ..views.core import LeadChartView, LeadNavbar, LeadView
 from ..views.web_to_lead import parse_selected_fields, render_form_preview
 
 _FIELD_REQUIREMENTS_INSTALLED = apps.is_installed("finlo.contrib.field_requirements")
+
+
+class LeadDefaultLayoutTests(SimpleTestCase):
+    """The Leads page and its navbar agree on the initial chart layout."""
+
+    def test_chart_is_the_default_layout_for_leads(self):
+        self.assertEqual(LeadView.default_layout, "chart")
+        self.assertEqual(LeadNavbar.default_layout, "chart")
+
+
+class LeadChartPayloadTests(SimpleTestCase):
+    """Lead status metadata is fetched once for chart categories."""
+
+    def test_statuses_are_loaded_in_a_single_batch(self):
+        class Status:
+            def __init__(self, pk, name, is_final):
+                self.pk = pk
+                self.name = name
+                self.is_final = is_final
+
+            def __str__(self):
+                return self.name
+
+        statuses = [Status(1, "New", False), Status(2, "Converted", True)]
+        rows = [
+            {"lead_status": 1, "_count": 3},
+            {"lead_status": 2, "_count": 2},
+        ]
+        queryset = mock.Mock()
+        queryset.values.return_value.annotate.return_value.order_by.return_value = rows
+        chart = LeadChartView()
+
+        with (
+            mock.patch.object(
+                LeadStatus.objects, "filter", return_value=statuses
+            ) as load_statuses,
+            mock.patch.object(chart, "_list_drill_url", return_value="/leads/"),
+        ):
+            payload, error = chart.build_chart_payload(queryset, "lead_status")
+
+        self.assertIsNone(error)
+        self.assertEqual(
+            payload, {"labels": ["New"], "data": [3], "urls": ["/leads/"]}
+        )
+        load_statuses.assert_called_once_with(pk__in={1, 2})
+
 
 if _FIELD_REQUIREMENTS_INSTALLED:
     from finlo.contrib.field_requirements.extensions import (

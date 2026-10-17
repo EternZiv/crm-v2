@@ -296,6 +296,78 @@ class FinloNavView(TemplateView):
         context["search_url"] = self.search_url or self.request.path
         context["search_push_url"] = "true" if self.search_push_url else "false"
         context["main_url"] = self.main_url or self.request.path
+        view_type_params = self.request.GET.copy()
+        view_param_names = {
+            "view_type",
+            "page",
+            "clear_all_filters",
+            "remove_filter",
+            "field_change",
+            "operator_change",
+            "add_filter_row",
+            "row_id",
+            "show_add_quick_filter",
+            "hx_trigger",
+        }
+        for key in list(view_type_params):
+            if key in view_param_names:
+                view_type_params.pop(key, None)
+        context["view_type_url"] = context["main_url"]
+        if view_type_params:
+            separator = "&" if "?" in context["view_type_url"] else "?"
+            context["view_type_url"] += (
+                f"{separator}{view_type_params.urlencode()}"
+            )
+        layout_params = self.request.GET.copy()
+        layout_param_names = view_param_names | {"layout"}
+        for key in list(layout_params):
+            if key in layout_param_names:
+                layout_params.pop(key, None)
+        context["layout_url"] = context["main_url"]
+        if layout_params:
+            separator = "&" if "?" in context["layout_url"] else "?"
+            context["layout_url"] += f"{separator}{layout_params.urlencode()}"
+        search_params = self.request.GET.copy()
+        search_param_names = {
+            "search",
+            "page",
+            "apply_filter",
+            "remove_filter",
+            "clear_all_filters",
+            "hx_trigger",
+            "field",
+            "operator",
+            "value",
+            "start_value",
+            "end_value",
+            "logic",
+            "field_change",
+            "operator_change",
+            "add_filter_row",
+            "row_id",
+            "show_add_quick_filter",
+        }
+        for key in list(search_params):
+            if key in search_param_names:
+                search_params.pop(key, None)
+        if self.request.GET.getlist("field"):
+            search_params["apply_filter"] = "true"
+        context["search_input_url"] = context["main_url"]
+        if search_params:
+            separator = "&" if "?" in context["search_input_url"] else "?"
+            context["search_input_url"] += (
+                f"{separator}{search_params.urlencode()}"
+            )
+        quick_filter_params = self.request.GET.copy()
+        for key in list(quick_filter_params):
+            if key == "page" or key == "hx_trigger" or key.startswith("qf_"):
+                quick_filter_params.pop(key, None)
+        context["quick_filter_url"] = context["main_url"]
+        if quick_filter_params:
+            separator = "&" if "?" in context["quick_filter_url"] else "?"
+            context["quick_filter_url"] += (
+                f"{separator}{quick_filter_params.urlencode()}"
+            )
         context["kanban_url"] = self.kanban_url
         context["group_by_url"] = getattr(self, "group_by_url", None) or ""
         context["card_url"] = getattr(self, "card_url", None) or ""

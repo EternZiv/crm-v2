@@ -168,7 +168,7 @@
                     <div class="flex justify-end gap-2">
                         <button
                             type="submit"
-                            onclick="closeExport('{{ view_id|safe }}');clearSelections('{{ view_id|safe }}')"
+                            hx-on::after-request="if(event.detail.successful) { closeExport('{{ view_id|safe }}'); clearSelections('{{ view_id|safe }}'); }"
                             class="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-800"
                         >
                             <span class="flex items-center gap-2">

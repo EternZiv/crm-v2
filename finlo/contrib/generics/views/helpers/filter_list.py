@@ -15,6 +15,7 @@ from finlo.contrib.core.models import PinnedView
 
 # First party imports (Finlo)
 from finlo.shortcuts import render
+from finlo.urls import reverse_lazy
 from finlo.utils.decorators import htmx_required, method_decorator
 from finlo.utils.translation import gettext_lazy as _
 from finlo.views.generic import FormView, View
@@ -130,6 +131,16 @@ class SaveFilterListView(LoginRequiredMixin, FormView):
             or self.request.POST.get("main_url")
             or context.get("main_url", "")
         )
+        save_filter_query = [
+            (key, value)
+            for key in ("section", "search")
+            for value in self.request.GET.getlist(key)
+        ]
+        context["save_filter_post_url"] = (
+            f"{reverse_lazy('generics:save_filter_list')}?{urlencode(save_filter_query)}"
+            if save_filter_query
+            else str(reverse_lazy("generics:save_filter_list"))
+        )
         return context
 
     def form_valid(self, form):
@@ -160,13 +171,9 @@ class SaveFilterListView(LoginRequiredMixin, FormView):
                 saved_filter_list.save()
                 main_url = form.cleaned_data["main_url"]
                 view_type = f"saved_list_{saved_filter_list.id}"
-                query_params = {
-                    k: v
-                    for k, v in self.request.GET.items()
-                    if k not in ["view_type", "search"]
-                }
+                query_params = self._get_redirect_query_params()
                 query_params["view_type"] = view_type
-                redirect_url = f"{main_url}?{urlencode(query_params)}"
+                redirect_url = f"{main_url}?{query_params.urlencode()}"
                 return RedirectResponse(request=self.request, redirect_to=redirect_url)
             except (
                 ValueError,
@@ -195,20 +202,41 @@ class SaveFilterListView(LoginRequiredMixin, FormView):
             )
             main_url = form.cleaned_data["main_url"]
             view_type = f"saved_list_{saved_filter_list.id}"
-            query_params = {
-                k: v
-                for k, v in self.request.GET.items()
-                if k not in ["view_type", "search"]
-            }
+            query_params = self._get_redirect_query_params()
             query_params["view_type"] = view_type
 
-            redirect_url = f"{main_url}?{urlencode(query_params)}"
+            redirect_url = f"{main_url}?{query_params.urlencode()}"
             return RedirectResponse(request=self.request, redirect_to=redirect_url)
         except IntegrityError:
             form.add_error(
                 "list_name", "A list with this name already exists for this model."
             )
             return self.form_invalid(form)
+
+    def _get_redirect_query_params(self):
+        """Preserve view context without carrying the saved filters twice."""
+        query_params = self.request.GET.copy()
+        remove_params = {
+            "view_type",
+            "search",
+            "page",
+            "field",
+            "operator",
+            "value",
+            "start_value",
+            "end_value",
+            "logic",
+            "apply_filter",
+            "create_new",
+            "saved_list_id",
+            "main_url",
+            "model_name",
+            "search_url",
+        }
+        for key in list(query_params):
+            if key in remove_params or key.startswith("qf_"):
+                query_params.pop(key, None)
+        return query_params
 
     def form_invalid(self, form):
         """Re-render the save filter form with validation errors."""

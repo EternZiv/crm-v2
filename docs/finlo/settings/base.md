@@ -82,30 +82,34 @@ or MySQL fallback. The explicitly selected
 runs cannot connect to the shared Supabase database.
 
 Also sets:
-- `CONN_MAX_AGE` based on `DB_CONN_MAX_AGE` (default `60`)
+- `CONN_MAX_AGE` based on `DB_CONN_MAX_AGE` (defaults to `0` in development
+  and on Vercel, and `60` otherwise). For Supabase Session Pooler, keep this
+  at `0` to release the limited client slots after each request.
 
 ## 🔌 Channels (`CHANNEL_LAYERS`)
 
-`base.py` configures Django Channels for WebSocket / real-time features (notifications, etc.):
+`base.py` configures Django Channels for WebSocket / real-time features (notifications, etc.).
+Single-process local development uses the in-memory layer by default. Set
+`CHANNEL_REDIS_URL` to use Redis locally or for a multi-worker deployment.
+On normal Vercel deployments, `REDIS_URL` is used when `CHANNEL_REDIS_URL`
+is unset.
 
 ```python
 CHANNEL_LAYERS = {
     "default": {
-        # "BACKEND": "channels.layers.InMemoryChannelLayer",
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        # "CONFIG": {
-        #     "hosts": [("127.0.0.1", 6379)],  # Redis server
-        # },
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
     },
 }
 ```
 
 | Backend | When to use |
 |---------|-------------|
-| **`RedisChannelLayer`** (default in repo) | Production / multi-worker — uncomment `CONFIG["hosts"]` (or set them in `local_settings.py`) |
-| **`InMemoryChannelLayer`** (commented) | Local development without Redis, single-process ASGI |
+| **`RedisChannelLayer`** | Multi-worker deployments or local development with `CHANNEL_REDIS_URL` configured |
+| **`InMemoryChannelLayer`** | Single-process local development without Redis |
 
-In-memory layers do **not** share messages across processes. For horizontal scaling, keep Redis and set hosts in `local_settings.py` or your deployment overlay rather than editing `base.py` when possible.
+In-memory layers do **not** share messages across processes. For horizontal
+scaling, configure `CHANNEL_REDIS_URL`; normal Vercel deployments fall back to
+`REDIS_URL`.
 
 Notification create still succeeds if Redis is down: the notifications `post_save` signal logs channel errors instead of failing the save. API tests override `CHANNEL_LAYERS` to the in-memory backend so `manage.py test` does not need Redis.
 

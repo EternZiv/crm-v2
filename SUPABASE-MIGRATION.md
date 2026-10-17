@@ -29,9 +29,15 @@ Example shape only (not a real credential):
 
 ```dotenv
 DATABASE_URL=postgresql://DB_USER:URL_ENCODED_PASSWORD@DB_HOST:5432/postgres?sslmode=require
-DB_CONN_MAX_AGE=60
+DB_CONN_MAX_AGE=0
 DB_CONN_HEALTH_CHECKS=True
 ```
+
+Use `DB_CONN_MAX_AGE=0` with Supabase's Session Pooler to release client slots
+at the end of each request. Persistent connections can exhaust the pooler's
+limited per-user client capacity, especially when several HTMX requests run
+concurrently. Increase this only when using a pooler/configuration sized for
+persistent Django connections.
 
 Share only the non-secret Supabase project reference (`PROJECT_REF`) separately
 so it can be matched to the configured host. Do not send database credentials.
@@ -76,7 +82,9 @@ database.
 
 - `DATABASE_URL` selects Django's PostgreSQL backend; the installed
   `psycopg2-binary` driver is used. PostgreSQL connections require TLS.
-- `DB_CONN_MAX_AGE` controls connection reuse (default 60 seconds);
+- `DB_CONN_MAX_AGE` controls connection reuse (defaults to `0` in development
+  and on Vercel, and `60` otherwise). Keep it at `0` when using Supabase's
+  Session Pooler to avoid exhausting its limited client slots;
   `DB_CONN_HEALTH_CHECKS` enables connection health checks.
 - Local `.env` values are ignored by Git, and real environment variables take
   precedence over values in `.env`.

@@ -278,15 +278,23 @@ ASGI_APPLICATION = "finlo.asgi.application"
 # -----------------------------------------------------------------------------
 # Channels
 # -----------------------------------------------------------------------------
-CHANNEL_LAYERS = {
-    "default": {
-        # "BACKEND": "channels.layers.InMemoryChannelLayer",
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        # "CONFIG": {
-        #     "hosts": [("127.0.0.1", 6379)],  # Redis server
-        # },
-    },
-}
+_channel_redis_url = env("CHANNEL_REDIS_URL", default="")
+if IS_VERCEL and not _channel_redis_url:
+    _channel_redis_url = env("REDIS_URL", default="")
+
+if _channel_redis_url:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [_channel_redis_url]},
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        },
+    }
 
 
 # -----------------------------------------------------------------------------

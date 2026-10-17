@@ -103,24 +103,22 @@ may also poll unread counts via HTMX.
 
 ### Channel layer default
 
-Project settings in **`finlo/settings/base.py`** default to Redis:
+Project settings in **`finlo/settings/base.py`** use in-memory Channels for
+single-process local development. Set `CHANNEL_REDIS_URL` to use Redis; normal
+Vercel deployments use `REDIS_URL` if `CHANNEL_REDIS_URL` is not set.
 
 ```python
 CHANNEL_LAYERS = {
     "default": {
-        # "BACKEND": "channels.layers.InMemoryChannelLayer",
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        # "CONFIG": {
-        #     "hosts": [("127.0.0.1", 6379)],
-        # },
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
     },
 }
 ```
 
 | Backend | When to use |
 |---------|-------------|
-| **`RedisChannelLayer`** (default in repo) | Production / multi-worker — set `CONFIG["hosts"]` in `local_settings.py` |
-| **`InMemoryChannelLayer`** (commented) | Local single-process ASGI without Redis |
+| **`RedisChannelLayer`** | Multi-worker deployments or local development with `CHANNEL_REDIS_URL` configured |
+| **`InMemoryChannelLayer`** | Local single-process ASGI without Redis |
 
 In-memory backends do not broadcast across processes. Redis is required when
 more than one ASGI worker must receive the same channel events.

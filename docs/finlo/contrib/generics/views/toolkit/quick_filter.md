@@ -107,6 +107,7 @@ Finally:
 
 - limits to first 200 records
 - serializes to `{value: pk, label: str(obj)}`.
+- caches generated choices on the view instance for the current request.
 
 If any error occurs, logs and returns `[]`.
 
@@ -131,11 +132,6 @@ Benefits:
 
 Applies active quick filter values from GET params.
 
-Important gate:
-
-- quick filters apply **only when `view_type == "all"`**.
-- if user is in another view type (`saved_list_*`, `recently_viewed`, etc.), function returns queryset unchanged.
-
 Application loop:
 
 1. iterate each active `QuickFilter` row,
@@ -146,7 +142,9 @@ Application loop:
    - foreign key -> `<field>_id`
    - others -> direct equality
 
-Invalid values are skipped silently (with safe fallback behavior).
+Quick-filter values are applied before the selected list view type is narrowed, so they
+combine with saved lists and recent/created/modified views. Invalid values are skipped
+silently (with safe fallback behavior).
 
 ---
 
@@ -200,6 +198,10 @@ URL behavior:
 - when `view.filter_url_push=True` (default):
   - sets `HX-Push-Url` and `HX-Replace-Url` to cleaned URL,
 - otherwise disables push (`HX-Push-Url=false`).
+
+The shared filter panel's **Clear All** action removes active `qf_<field_name>` values
+along with advanced filters and search, while leaving the user's quick-filter definitions
+available in the toolbar.
 
 Error path:
 

@@ -10,6 +10,7 @@ from datetime import timezone as dt_timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import parse_qs, urlparse
 from unittest import mock
 
 # Third-party imports (Django)
@@ -43,7 +44,14 @@ from finlo.contrib.generics.templatetags.finlo_tags.history_i18n import (
     history_datetime,
 )
 from finlo.contrib.generics.views.core import FinloHistorySectionView
+from finlo.contrib.generics.views.list import FinloListView
 from finlo.contrib.generics.views.helpers.list_column import get_view_columns
+from finlo.contrib.generics.views.helpers.filter_list import SaveFilterListView
+from finlo.contrib.generics.mixins import FinloListFilterHandlersMixin
+from finlo.contrib.generics.views.toolkit.quick_filter import (
+    get_quick_filter_choices,
+    get_quick_filters,
+)
 from finlo.menu import MAIN_CONTENT_HX_ATTRS
 from finlo.registry.history_registry import (
     HISTORY_DATETIME_FORMATTERS,
@@ -54,6 +62,7 @@ from finlo.registry.history_registry import (
 from finlo.urls import reverse
 from finlo.utils import timezone
 from finlo.utils.translation import override
+from finlo.web import HttpResponse
 
 
 class ListViewSortPartialTests(SimpleTestCase):
@@ -213,9 +222,211 @@ class ListViewSortPartialTests(SimpleTestCase):
         )
         self.assertNotIn("hiddenReloadSidebar", global_script)
         self.assertNotIn("hiddenReloadSidebar", sidebar_template)
+        subsection_click_handler = global_script.split(
+            '$("body").on("click", "ul a.sidebar-link", function () {',
+            maxsplit=1,
+        )[1].split("});", maxsplit=1)[0]
+        self.assertNotIn("setActiveSubsectionLink", subsection_click_handler)
+        self.assertIn(
+            "SidebarManager.activateFirstSubsectionItem(currentSection);",
+            global_script.split(
+                'document.body.addEventListener("htmx:afterSettle"',
+                maxsplit=1,
+            )[1],
+        )
 
     def test_boosted_menu_navigation_pushes_urls_for_history_cache(self):
         self.assertEqual(MAIN_CONTENT_HX_ATTRS["hx-push-url"], "true")
+
+    def test_create_button_urls_append_query_parameters_correctly(self):
+        base_dir = Path(settings.BASE_DIR)
+        template_dir = base_dir / "finlo" / "contrib" / "generics" / "templates"
+        navbar_template = (template_dir / "navbar.html").read_text(encoding="utf-8")
+        query_separator = (
+            "{% if request.GET.urlencode %}{% if '?' in "
+            "{button}.url %}&{% else %}?{% endif %}"
+            "{{ request.GET.urlencode }}{% endif %}"
+        )
+
+        for button in ("new_button", "second_button"):
+            self.assertIn(
+                query_separator.replace("{button}", button),
+                navbar_template,
+            )
+        self.assertIn('hx-get="{{ view_type_url }}"', navbar_template)
+        self.assertIn('hx-get="{{ search_input_url }}"', navbar_template)
+        self.assertNotIn("request.GET.items", navbar_template)
+        layout_template = (
+            template_dir / "partials" / "layout_dropdown_item.html"
+        ).read_text(encoding="utf-8")
+        quick_filter_template = (
+            template_dir / "partials" / "quick_filters_bar.html"
+        ).read_text(encoding="utf-8")
+        list_template = (template_dir / "list_view.html").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('hx-get="{{ layout_url }}', layout_template)
+        self.assertIn('hx-get="{{ quick_filter_url }}"', quick_filter_template)
+        self.assertIn(
+            "hx-on::after-request=\"if(event.detail.successful) { closeExport(",
+            list_template,
+        )
+        self.assertNotIn(
+            "onclick=\"closeExport('{{ view_id|safe }}');clearSelections(",
+            list_template,
+        )
+
+    def test_quick_filters_are_loaded_once_per_list_request(self):
+        user = object()
+        view = SimpleNamespace(
+            enable_quick_filters=True,
+            model=SimpleNamespace(
+                __name__="Contact",
+                _meta=SimpleNamespace(app_label="contacts"),
+            ),
+            request=SimpleNamespace(user=user),
+        )
+        queryset = mock.Mock()
+
+        with mock.patch(
+            "finlo.contrib.generics.views.toolkit.quick_filter.QuickFilter.objects.filter",
+            return_value=queryset,
+        ) as filter_quick_filters:
+            first_result = get_quick_filters(view)
+            second_result = get_quick_filters(view)
+
+        self.assertIs(first_result, queryset)
+        self.assertIs(second_result, queryset)
+        filter_quick_filters.assert_called_once_with(
+            user=user,
+            app_label="contacts",
+            model_name="Contact",
+        )
+
+    def test_quick_filter_choices_are_built_once_per_list_request(self):
+        view = SimpleNamespace()
+        choices = [{"value": "active", "label": "Active"}]
+
+        with mock.patch(
+            "finlo.contrib.generics.views.toolkit.quick_filter._build_quick_filter_choices",
+            return_value=choices,
+        ) as build_choices:
+            first_result = get_quick_filter_choices(view, "status")
+            second_result = get_quick_filter_choices(view, "status")
+
+        self.assertIs(first_result, choices)
+        self.assertIs(second_result, choices)
+        build_choices.assert_called_once_with(view, "status")
+
+    def test_removing_filter_preserves_blank_values_and_row_alignment(self):
+        request = RequestFactory().get(
+            "/crm/accounts?"
+            "remove_filter=2"
+            "&field=status&field=company&field=name"
+            "&operator=isnull&operator=exact&operator=icontains"
+            "&value=&value=7&value=Alice"
+            "&start_value=&start_value=&start_value="
+            "&end_value=&end_value=&end_value="
+            "&logic=AND&logic=OR&logic=AND"
+            "&apply_filter=true",
+            HTTP_HX_REQUEST="true",
+        )
+        view = SimpleNamespace(main_url="/crm/accounts")
+
+        response = FinloListFilterHandlersMixin.handle_remove_filter(view, request)
+        params = parse_qs(
+            urlparse(response["HX-Redirect"]).query,
+            keep_blank_values=True,
+        )
+
+        self.assertEqual(params["field"], ["status", "company"])
+        self.assertEqual(params["operator"], ["isnull", "exact"])
+        self.assertEqual(params["value"], ["", "7"])
+        self.assertEqual(params["logic"], ["AND", "OR"])
+
+    def test_clear_all_removes_quick_filter_values_and_preserves_view_params(self):
+        request = RequestFactory().get(
+            "/crm/accounts?view_type=all&section=people&qf_status=open"
+            "&field=name&operator=icontains&value=Acme&search=Acme"
+        )
+        view = SimpleNamespace(
+            main_url="/crm/accounts",
+            filter_url_push=True,
+            template_name="list_view.html",
+            get_queryset=mock.Mock(return_value=[]),
+            get_context_data=mock.Mock(return_value={}),
+        )
+
+        with mock.patch(
+            "finlo.contrib.generics.mixins.render",
+            return_value=HttpResponse("ok"),
+        ) as render:
+            response = FinloListFilterHandlersMixin.handle_clear_all_filters(
+                view, request
+            )
+
+        params = parse_qs(urlparse(response["HX-Push-Url"]).query)
+        self.assertEqual(params, {"view_type": ["all"], "section": ["people"]})
+        self.assertEqual(
+            render.call_args.args[2]["filter_reload_url"],
+            "/crm/accounts?view_type=all&section=people",
+        )
+        view.get_queryset.assert_called_once_with()
+
+    def test_adding_filter_row_does_not_load_the_full_list(self):
+        request = RequestFactory().get(
+            "/crm/accounts?add_filter_row=true&row_id=0"
+        )
+        view = SimpleNamespace(
+            search_url="/crm/accounts/search",
+            _get_model_fields=mock.Mock(return_value=[]),
+            get_queryset=mock.Mock(),
+        )
+
+        with mock.patch(
+            "finlo.contrib.generics.views.list.render",
+            return_value=HttpResponse("row"),
+        ) as render:
+            response = FinloListView.get(view, request)
+
+        self.assertEqual(response.content, b"row")
+        view.get_queryset.assert_not_called()
+        self.assertEqual(render.call_args.args[1], "partials/filter_row.html")
+
+    def test_saved_list_redirect_keeps_view_context_not_saved_filter_rows(self):
+        view = SimpleNamespace(
+            request=RequestFactory().get(
+                "/crm/accounts?section=people&section=sales&view_type=all"
+                "&field=name&field=status&operator=icontains&operator=exact"
+                "&value=Acme&value=active&qf_stage=qualified"
+            )
+        )
+
+        params = SaveFilterListView._get_redirect_query_params(view)
+
+        self.assertEqual(params.getlist("section"), ["people", "sales"])
+        self.assertNotIn("view_type", params)
+        self.assertNotIn("field", params)
+        self.assertNotIn("value", params)
+        self.assertNotIn("qf_stage", params)
+
+    def test_saved_list_form_keeps_validation_errors_in_modal(self):
+        form_template = (
+            Path(settings.BASE_DIR)
+            / "finlo"
+            / "contrib"
+            / "generics"
+            / "templates"
+            / "save_filter_form.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('hx-target="#modalBox"', form_template)
+        self.assertIn('hx-select="#modalBox"', form_template)
+        self.assertIn(
+            "event.detail.xhr.getResponseHeader('HX-Redirect')",
+            form_template,
+        )
+        self.assertNotIn('hx-target="#mainContent"', form_template)
 
     def test_list_history_restore_does_not_force_a_full_page_reload(self):
         base_dir = Path(settings.BASE_DIR)

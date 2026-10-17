@@ -36,6 +36,10 @@ def get_available_quick_filter_fields(view):
     if not _quick_filters_enabled(view):
         return []
 
+    cached_fields = getattr(view, "_available_quick_filter_fields", None)
+    if cached_fields is not None:
+        return cached_fields
+
     exclude = getattr(view, "exclude_quick_filter_fields", [])
     available_fields = []
 
@@ -73,6 +77,7 @@ def get_available_quick_filter_fields(view):
         if field_info:
             available_fields.append(field_info)
 
+    view._available_quick_filter_fields = available_fields
     return available_fields
 
 
@@ -81,14 +86,30 @@ def get_quick_filters(view):
     if not _quick_filters_enabled(view):
         return []
 
-    return QuickFilter.objects.filter(
-        user=view.request.user,
-        app_label=view.model._meta.app_label,
-        model_name=view.model.__name__,
-    )
+    queryset = getattr(view, "_quick_filters_queryset", None)
+    if queryset is None:
+        queryset = QuickFilter.objects.filter(
+            user=view.request.user,
+            app_label=view.model._meta.app_label,
+            model_name=view.model.__name__,
+        )
+        view._quick_filters_queryset = queryset
+
+    return queryset
 
 
 def get_quick_filter_choices(view, field_name):
+    """Return quick-filter choices, reusing work within this request."""
+    choices_cache = getattr(view, "_quick_filter_choices_cache", None)
+    if choices_cache is None:
+        choices_cache = {}
+        view._quick_filter_choices_cache = choices_cache
+    if field_name not in choices_cache:
+        choices_cache[field_name] = _build_quick_filter_choices(view, field_name)
+    return choices_cache[field_name]
+
+
+def _build_quick_filter_choices(view, field_name):
     """Get choices for a quick filter field."""
     try:
         field = view.model._meta.get_field(field_name)

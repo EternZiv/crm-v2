@@ -45,12 +45,12 @@
 
         <form
             id="save-filter-list-form"
-            hx-post="{% url 'generics:save_filter_list' %}?{% for key, value in request.GET.items %}{% if key == 'section' or key == 'search' %}{{ key }}={{ value }}&{% endif %}{% endfor %}"
-            hx-target="#mainContent"
-            hx-select="#mainContent"
+            hx-post="{{ save_filter_post_url }}"
+            hx-target="#modalBox"
+            hx-select="#modalBox"
             hx-swap="outerHTML"
-            hx-push-url="true"
-            hx-on::after-request="closeModal()"
+            hx-push-url="false"
+            hx-on::after-request="if(event.detail.successful && event.detail.xhr.getResponseHeader('HX-Redirect')) { closeModal(); }"
             {% if create_new or is_edit %}
                 hx-include="#save-filter-list-form, #create-list-filter-rows input, #create-list-filter-rows select"
             {% endif %}

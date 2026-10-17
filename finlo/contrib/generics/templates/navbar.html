@@ -40,7 +40,7 @@
                                     id="viewTypeSelect"
                                     class="view-type js-example-basic-single headselect mt-0"
                                     name="view_type"
-                                    hx-get="{{ main_url }}?{% for key, value in request.GET.items %}{% if key != 'view_type' %}{% if not forloop.first %}&{% endif %}{{ key }}={{ value }}{% endif %}{%endfor %}"
+                                    hx-get="{{ view_type_url }}"
                                     hx-target="#{{ main_session_id }}"
                                     hx-select="#{{ main_session_id }}"
                                     hx-select-oob="#navBar"
@@ -189,7 +189,7 @@
                         placeholder="{% trans 'Search' %}"
                         class="text-color-600 finlo-search-input--toolbar py-1.5 w-full border border-dark-50 rounded-md focus-visible:outline-0 placeholder:text-[#d3d3d3] placeholder:text-xs text-sm [transition:.3s] focus:border-primary-600"
                         value="{{ request.GET.search }}"
-                        hx-get="{{ main_url }}?{% for key, value in request.GET.items %}{% if key != 'apply_filter' and  key != 'remove_filter' and key != 'field' and key != 'operator' and key != 'value' and key != 'search' %}{% if not forloop.first %}&{% endif %}{{ key }}={{ value }}{% endif %}{% endfor %}{% if request.GET.field %}&apply_filter=true{% endif %}"
+                        hx-get="{{ search_input_url }}"
                         hx-trigger="keyup changed delay:500ms, search"
                         hx-target="#{{ main_session_id }}"
                         hx-select="#{{ main_session_id }}"
@@ -351,7 +351,7 @@
             <div>
                 {% if new_button.url and  not show_list_only %}
                     <button
-                        hx-get="{{ new_button.url }}?{{ request.GET.urlencode }}"
+                        hx-get="{{ new_button.url }}{% if request.GET.urlencode %}{% if '?' in new_button.url %}&{% else %}?{% endif %}{{ request.GET.urlencode }}{% endif %}"
                         hx-target="{{ new_button.target|default:'#modalBox' }}"
                         hx-swap="{{ new_button.swap|default:'innerHTML' }}"
                         onclick="{{ new_button.onclick|default:'openModal()' }}"
@@ -368,7 +368,7 @@
 
                 {% if second_button.url %}
                     <button
-                        hx-get="{{ second_button.url }}?{{ request.GET.urlencode }}"
+                        hx-get="{{ second_button.url }}{% if request.GET.urlencode %}{% if '?' in second_button.url %}&{% else %}?{% endif %}{{ request.GET.urlencode }}{% endif %}"
                         hx-target="{{ second_button.target|default:'#modalBox' }}"
                         hx-swap="{{ second_button.swap|default:'innerHTML' }}"
                         onclick="{{ second_button.onclick|default:'openModal()' }}"

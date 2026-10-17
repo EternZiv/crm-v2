@@ -250,7 +250,7 @@ class FinloFilterSet(django_filters.FilterSet):
         """Build a Q object for a single filter row, or None if it contributes nothing."""
         if operator == "ne":
             value = values[i] if i < len(values) else None
-            if value is None:
+            if value is None or value == "":
                 return None
             value = self._convert_boolean_value(value, model, field)
             return ~Q(**{field: value})
@@ -292,7 +292,7 @@ class FinloFilterSet(django_filters.FilterSet):
             return self._relative_date_q(model, field, operator)
 
         value = values[i] if i < len(values) else None
-        if value is None:
+        if value is None or value == "":
             return None
 
         if operator == "exact":

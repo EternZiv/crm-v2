@@ -74,6 +74,7 @@ class LeadView(LoginRequiredMixin, FinloView):
     split_view_url = reverse_lazy("leads:leads_split_view")
     chart_url = reverse_lazy("leads:leads_chart")
     timeline_url = reverse_lazy("leads:leads_timeline")
+    default_layout = "chart"
 
     def dispatch(self, request, *args, **kwargs):
         view_type = request.GET.get("view_type")
@@ -112,6 +113,7 @@ class LeadNavbar(LoginRequiredMixin, FinloNavView):
     split_view_url = reverse_lazy("leads:leads_split_view")
     chart_url = reverse_lazy("leads:leads_chart")
     timeline_url = reverse_lazy("leads:leads_timeline")
+    default_layout = "chart"
     model_name = "Lead"
     model_app_label = "leads"
     exclude_kanban_fields = "lead_owner"
@@ -595,19 +597,29 @@ class LeadChartView(LoginRequiredMixin, FinloChartView):
                 .order_by("-_count")
             )
 
+        status_ids = {row[group_by] for row in rows if row[group_by] is not None}
+        statuses = {
+            status.pk: status
+            for status in LeadStatus.objects.filter(pk__in=status_ids)
+        }
+        final_status_ids = {
+            status.pk for status in statuses.values() if status.is_final
+        }
+
         labels, data, urls = [], [], []
         list_url = str(self.search_url) if self.search_url else ""
 
         for row in rows:
             key = row[group_by]
-            if key is not None:
-                try:
-                    if LeadStatus.objects.filter(pk=key, is_final=True).exists():
-                        continue
-                except Exception:
-                    pass
+            if key in final_status_ids:
+                continue
             value = row[agg_field_name] or 0
-            label = self._label_for_group_key(field, key)
+            status = statuses.get(key)
+            label = (
+                str(status)
+                if status is not None
+                else self._label_for_group_key(field, key)
+            )
             labels.append(label)
             data.append(value)
             if list_url and key is not None:
@@ -628,14 +640,6 @@ class LeadChartView(LoginRequiredMixin, FinloChartView):
             return super().build_stacked_payload(
                 queryset, primary, secondary, value_field, value_metric
             )
-
-        def is_final_pk(pk):
-            if pk is None:
-                return False
-            try:
-                return LeadStatus.objects.filter(pk=pk, is_final=True).exists()
-            except Exception:
-                return False
 
         # Decide aggregation: metric(value_field) or Count("pk")
         agg_field_name = "_value"
@@ -663,12 +667,27 @@ class LeadChartView(LoginRequiredMixin, FinloChartView):
                 .annotate(_count=Count("pk"))
                 .order_by()
             )
+        status_ids = set()
+        if primary == "lead_status":
+            status_ids.update(row[primary] for row in rows if row[primary] is not None)
+        if secondary == "lead_status":
+            status_ids.update(
+                row[secondary] for row in rows if row[secondary] is not None
+            )
+        statuses = {
+            status.pk: status
+            for status in LeadStatus.objects.filter(pk__in=status_ids)
+        }
+        final_status_ids = {
+            status.pk for status in statuses.values() if status.is_final
+        }
+
         filtered = []
         for row in rows:
             pk, sk = row[primary], row[secondary]
-            if primary == "lead_status" and is_final_pk(pk):
+            if primary == "lead_status" and pk in final_status_ids:
                 continue
-            if secondary == "lead_status" and is_final_pk(sk):
+            if secondary == "lead_status" and sk in final_status_ids:
                 continue
             filtered.append(row)
         if not filtered:
@@ -691,11 +710,22 @@ class LeadChartView(LoginRequiredMixin, FinloChartView):
             if sk not in seen_s:
                 seen_s.add(sk)
                 secondary_keys_order.append(sk)
-        categories = [self._label_for_group_key(field_p, k) for k in primary_keys]
+        categories = [
+            (
+                str(statuses[k])
+                if primary == "lead_status" and k in statuses
+                else self._label_for_group_key(field_p, k)
+            )
+            for k in primary_keys
+        ]
         series = []
         list_url = str(self.search_url) if self.search_url else ""
         for sk in secondary_keys_order:
-            name = self._label_for_group_key(field_s, sk)
+            name = (
+                str(statuses[sk])
+                if secondary == "lead_status" and sk in statuses
+                else self._label_for_group_key(field_s, sk)
+            )
             row_data = []
             for pk in primary_keys:
                 v = int(pivot[pk].get(sk, 0))

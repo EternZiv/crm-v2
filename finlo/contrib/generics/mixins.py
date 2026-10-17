@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 # Third-party imports (Django)
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
-from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.utils import translation
 
 from finlo.auth.models import User
@@ -286,8 +285,13 @@ class FinloListFilterFieldsMixin:
         is_filter_form_trigger = trigger == "filter-form"
         has_filterset = bool(filterset_class)
         value_field = self.request.GET.get("value", "")
-        use_full_queryset_for_choices = False
-
+        requested_filter_fields = self.request.GET.getlist("field")
+        filter_values_by_field = {}
+        for requested_field, filter_value in zip(
+            requested_filter_fields, self.request.GET.getlist("value")
+        ):
+            if filter_value:
+                filter_values_by_field[requested_field] = filter_value
         for field in self.model._meta.fields:
             if field.name in exclude_from_export:
                 continue
@@ -295,6 +299,7 @@ class FinloListFilterFieldsMixin:
                 if field.name in exclude_fields:
                     continue
 
+            use_full_queryset_for_choices = False
             field_class_name = field.__class__.__name__
             choices = []
             related_model = None
@@ -312,12 +317,14 @@ class FinloListFilterFieldsMixin:
                 related_model_name = related_model.__name__
                 user_model = User
                 field_type = "foreignkey"
-                if (
-                    is_operator_trigger
-                    or is_bulk_update_trigger
-                    or is_filter_form_trigger
-                    or value_field
-                ):
+                load_choices = (
+                    (is_operator_trigger or is_filter_form_trigger)
+                    and field.name in requested_filter_fields
+                ) or (
+                    is_bulk_update_trigger
+                    and field.name in (getattr(self, "bulk_update_fields", None) or ())
+                ) or (value_field and field.name in requested_filter_fields)
+                if load_choices:
                     related_objects_queryset = None
                     if related_model == user_model or issubclass(
                         related_model, user_model
@@ -360,21 +367,18 @@ class FinloListFilterFieldsMixin:
                             for obj in related_objects
                         ]
                     else:
-                        paginator = Paginator(related_objects, 10)
-                        try:
-                            paginated_objects = paginator.page(1)
-                        except PageNotAnInteger:
-                            paginated_objects = paginator.page(1)
-                        except EmptyPage:
-                            paginated_objects = paginator.page(paginator.num_pages)
+                        paginated_objects = related_objects[:10]
                         choices = [
                             {"value": str(obj.pk), "label": str(obj)}
                             for obj in paginated_objects
                         ]
 
-                    if value_field:
+                    selected_value = filter_values_by_field.get(field.name)
+                    if selected_value:
                         try:
-                            value_obj = related_objects_queryset.get(pk=value_field)
+                            value_obj = related_objects_queryset.get(
+                                pk=selected_value
+                            )
                             value_choice = {
                                 "value": str(value_obj.pk),
                                 "label": str(value_obj),
@@ -523,42 +527,28 @@ class FinloListFilterHandlersMixin:
         search_value = query_params.get("search", "")
 
         if remove_filter == "search":
-            fields = [f for f in query_params.getlist("field") if f.strip()]
-            operators = [o for o in query_params.getlist("operator") if o.strip()]
-            values = [v for v in query_params.getlist("value") if v.strip()]
-            start_values = [
-                sv for sv in query_params.getlist("start_value") if sv.strip()
-            ]
-            end_values = [ev for ev in query_params.getlist("end_value") if ev.strip()]
-            logics = [l for l in query_params.getlist("logic") if l.strip()]
-            new_fields = fields
-            new_operators = operators
-            new_values = values
-            new_start_values = start_values
-            new_end_values = end_values
-            new_logics = logics
             search_value = ""
-        else:
-            filter_index = int(remove_filter) if remove_filter.isdigit() else -1
-            fields = query_params.getlist("field")
-            operators = query_params.getlist("operator")
-            values = query_params.getlist("value")
-            start_values = query_params.getlist("start_value")
-            end_values = query_params.getlist("end_value")
-            logics = query_params.getlist("logic")
-            for i in range(len(fields)):
-                if i != filter_index and fields[i].strip():
-                    new_fields.append(fields[i])
-                    if i < len(operators) and operators[i].strip():
-                        new_operators.append(operators[i])
-                    if i < len(values) and values[i].strip():
-                        new_values.append(values[i])
-                    if i < len(start_values) and start_values[i].strip():
-                        new_start_values.append(start_values[i])
-                    if i < len(end_values) and end_values[i].strip():
-                        new_end_values.append(end_values[i])
-                    if i < len(logics) and logics[i].strip():
-                        new_logics.append(logics[i])
+
+        filter_index = (
+            None
+            if remove_filter == "search"
+            else int(remove_filter) if remove_filter.isdigit() else -1
+        )
+        fields = query_params.getlist("field")
+        operators = query_params.getlist("operator")
+        values = query_params.getlist("value")
+        start_values = query_params.getlist("start_value")
+        end_values = query_params.getlist("end_value")
+        logics = query_params.getlist("logic")
+        for i, field in enumerate(fields):
+            if i == filter_index or not field.strip():
+                continue
+            new_fields.append(field)
+            new_operators.append(operators[i] if i < len(operators) else "")
+            new_values.append(values[i] if i < len(values) else "")
+            new_start_values.append(start_values[i] if i < len(start_values) else "")
+            new_end_values.append(end_values[i] if i < len(end_values) else "")
+            new_logics.append(logics[i] if i < len(logics) else "AND")
 
         new_query_params = QueryDict("", mutable=True)
         for key, values_list in query_params.lists():
@@ -574,7 +564,7 @@ class FinloListFilterHandlersMixin:
                 "apply_filter",
                 "hx_trigger",
                 "search",
-            ]:
+            ] and not key.startswith("qf_"):
                 for value in values_list:
                     if value.strip():
                         new_query_params.appendlist(key, value)
@@ -619,10 +609,12 @@ class FinloListFilterHandlersMixin:
             "clear_all_filters",
             "page",
             "search",
+            "remove_filter",
+            "hx_trigger",
         ]
         new_query_params = QueryDict(mutable=True)
         for key, values in query_params.lists():
-            if key not in filter_params:
+            if key not in filter_params and not key.startswith("qf_"):
                 for value in values:
                     new_query_params.appendlist(key, value)
         new_query_params._mutable = False

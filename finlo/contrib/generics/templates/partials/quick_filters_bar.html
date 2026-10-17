@@ -36,7 +36,7 @@
                                         name="qf_{{ qf.field_name }}"
                                         class="js-example-basic-single text-xs"
                                         style="width: 100%"
-                                        hx-get="{{ main_url }}?{% for key, value in request.GET.items %}{% if key != 'page' and key != 'hx_trigger' %}{{ key }}={{ value|urlencode }}&{% endif %}{% endfor %}"
+                                        hx-get="{{ quick_filter_url }}"
                                         hx-target="#{{ main_session_id|default:'mainSession' }}"
                                         hx-select="#{{ main_session_id|default:'mainSession' }}"
                                         hx-swap="outerHTML"
