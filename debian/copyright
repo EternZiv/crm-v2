@@ -4,11 +4,11 @@ Upstream-Contact: Finlo CRM Team <support@finlocrm.com>
 Source: https://github.com/finlo-opensource/finlo-crm
 
 Files: *
-Copyright: 2024 Finlo CRM Team
+Copyright: 2026 Finlo CRM Team
 License: LGPL-2.1+
 
 Files: debian/*
-Copyright: 2025 Finlo CRM Team <support@finlocrm.com>
+Copyright: 2026 Finlo CRM Team <support@finlocrm.com>
 License: LGPL-2.1+
 
 License: LGPL-2.1+

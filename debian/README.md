@@ -145,7 +145,6 @@ server {
 - `compat`: Debhelper compatibility level
 - `install`: File installation mapping
 - `changelog`: Version history
-- `copyright`: License information
 - `postinst`: Post-installation script
 - `prerm`: Pre-removal script
 - `postrm`: Post-removal script
