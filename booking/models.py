@@ -1,5 +1,5 @@
 """
-Models for the horilla_booking app
+Models for the finlo_booking app
 """
 
 # Standard library imports
@@ -8,14 +8,14 @@ import uuid
 # Third-party imports (Django)
 from django.conf import settings
 
-from horilla.contrib.core.models import HorillaCoreModel
-from horilla.contrib.utils.methods import render_template
+from finlo.contrib.core.models import FinloCoreModel
+from finlo.contrib.utils.methods import render_template
 
-# First party imports (Horilla)
-from horilla.db import models
-from horilla.urls import reverse
-from horilla.utils.translation import gettext_lazy as _
-from horilla.utils.urls import build_absolute_url as build_public_booking_url
+# First party imports (Finlo)
+from finlo.db import models
+from finlo.urls import reverse
+from finlo.utils.translation import gettext_lazy as _
+from finlo.utils.urls import build_absolute_url as build_public_booking_url
 
 MEETING_PROVIDER_CHOICES = [
     ("zoom", _("Zoom")),
@@ -32,7 +32,7 @@ BOOKING_STATUS_CHOICES = [
 ]
 
 
-class BookingPage(HorillaCoreModel):
+class BookingPage(FinloCoreModel):
     """
     Represents a public-facing booking calendar page.
     Visitors can book a meeting via the page's public URL.
@@ -167,7 +167,7 @@ class BookingPage(HorillaCoreModel):
     )
 
     confirmation_mail_template = models.ForeignKey(
-        "mail.HorillaMailTemplate",
+        "mail.FinloMailTemplate",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -176,7 +176,7 @@ class BookingPage(HorillaCoreModel):
         help_text=_("Optional. Overrides the default confirmation email design."),
     )
     cancellation_mail_template = models.ForeignKey(
-        "mail.HorillaMailTemplate",
+        "mail.FinloMailTemplate",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -185,7 +185,7 @@ class BookingPage(HorillaCoreModel):
         help_text=_("Optional. Overrides the default cancellation email design."),
     )
     reschedule_mail_template = models.ForeignKey(
-        "mail.HorillaMailTemplate",
+        "mail.FinloMailTemplate",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -238,7 +238,7 @@ class BookingPage(HorillaCoreModel):
         return reverse("booking:booking_page_detail", kwargs={"pk": self.pk})
 
 
-class Booking(HorillaCoreModel):
+class Booking(FinloCoreModel):
     """
     Represents an individual booking made via a BookingPage.
     Linked to a Lead or Contact and a Meeting Activity upon creation.

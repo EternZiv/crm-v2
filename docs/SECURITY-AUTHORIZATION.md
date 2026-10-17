@@ -16,7 +16,7 @@ PostgreSQL RLS do not replace application authorization.
   cross-company access.
 - A model's global `view`/`change`/`delete` permission applies only within the
   caller's company scope. `_own` permissions further restrict records to the
-  user and users in subordinate Horilla roles.
+  user and users in subordinate Finlo roles.
 
 ## FINLONEXA sales-role permission ceiling
 
@@ -43,7 +43,7 @@ not replace the creator as lead owner. Exports require explicit export
 permissions, and the current sales-role ceiling does not grant them.
 
 The shared enforcement points are
-`horilla.contrib.core.authorization.scope_queryset_to_company`,
+`finlo.contrib.core.authorization.scope_queryset_to_company`,
 `CompanyFilteredManager`, DRF queryset/object permissions, the user management
 views, generic HTML form permission checks, and the export-queryset helper.
 Dashboard KPI/table queries and report preview/export queries use the same
@@ -55,7 +55,7 @@ rely on navigation visibility or a model permission alone.
 The user API never accepts `is_superuser`, `is_staff`, `groups`, or
 `user_permissions` as writable fields. Non-superusers cannot move users
 between companies unless they have the explicit `SUPER_ADMIN` system role.
-Assigning a Horilla role requires the effective role-administration access,
+Assigning a Finlo role requires the effective role-administration access,
 and the role, department, and currency must belong to the user's company
 unless the caller has global administration access.
 Company-scoped CRM serializers derive the company from the authorized request
@@ -67,7 +67,7 @@ Run authorization tests using the dedicated ephemeral SQLite settings, not
 the configured Supabase target:
 
 ```powershell
-.\.venv\Scripts\python.exe manage.py test horilla.contrib.core.test_authorization horilla.contrib.core.test_security_settings horilla_crm.leads.tests.test_sales_hierarchy --settings=horilla.settings.security_test
+.\.venv\Scripts\python.exe manage.py test finlo.contrib.core.test_authorization finlo.contrib.core.test_security_settings finlo_crm.leads.tests.test_sales_hierarchy --settings=finlo.settings.security_test
 ```
 
 The test settings force SQLite `:memory:` even if a local `.env` contains a

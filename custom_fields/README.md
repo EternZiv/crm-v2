@@ -19,10 +19,10 @@ surface them wherever that model’s data appears:
 
 No CRM model is imported by name inside this app. Touch points are model-agnostic
 and driven by the feature registry. Integration uses real
-`horilla.extension.*` registrations — **not** monkey-patches.
+`finlo.extension.*` registrations — **not** monkey-patches.
 
 > This app lives at the **repository root** (`custom_fields/`), alongside
-> `booking/` and `calls/`. It is **not** under `horilla/contrib/`, but it follows
+> `booking/` and `calls/`. It is **not** under `finlo/contrib/`, but it follows
 > the same isolation rules as contrib features (`field_requirements`,
 > `form_layouts`, `duplicates`).
 
@@ -32,20 +32,20 @@ and driven by the feature registry. Integration uses real
 
 | Layer | Expectation |
 |-------|-------------|
-| `horilla.contrib.core` / `generics` | Do **not** import `custom_fields` |
-| CRM model files (`horilla_crm/*/models*.py`) | Do **not** mention custom fields |
+| `finlo.contrib.core` / `generics` | Do **not** import `custom_fields` |
+| CRM model files (`finlo_crm/*/models*.py`) | Do **not** mention custom fields |
 | Consuming app `registration.py` | Explicit `register_model_for_feature(..., features=["custom_fields"])` |
-| This app’s tests | Prefer generic / registry fixtures; CRM HTTP scenarios belong in `horilla_crm` when needed |
+| This app’s tests | Prefer generic / registry fixtures; CRM HTTP scenarios belong in `finlo_crm` when needed |
 
 Turning the feature on or off is a single line in `INSTALLED_APPS`
-(`horilla/settings/horilla_apps.py` already includes `"custom_fields"`).
+(`finlo/settings/finlo_apps.py` already includes `"custom_fields"`).
 
 ---
 
 ## Install / enable
 
 ```python
-# horilla/settings/horilla_apps.py (or local INSTALLED_APPS)
+# finlo/settings/finlo_apps.py (or local INSTALLED_APPS)
 INSTALLED_APPS = [
     # ...
     "custom_fields",
@@ -96,10 +96,10 @@ register_feature(
 
 ### Opt a model in (consuming app)
 
-From the **consuming** app’s `registration.py` (e.g. `horilla_crm/leads/`):
+From the **consuming** app’s `registration.py` (e.g. `finlo_crm/leads/`):
 
 ```python
-from horilla.registry.feature import register_model_for_feature
+from finlo.registry.feature import register_model_for_feature
 
 register_model_for_feature(
     app_label="leads",
@@ -121,7 +121,7 @@ by import path inside this app.
 
 ## Models (`models.py`)
 
-Both extend `HorillaCoreModel` (company-scoped).
+Both extend `FinloCoreModel` (company-scoped).
 
 ### `CustomFieldDefinition`
 
@@ -129,7 +129,7 @@ One row per custom field on a content type:
 
 | Field | Role |
 |-------|------|
-| `content_type` | Target model (`HorillaContentType`) |
+| `content_type` | Target model (`FinloContentType`) |
 | `name` | Admin-facing label |
 | `field_type` | `small_text`, `large_text`, `number`, `choice` (multi), `single_choice`, `date`, `datetime` |
 | `is_required` | Form required flag |
@@ -149,8 +149,8 @@ values: `value_text` (text and choices), `value_number`, `value_date`, and
 column for the definition's type and clears the rest.
 
 **Date and Date and Time** render as `<input type="date">` /
-`<input type="datetime-local">`, like Horilla's own date fields. With the
-`horilla_jalali` app installed and Shamsi selected, the same inputs open the
+`<input type="datetime-local">`, like Finlo's own date fields. With the
+`finlo_jalali` app installed and Shamsi selected, the same inputs open the
 Jalali picker, which submits Gregorian ISO values — the database always holds
 Gregorian dates. Display (detail, list, export, Edit Details) goes through the
 composed `DateTimeFormatter`, so each viewer sees their own date format,
@@ -163,34 +163,34 @@ come back from `get_value` as ISO 8601 strings.
 
 ## Extension map
 
-Every touch point is a real `horilla.extension.*` registration. See the
-[extension index](../docs/horilla/extension/inherit.md).
+Every touch point is a real `finlo.extension.*` registration. See the
+[extension index](../docs/finlo/extension/inherit.md).
 
 ### Dynamic, per-model discovery
 
 | File | Extension type | Discovers via |
 |------|----------------|---------------|
-| `extensions/forms.py` | `FormExtension` | `HorillaMultiStepForm` / `HorillaModelForm` whose `Meta.model` opted in |
-| `extensions/filter.py` | `FilterExtension` | `HorillaFilterSet` whose `Meta.model` opted in |
+| `extensions/forms.py` | `FormExtension` | `FinloMultiStepForm` / `FinloModelForm` whose `Meta.model` opted in |
+| `extensions/filter.py` | `FilterExtension` | `FinloFilterSet` whose `Meta.model` opted in |
 | `extensions/detail.py` | `DetailExtension` + `DetailSectionExtension` | Detail view registries for opted-in models |
 
 Each registers a **pre-compose hook**
-(`horilla.extension._pre_compose_hooks.register_pre_compose_hook`) so discovery
-re-runs whenever Horilla is about to compose that extension type. That covers a
+(`finlo.extension._pre_compose_hooks.register_pre_compose_hook`) so discovery
+re-runs whenever Finlo is about to compose that extension type. That covers a
 model that opts in *after* `custom_fields` has already loaded (`INSTALLED_APPS`
-order). This is an ordinary registration — Horilla bootstrap functions are not
+order). This is an ordinary registration — Finlo bootstrap functions are not
 reassigned.
 
 ### Bare mixins / functions (`extensions/mixin.py`)
 
 Targets that never go through `as_view()` / `resolve_*_class()` use
 `MixinExtension` (`_inherit_mixin` — see
-[mixin/inherit.md](../docs/horilla/extension/mixin/inherit.md)):
+[mixin/inherit.md](../docs/finlo/extension/mixin/inherit.md)):
 
 | Extension | Target |
 |-----------|--------|
-| `CustomFieldFilterFieldsExtension` | `HorillaListFilterFieldsMixin._get_model_fields` |
-| `CustomFieldBulkExportExtension` | `HorillaBulkExportMixin.handle_export` |
+| `CustomFieldFilterFieldsExtension` | `FinloListFilterFieldsMixin._get_model_fields` |
+| `CustomFieldBulkExportExtension` | `FinloBulkExportMixin.handle_export` |
 | `CustomFieldExportCellExtension` | `get_export_cell_value` (module function) |
 | `CustomFieldDetailRenderExtension` | `detail_field.render` |
 | `CustomFieldDetailDefaultsExtension` | `detail_field._get_detail_field_defaults` |
@@ -206,12 +206,12 @@ swaps `QuerySet.__iter__` for the duration of one export call (restored in
 
 | Extension | Target | Effect |
 |-----------|--------|--------|
-| `CustomFieldListContextExtension` | `HorillaListView` | Attach `cf_*` values to rows; exclude from sort |
-| `CustomFieldMultiStepFormKwargsExtension` | `HorillaMultiStepFormView` | Keep multi-choice `cf_*` across wizard steps |
+| `CustomFieldListContextExtension` | `FinloListView` | Attach `cf_*` values to rows; exclude from sort |
+| `CustomFieldMultiStepFormKwargsExtension` | `FinloMultiStepFormView` | Keep multi-choice `cf_*` across wizard steps |
 
 Base-class MRO fallback in `resolve_list_view_class()` / `resolve_view_class()`
 applies these to every concrete subclass automatically (see
-[Targeting a shared base class](../docs/horilla/extension/inherit.md#targeting-a-shared-base-class)).
+[Targeting a shared base class](../docs/finlo/extension/inherit.md#targeting-a-shared-base-class)).
 
 `extensions/view.py` also registers concrete `ViewExtension`s on
 `EditFieldView` / `UpdateFieldView` / `CancelEditView` (inline `cf_*` edit),
@@ -227,7 +227,7 @@ applies these to every concrete subclass automatically (see
 1. Adds `cf_*` widgets to `form.fields`
 2. Appends those names to `form.step_fields[last_step]` **explicitly**
 
-Why: `HorillaMultiStepForm.__init__` auto-assigns unlisted fields to the last
+Why: `FinloMultiStepForm.__init__` auto-assigns unlisted fields to the last
 step only for real model fields. Synthetic `cf_*` names raise
 `FieldDoesNotExist` and are skipped. Because custom fields are injected *after*
 that auto-assignment (via `setup_form_extension_fields()` on the composed form),
@@ -274,9 +274,9 @@ new behaviour should go through the extension registrations above.
 
 | Topic | Doc |
 |-------|-----|
-| Extension system index | [`docs/horilla/extension/inherit.md`](../docs/horilla/extension/inherit.md) |
-| `_inherit_mixin` | [`docs/horilla/extension/mixin/inherit.md`](../docs/horilla/extension/mixin/inherit.md) |
-| `_inherit_form` / filter / list / view | [`forms`](../docs/horilla/extension/forms/inherit.md) · [`filter`](../docs/horilla/extension/filter/inherit.md) · [`list`](../docs/horilla/extension/list/inherit.md) · [`view`](../docs/horilla/extension/view/inherit.md) |
-| Feature registry | [`docs/horilla/registry/feature.md`](../docs/horilla/registry/feature.md) |
-| Similar opt-in apps | `horilla.contrib.field_requirements`, `horilla.contrib.form_layouts`, `horilla.contrib.duplicates`, `horilla.contrib.cadences` |
+| Extension system index | [`docs/finlo/extension/inherit.md`](../docs/finlo/extension/inherit.md) |
+| `_inherit_mixin` | [`docs/finlo/extension/mixin/inherit.md`](../docs/finlo/extension/mixin/inherit.md) |
+| `_inherit_form` / filter / list / view | [`forms`](../docs/finlo/extension/forms/inherit.md) · [`filter`](../docs/finlo/extension/filter/inherit.md) · [`list`](../docs/finlo/extension/list/inherit.md) · [`view`](../docs/finlo/extension/view/inherit.md) |
+| Feature registry | [`docs/finlo/registry/feature.md`](../docs/finlo/registry/feature.md) |
+| Similar opt-in apps | `finlo.contrib.field_requirements`, `finlo.contrib.form_layouts`, `finlo.contrib.duplicates`, `finlo.contrib.cadences` |
 | Versioning | [`docs/versioning.md`](../docs/versioning.md) |

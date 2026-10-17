@@ -1,4 +1,4 @@
-"""Views for the Horilla Calls Integration app."""
+"""Views for the Finlo Calls Integration app."""
 
 # Standard library imports
 import logging
@@ -6,21 +6,21 @@ import logging
 # Third-party imports (Django)
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-# First party imports (Horilla)
-from horilla.auth.models import User
-from horilla.contrib.core.models import Role
-from horilla.contrib.generics.views import HorillaSingleFormView
-from horilla.contrib.generics.views.core import HorillaTabView
-from horilla.shortcuts import render
-from horilla.urls import reverse, reverse_lazy
-from horilla.utils.decorators import (
+# First party imports (Finlo)
+from finlo.auth.models import User
+from finlo.contrib.core.models import Role
+from finlo.contrib.generics.views import FinloSingleFormView
+from finlo.contrib.generics.views.core import FinloTabView
+from finlo.shortcuts import render
+from finlo.urls import reverse, reverse_lazy
+from finlo.utils.decorators import (
     htmx_required,
     method_decorator,
     permission_required_or_denied,
 )
-from horilla.utils.translation import gettext_lazy as _
-from horilla.views.generic import View
-from horilla.web import ScriptResponse
+from finlo.utils.translation import gettext_lazy as _
+from finlo.views.generic import View
+from finlo.web import ScriptResponse
 
 # Local imports
 from ..forms import CallAccessRolesForm, CallAccessUsersForm, CallIntegrationSettingForm
@@ -94,7 +94,7 @@ class CallIntegrationSettingsView(LoginRequiredMixin, View):
 @method_decorator(
     permission_required_or_denied("calls.view_callintegrationsetting"), name="dispatch"
 )
-class CallSettingsTabView(LoginRequiredMixin, HorillaTabView):
+class CallSettingsTabView(LoginRequiredMixin, FinloTabView):
     """Tab bar for the Call Integration settings page (Access Control / Providers)."""
 
     view_id = "call-settings-tab"
@@ -168,7 +168,7 @@ class CallProvidersTabContent(LoginRequiredMixin, View):
 
 
 @method_decorator(htmx_required, name="dispatch")
-class CallAccessRolesView(LoginRequiredMixin, HorillaSingleFormView):
+class CallAccessRolesView(LoginRequiredMixin, FinloSingleFormView):
     """Modal: select which roles can access call integration."""
 
     model = CallIntegrationSetting
@@ -198,7 +198,7 @@ class CallAccessRolesView(LoginRequiredMixin, HorillaSingleFormView):
 
 
 @method_decorator(htmx_required, name="dispatch")
-class CallAccessUsersView(LoginRequiredMixin, HorillaSingleFormView):
+class CallAccessUsersView(LoginRequiredMixin, FinloSingleFormView):
     """Modal: select which users can access call integration."""
 
     model = CallIntegrationSetting

@@ -1,7 +1,7 @@
 @echo off
-REM Uninstall Horilla-CRM Windows Service
+REM Uninstall Finlo CRM Windows Service
 
-echo Uninstalling Horilla-CRM Windows Service...
+echo Uninstalling Finlo CRM Windows Service...
 
 cd /d "%~dp0\.."
 
@@ -16,14 +16,14 @@ if errorlevel 1 (
 
 REM Stop the service if running
 echo Stopping service...
-net stop HorillaCRM >nul 2>&1
+net stop FinloCRM >nul 2>&1
 
 REM Activate virtual environment
 call venv\Scripts\activate.bat
 
 REM Remove the service
 echo Removing service...
-python scripts\horilla_service.py remove
+python scripts\finlo_service.py remove
 
 if errorlevel 1 (
     echo WARNING: Failed to remove service cleanly

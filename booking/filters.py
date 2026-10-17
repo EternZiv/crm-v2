@@ -1,13 +1,13 @@
 """
-Filters for the horilla_booking app.
+Filters for the finlo_booking app.
 """
 
-from horilla.contrib.generics.filters import HorillaFilterSet
+from finlo.contrib.generics.filters import FinloFilterSet
 
 from .models import Booking, BookingPage
 
 
-class BookingPageFilter(HorillaFilterSet):
+class BookingPageFilter(FinloFilterSet):
     """Filter for BookingPage list view."""
 
     class Meta:
@@ -24,7 +24,7 @@ class BookingPageFilter(HorillaFilterSet):
         ]
 
 
-class BookingFilter(HorillaFilterSet):
+class BookingFilter(FinloFilterSet):
     """Filter for Booking list view."""
 
     class Meta:

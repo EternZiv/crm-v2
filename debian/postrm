@@ -1,14 +1,14 @@
 #!/bin/bash
-# Post-removal script for horilla-crm
+# Post-removal script for finlo-crm
 
 set -e
 
-APP_USER="horilla-crm"
-APP_GROUP="horilla-crm"
-APP_DIR="/opt/horilla-crm"
-CONFIG_DIR="/etc/horilla-crm"
-VAR_DIR="/var/lib/horilla-crm"
-LOG_DIR="/var/log/horilla-crm"
+APP_USER="finlo-crm"
+APP_GROUP="finlo-crm"
+APP_DIR="/opt/finlo-crm"
+CONFIG_DIR="/etc/finlo-crm"
+VAR_DIR="/var/lib/finlo-crm"
+LOG_DIR="/var/log/finlo-crm"
 
 case "$1" in
     purge)
@@ -25,7 +25,7 @@ case "$1" in
         rm -rf "$CONFIG_DIR"
 
         # Ask user about data removal
-        echo "Horilla-CRM has been removed."
+        echo "Finlo CRM has been removed."
         echo "Data files are preserved in:"
         echo "  - $VAR_DIR (database and media files)"
         echo "  - $LOG_DIR (log files)"

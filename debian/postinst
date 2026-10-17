@@ -1,14 +1,14 @@
 #!/bin/bash
-# Post-installation script for horilla-crm
+# Post-installation script for finlo-crm
 
 set -e
 
-APP_USER="horilla-crm"
-APP_GROUP="horilla-crm"
-APP_DIR="/opt/horilla-crm"
-CONFIG_DIR="/etc/horilla-crm"
-VAR_DIR="/var/lib/horilla-crm"
-LOG_DIR="/var/log/horilla-crm"
+APP_USER="finlo-crm"
+APP_GROUP="finlo-crm"
+APP_DIR="/opt/finlo-crm"
+CONFIG_DIR="/etc/finlo-crm"
+VAR_DIR="/var/lib/finlo-crm"
+LOG_DIR="/var/log/finlo-crm"
 
 case "$1" in
     configure)
@@ -20,7 +20,7 @@ case "$1" in
         if ! getent passwd "$APP_USER" > /dev/null 2>&1; then
             adduser --system --home "$APP_DIR" --shell /bin/bash \
                     --ingroup "$APP_GROUP" --disabled-password \
-                    --gecos "Horilla CRM system user" "$APP_USER"
+                    --gecos "Finlo CRM system user" "$APP_USER"
         fi
 
         # Set correct ownership and permissions
@@ -38,9 +38,9 @@ case "$1" in
         chmod 640 "$CONFIG_DIR"/*.conf || true
 
         # Generate a random secret key if not already set
-        if grep -q "SECRET_KEY=change-this-in-production" "$CONFIG_DIR/horilla-crm.conf"; then
+        if grep -q "SECRET_KEY=change-this-in-production" "$CONFIG_DIR/finlo-crm.conf"; then
             SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(50))")
-            sed -i "s/SECRET_KEY=change-this-in-production/SECRET_KEY=$SECRET_KEY/" "$CONFIG_DIR/horilla-crm.conf"
+            sed -i "s/SECRET_KEY=change-this-in-production/SECRET_KEY=$SECRET_KEY/" "$CONFIG_DIR/finlo-crm.conf"
         fi
 
         # Create media directory
@@ -48,26 +48,21 @@ case "$1" in
         chown "$APP_USER:$APP_GROUP" "$APP_DIR/media"
         chmod 755 "$APP_DIR/media"
 
-        # Create database directory for SQLite (if used)
-        mkdir -p "$VAR_DIR/db"
-        chown "$APP_USER:$APP_GROUP" "$VAR_DIR/db"
-        chmod 755 "$VAR_DIR/db"
-
-        echo "Horilla-CRM has been installed successfully!"
+        echo "Finlo CRM has been installed successfully!"
         echo ""
-        echo "Configuration file: $CONFIG_DIR/horilla-crm.conf"
+        echo "Configuration file: $CONFIG_DIR/finlo-crm.conf"
         echo "Application directory: $APP_DIR"
         echo "Data directory: $VAR_DIR"
         echo "Log directory: $LOG_DIR"
         echo ""
         echo "To configure the application:"
-        echo "1. Edit $CONFIG_DIR/horilla-crm.conf"
+        echo "1. Edit $CONFIG_DIR/finlo-crm.conf"
         echo "2. Set up your database connection"
-        echo "3. Start the service: sudo systemctl start horilla-crm"
-        echo "4. Enable automatic startup: sudo systemctl enable horilla-crm"
+        echo "3. Start the service: sudo systemctl start finlo-crm"
+        echo "4. Enable automatic startup: sudo systemctl enable finlo-crm"
         echo ""
-        echo "Management commands can be run with: horilla-crm-manage <command>"
-        echo "For example: horilla-crm-manage createsuperuser"
+        echo "Management commands can be run with: finlo-crm-manage <command>"
+        echo "For example: finlo-crm-manage createsuperuser"
         ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

@@ -1,13 +1,13 @@
-"""Filters for the Horilla Calls Integration app."""
+"""Filters for the Finlo Calls Integration app."""
 
-# First party imports (Horilla)
-from horilla.contrib.generics.filters import HorillaFilterSet
+# First party imports (Finlo)
+from finlo.contrib.generics.filters import FinloFilterSet
 
 # Local imports
 from .models import AgentMapping, CallLog, CallProvider
 
 
-class CallProviderFilter(HorillaFilterSet):
+class CallProviderFilter(FinloFilterSet):
     """Filter for CallProvider list view."""
 
     class Meta:
@@ -25,7 +25,7 @@ class CallProviderFilter(HorillaFilterSet):
         search_fields = ["name", "account_sid", "caller_id"]
 
 
-class AgentMappingFilter(HorillaFilterSet):
+class AgentMappingFilter(FinloFilterSet):
     """Filter for AgentMapping list view."""
 
     class Meta:
@@ -37,7 +37,7 @@ class AgentMappingFilter(HorillaFilterSet):
         search_fields = ["extension", "agent_id"]
 
 
-class CallLogFilter(HorillaFilterSet):
+class CallLogFilter(FinloFilterSet):
     """Filter for CallLog list view."""
 
     class Meta:

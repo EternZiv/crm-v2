@@ -1,5 +1,5 @@
 name: "Feature request - CRM"
-about: "Suggest an improvement, enhancement or new feature for Horilla CRM."
+about: "Suggest an improvement, enhancement or new feature for Finlo CRM."
 title: "[FEATURE] "
 labels: ["enhancement"]
 assignees: []
@@ -19,7 +19,7 @@ body:
     attributes:
       label: Motivation / Use case
       description: Explain why this feature is important and who it benefits.
-      placeholder: e.g. I need to import 10k contacts from our legacy system to Horilla CRM.
+      placeholder: e.g. I need to import 10k contacts from our legacy system to Finlo CRM.
   - type: textarea
     id: proposed_solution
     attributes:

@@ -1,0 +1,49 @@
+[Unit]
+Description=Finlo CRM Web Application
+Documentation=https://github.com/EternZiv/crm-v2
+After=network.target redis.service
+Wants=network.target
+Requires=network.target
+
+[Service]
+Type=exec
+User=finlo-crm
+Group=finlo-crm
+WorkingDirectory=/opt/finlo-crm
+Environment=PYTHONPATH=/opt/finlo-crm
+EnvironmentFile=-/etc/finlo-crm/finlo-crm.conf
+ExecStartPre=/bin/bash -c 'source /opt/finlo-crm/venv/bin/activate && python manage.py migrate --noinput'
+ExecStartPre=/bin/bash -c 'source /opt/finlo-crm/venv/bin/activate && python manage.py collectstatic --noinput'
+ExecStart=/opt/finlo-crm/venv/bin/gunicorn \
+    --bind 127.0.0.1:8000 \
+    --workers 3 \
+    --threads 2 \
+    --timeout 120 \
+    --access-logfile /var/log/finlo-crm/access.log \
+    --error-logfile /var/log/finlo-crm/error.log \
+    --log-level info \
+    --capture-output \
+    finlo.wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=30
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/finlo-crm /var/log/finlo-crm /opt/finlo-crm/media
+NoNewPrivileges=true
+RuntimeDirectory=finlo-crm
+RuntimeDirectoryMode=0755
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=300
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target

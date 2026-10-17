@@ -1,7 +1,7 @@
-"""URL configuration for the Horilla Calls Integration app."""
+"""URL configuration for the Finlo Calls Integration app."""
 
-# First party imports (Horilla)
-from horilla.urls import path
+# First party imports (Finlo)
+from finlo.urls import path
 
 # Local imports
 from . import views

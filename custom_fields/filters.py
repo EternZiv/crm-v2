@@ -1,11 +1,11 @@
 """Filter sets for Custom Field definition list views."""
 
-from horilla.contrib.generics.filters import HorillaFilterSet
+from finlo.contrib.generics.filters import FinloFilterSet
 
 from .models import CustomFieldDefinition
 
 
-class CustomFieldDefinitionFilter(HorillaFilterSet):
+class CustomFieldDefinitionFilter(FinloFilterSet):
     """Filter set for the Custom Field definitions list."""
 
     class Meta:

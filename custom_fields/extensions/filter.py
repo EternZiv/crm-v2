@@ -2,22 +2,22 @@
 Inject custom-field row filtering into filtersets through FilterExtension
 (_inherit_filter).
 
-Discovers ``HorillaFilterSet`` subclasses whose ``Meta.model`` opted in to
+Discovers ``FinloFilterSet`` subclasses whose ``Meta.model`` opted in to
 custom fields (via ``register_model_for_feature(...,
 features=["custom_fields_models"])`` in the model's own app
 ``registration.py``) and registers one ``FilterExtension`` per filterset,
 overriding ``_build_row_q`` so a ``cf_*`` filter row builds a real ``Q()``
-instead of Horilla's own ``_build_row_q`` (which only knows model columns).
+instead of Finlo's own ``_build_row_q`` (which only knows model columns).
 No model or filterset class is ever imported by name here.
 
 Mirrors ``custom_fields/extensions/forms.py``'s discovery pattern exactly: it
-registers a pre-compose hook (``horilla.extension._pre_compose_hooks``) so
+registers a pre-compose hook (``finlo.extension._pre_compose_hooks``) so
 newly opted-in models (registered by a CRM app's own ``registration.py``,
 possibly after this app's ``ready()``) are picked up without relying on
-import order — no Horilla module attribute is reassigned.
+import order — no Finlo module attribute is reassigned.
 
 This only replaces the row-filtering half of ``custom_fields/hooks/filter.py``.
-``HorillaListFilterFieldsMixin._get_model_fields`` (the "Filter Records"
+``FinloListFilterFieldsMixin._get_model_fields`` (the "Filter Records"
 field dropdown) is registered separately, through ``MixinExtension``/
 ``_inherit_mixin`` — see ``custom_fields/extensions/mixin.py`` — since it is
 a bare view mixin never resolved by any per-request extension mechanism.
@@ -35,11 +35,11 @@ from django.apps import apps as django_apps
 from custom_fields.hooks.filter import custom_field_row_q
 from custom_fields.utils import is_custom_field_name
 
-# First party imports (Horilla)
-from horilla.contrib.generics.filters import HorillaFilterSet
-from horilla.extension.filter import FilterExtension
-from horilla.extension.filter.registry import FILTER_EXTENSION_REGISTRY
-from horilla.registry.feature import FEATURE_REGISTRY
+# First party imports (Finlo)
+from finlo.contrib.generics.filters import FinloFilterSet
+from finlo.extension.filter import FilterExtension
+from finlo.extension.filter.registry import FILTER_EXTENSION_REGISTRY
+from finlo.registry.feature import FEATURE_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ def register_discovered_filter_extensions():
 
 
 def iter_configurable_model_filtersets():
-    """Yield HorillaFilterSet subclasses whose Meta.model opted in."""
+    """Yield FinloFilterSet subclasses whose Meta.model opted in."""
     configurable = _configurable_models()
     if not configurable:
         return
@@ -90,7 +90,7 @@ def _filterset_model(filterset_class):
 
 
 def _iter_app_model_filtersets(app_config):
-    """Yield HorillaFilterSet subclasses defined in ``{app}.filters`` modules."""
+    """Yield FinloFilterSet subclasses defined in ``{app}.filters`` modules."""
     for module in _iter_filters_modules(app_config):
         for filterset_class in _iter_module_model_filtersets(module):
             yield filterset_class
@@ -125,17 +125,17 @@ def _iter_filters_modules(app_config):
 
 
 def _iter_module_model_filtersets(module):
-    """Yield HorillaFilterSet subclasses defined in ``module``."""
+    """Yield FinloFilterSet subclasses defined in ``module``."""
     for _name, obj in inspect.getmembers(module, inspect.isclass):
         if obj.__module__ != module.__name__:
             continue
         if "." in getattr(obj, "__qualname__", ""):
             continue
-        if getattr(obj, "__horilla_composed__", False):
+        if getattr(obj, "__finlo_composed__", False):
             continue
-        if not issubclass(obj, HorillaFilterSet):
+        if not issubclass(obj, FinloFilterSet):
             continue
-        if obj is HorillaFilterSet:
+        if obj is FinloFilterSet:
             continue
         yield obj
 
@@ -168,9 +168,9 @@ class _FilterMethods(FilterExtension):
     template.
 
     Real ``super()`` here is safe despite that: ``compose_filterset_class``
-    (``horilla/extension/filter/compose.py``) rebinds the captured method's
+    (``finlo/extension/filter/compose.py``) rebinds the captured method's
     ``__class__`` closure cell to the actual mixin it ends up composed into
-    (see ``horilla.extension._super_rebind``), so ``super()._build_row_q(...)``
+    (see ``finlo.extension._super_rebind``), so ``super()._build_row_q(...)``
     correctly resolves to the next extension or the target filterset
     regardless of which subclass this function object is attached to.
     """
@@ -214,12 +214,12 @@ def _register_filter_extension(filterset_class):
 
 
 def _install_discovery_hook():
-    """Register discovery to run at the start of Horilla's filter-extension compose step."""
+    """Register discovery to run at the start of Finlo's filter-extension compose step."""
     global _DISCOVERY_HOOK_INSTALLED
     if _DISCOVERY_HOOK_INSTALLED:
         return
 
-    from horilla.extension._pre_compose_hooks import register_pre_compose_hook
+    from finlo.extension._pre_compose_hooks import register_pre_compose_hook
 
     register_pre_compose_hook("filter", register_discovered_filter_extensions)
     _DISCOVERY_HOOK_INSTALLED = True

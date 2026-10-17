@@ -1,7 +1,7 @@
 @echo off
-REM Test Horilla-CRM Windows Installer Structure
+REM Test Finlo CRM Windows Installer Structure
 
-echo Testing Horilla-CRM Windows Installer Structure...
+echo Testing Finlo CRM Windows Installer Structure...
 echo ==================================================
 
 cd /d "%~dp0"
@@ -11,7 +11,7 @@ set ERRORS=0
 echo Checking required files...
 
 REM Check main installer script
-if not exist "horilla-crm-installer.nsi" (
+if not exist "finlo-crm-installer.nsi" (
     echo ERROR: Main installer script not found
     set /a ERRORS+=1
 ) else (
@@ -26,7 +26,7 @@ if not exist "scripts\" (
     echo ✓ Scripts directory found
 
     REM Check individual scripts
-    set SCRIPTS=horilla_service.py setup-environment.bat horilla-crm-start.bat horilla-crm-stop.bat horilla-crm-admin.bat install-service.bat uninstall-service.bat
+    set SCRIPTS=finlo_service.py setup-environment.bat finlo-crm-start.bat finlo-crm-stop.bat finlo-crm-admin.bat install-service.bat uninstall-service.bat
 
     for %%s in (%SCRIPTS%) do (
         if not exist "scripts\%%s" (
@@ -46,7 +46,7 @@ if not exist "config\" (
     echo ✓ Config directory found
 
     REM Check config files
-    set CONFIGS=horilla-crm.conf logging.conf requirements-windows.txt
+    set CONFIGS=finlo-crm.conf logging.conf requirements-windows.txt
 
     for %%c in (%CONFIGS%) do (
         if not exist "config\%%c" (
@@ -91,7 +91,7 @@ if %ERRORS% == 0 (
     echo 1. Install NSIS from: https://nsis.sourceforge.io/
     echo 2. Run: build-installer.bat
     echo.
-    echo The installer will be named: Horilla-CRM-1.0.0-Setup.exe
+    echo The installer will be named: Finlo-CRM-1.0.0-Setup.exe
 ) else (
     echo FAILED: %ERRORS% errors found!
     echo Please check the missing files above.

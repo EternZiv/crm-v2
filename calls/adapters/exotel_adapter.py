@@ -1,4 +1,4 @@
-"""Exotel adapter for Horilla Calls Integration.
+"""Exotel adapter for Finlo Calls Integration.
 
 Exotel is India's leading cloud telephony platform.
 Unlike Twilio, Exotel's Connect API first calls the agent, then bridges to the customer.

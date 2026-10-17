@@ -8,15 +8,15 @@ import json
 import logging
 from datetime import date, datetime, timedelta
 
-from horilla.shortcuts import get_object_or_404, redirect, render
-from horilla.urls import reverse_lazy
-from horilla.utils import timezone
-from horilla.utils.choices import WEEK_ORDER
-from horilla.utils.translation import gettext_lazy as _
-from horilla.views.generic import View
+from finlo.shortcuts import get_object_or_404, redirect, render
+from finlo.urls import reverse_lazy
+from finlo.utils import timezone
+from finlo.utils.choices import WEEK_ORDER
+from finlo.utils.translation import gettext_lazy as _
+from finlo.views.generic import View
 
-# First party imports (Horilla)
-from horilla.web import JsonResponse
+# First party imports (Finlo)
+from finlo.web import JsonResponse
 
 # Local imports
 from ..models import Booking, BookingPage, build_public_booking_url
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class AvailableSlotView(View):
     """
     JSON endpoint: returns available time slots for a given date.
-    URL: /horilla_booking/book/<slug>/slots/?date=2026-05-20
+    URL: /finlo_booking/book/<slug>/slots/?date=2026-05-20
     """
 
     def get(self, request, slug):
@@ -221,7 +221,7 @@ class PublicBookingView(View):
 
         if page.is_online and page.meeting_provider:
             try:
-                from horilla.contrib.activity.views.create_view.meeting_helpers import (
+                from finlo.contrib.activity.views.create_view.meeting_helpers import (
                     generate_meeting_url,
                 )
 

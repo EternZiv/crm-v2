@@ -1,10 +1,6 @@
 (function () {
-    if (window._horillaNavigationHistoryInitialized || !window.htmx) return;
-    window._horillaNavigationHistoryInitialized = true;
-
-    const refreshHeader = "X-Horilla-History-Refresh";
-    let refreshId = 0;
-    let activeRefresh = null;
+    if (window._finloNavigationHistoryInitialized || !window.htmx) return;
+    window._finloNavigationHistoryInitialized = true;
 
     htmx.config.historyCacheSize = 20;
 
@@ -12,20 +8,28 @@
         return window.location.pathname + window.location.search;
     }
 
-    function hasUnsavedChanges(container) {
-        return Array.from(
-            container.querySelectorAll("input, textarea, select"),
-        ).some((field) => {
-            if (field.type === "checkbox" || field.type === "radio") {
-                return field.checked !== field.defaultChecked;
-            }
-            if (field.tagName === "SELECT") {
-                return Array.from(field.options).some(
-                    (option) => option.selected !== option.defaultSelected,
-                );
-            }
-            return field.value !== field.defaultValue;
+    function setActiveSectionFromPath(path) {
+        const sectionId = new URL(path, window.location.href).searchParams.get(
+            "section",
+        );
+        if (!sectionId) return;
+
+        const activeLink = document.getElementById(sectionId);
+        if (!activeLink || !activeLink.matches("nav a.nav-link")) return;
+
+        document.querySelectorAll("nav a.nav-link").forEach((link) => {
+            link.classList.remove("bg-primary-600", "hover:bg-primary-800");
         });
+        activeLink.classList.add("bg-primary-600", "hover:bg-primary-800");
+        window.localStorage.setItem("activeNavLinkId", sectionId);
+        window.localStorage.setItem("currentActiveSection", sectionId);
+        window.localStorage.setItem("lastActiveSection", sectionId);
+
+        if (sectionId === "home") {
+            window.localStorage.setItem("sidebarClicked", "false");
+            window.localStorage.removeItem("activeSidebarLinkId");
+            window.localStorage.removeItem("activeSidebarLinkId_home");
+        }
     }
 
     document.addEventListener(
@@ -86,6 +90,11 @@
 
             event.preventDefault();
             event.stopImmediatePropagation();
+            window.dispatchEvent(
+                new CustomEvent("finlo:cachedNavigation", {
+                    detail: { path: destinationPath },
+                }),
+            );
             window.history.pushState(
                 { ...window.history.state, htmx: true },
                 "",
@@ -96,70 +105,19 @@
                     state: window.history.state,
                 }),
             );
+            setActiveSectionFromPath(destinationPath);
         },
         true,
     );
 
-    document.body.addEventListener("htmx:historyRestore", function (event) {
-        const container = document.getElementById("mainContent");
-        const path = new URL(event.detail.path || currentPath(), window.location.href);
-        const restoredPath = path.pathname + path.search;
-        const requestId = ++refreshId;
-
-        if (!container || hasUnsavedChanges(container)) return;
-        if (activeRefresh) {
-            activeRefresh.abort();
-            activeRefresh = null;
-        }
-
-        window.setTimeout(function () {
-            if (
-                requestId !== refreshId ||
-                currentPath() !== restoredPath ||
-                !document.getElementById("mainContent")
-            ) {
-                return;
-            }
-
-            const refreshSource = document.getElementById(
-                "navigationHistoryRefresh",
-            );
-            if (!refreshSource) {
-                console.error(
-                    "The navigation history refresh source is missing from the application shell.",
-                );
-                return;
-            }
-
-            htmx.ajax("GET", path.href, {
-                source: refreshSource,
-                target: "#mainContent",
-                swap: "outerHTML",
-                headers: { [refreshHeader]: "true" },
-            });
-        }, 0);
+    document.addEventListener("htmx:historyRestore", function (event) {
+        setActiveSectionFromPath(event.detail?.path || currentPath());
     });
 
     document.body.addEventListener("htmx:beforeRequest", function (event) {
-        const isHistoryRefresh =
-            event.detail.requestConfig?.headers?.[refreshHeader] === "true";
-        if (isHistoryRefresh) {
-            activeRefresh = event.detail.xhr;
-        } else if (activeRefresh) {
-            activeRefresh.abort();
-            activeRefresh = null;
-            refreshId += 1;
-        }
-
         const path = event.detail.pathInfo?.requestPath || "";
         if (/\/logout\/?$/.test(path)) {
             window.sessionStorage.removeItem("htmx-history-cache");
-        }
-    });
-
-    document.body.addEventListener("htmx:afterRequest", function (event) {
-        if (event.detail.xhr === activeRefresh) {
-            activeRefresh = null;
         }
     });
 })();

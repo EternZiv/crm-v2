@@ -10,7 +10,7 @@ Import `EternZiv/crm-v2` from GitHub and set the project root to the repository
 root. Keep framework detection, build command, and output directory on their
 defaults. **Do not add `vercel.json` for this project:** Vercel detects Django
 from root `manage.py`, uses the configured ASGI application
-(`horilla.asgi.application`), and runs `collectstatic` because `STATIC_ROOT` is
+(`finlo.asgi.application`), and runs `collectstatic` because `STATIC_ROOT` is
 configured. No persistent web-server `start` command is used; requests run as
 Vercel Functions. Do not add migration or seeding commands to build or startup.
 

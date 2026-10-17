@@ -1,5 +1,5 @@
 """
-Tests for the horilla_booking app
+Tests for the finlo_booking app
 """
 
-# Create your horilla_booking tests here.
+# Create your finlo_booking tests here.

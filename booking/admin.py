@@ -1,5 +1,5 @@
 """
-Admin registration for the horilla_booking app
+Admin registration for the finlo_booking app
 """
 
-# Register your horilla_booking models here.
+# Register your finlo_booking models here.

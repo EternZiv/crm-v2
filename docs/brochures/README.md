@@ -4,8 +4,8 @@ Self-contained HTML product brochures for print and PDF. These are **not** Djang
 
 | File | Use |
 |------|-----|
-| [horilla_crm_brochure_short.html](horilla_crm_brochure_short.html) | Short / overview brochure |
-| [horilla_crm_brochure_detail.html](horilla_crm_brochure_detail.html) | Detailed brochure |
+| [finlo_crm_brochure_short.html](finlo_crm_brochure_short.html) | Short / overview brochure |
+| [finlo_crm_brochure_detail.html](finlo_crm_brochure_detail.html) | Detailed brochure |
 
 Titles currently reference **v1.15.0**; update the HTML `<title>` and body copy when you produce a new release brochure.
 
@@ -15,8 +15,8 @@ From the repo root:
 
 ```bash
 # Windows (PowerShell)
-start docs/brochures/horilla_crm_brochure_short.html
-start docs/brochures/horilla_crm_brochure_detail.html
+start docs/brochures/finlo_crm_brochure_short.html
+start docs/brochures/finlo_crm_brochure_detail.html
 ```
 
 Or open the files directly from File Explorer / Finder.
@@ -39,5 +39,5 @@ Save next to the HTML or under a dated release folder if you keep PDF archives o
 ## Notes
 
 - Keep brochures under `docs/brochures/` only — not under `templates/` or app packages.
-- Developer architecture docs stay in `docs/horilla/` and `docs/horilla_crm/`.
+- Developer architecture docs stay in `docs/finlo/` and `docs/finlo_crm/`.
 - Weekly prose release notes stay in `release.md` / `CHANGELOG.md` at the repo root; link here if needed.

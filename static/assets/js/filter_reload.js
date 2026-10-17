@@ -1,5 +1,5 @@
 // Handles reloading sidebar/parent view and cleaning URLs
-// after filter clear/remove actions in Horilla list views.
+// after filter clear/remove actions in Finlo list views.
 
 (function () {
   // Require HTMX to be present

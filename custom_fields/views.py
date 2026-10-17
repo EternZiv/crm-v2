@@ -2,22 +2,22 @@
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from horilla.contrib.generics.views import (
-    HorillaListView,
-    HorillaNavView,
-    HorillaSingleDeleteView,
-    HorillaSingleFormView,
-    HorillaView,
+from finlo.contrib.generics.views import (
+    FinloListView,
+    FinloNavView,
+    FinloSingleDeleteView,
+    FinloSingleFormView,
+    FinloView,
 )
-from horilla.urls import reverse_lazy
-from horilla.utils.decorators import (
+from finlo.urls import reverse_lazy
+from finlo.utils.decorators import (
     htmx_required,
     method_decorator,
     permission_required,
     permission_required_or_denied,
 )
-from horilla.utils.functional import cached_property
-from horilla.utils.translation import gettext_lazy as _
+from finlo.utils.functional import cached_property
+from finlo.utils.translation import gettext_lazy as _
 
 from .filters import CustomFieldDefinitionFilter
 from .forms import CustomFieldDefinitionForm
@@ -36,7 +36,7 @@ DELETE_PERM = "custom_fields.delete_customfielddefinition"
     ),
     name="dispatch",
 )
-class CustomFieldView(LoginRequiredMixin, HorillaView):
+class CustomFieldView(LoginRequiredMixin, FinloView):
     """Shell view for the custom fields settings page."""
 
     template_name = "settings/settings_list_shell.html"
@@ -47,7 +47,7 @@ class CustomFieldView(LoginRequiredMixin, HorillaView):
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required(VIEW_PERM), name="dispatch")
-class CustomFieldNavbar(LoginRequiredMixin, HorillaNavView):
+class CustomFieldNavbar(LoginRequiredMixin, FinloNavView):
     """Navbar for the custom fields settings page."""
 
     nav_title = _("Custom Fields")
@@ -78,7 +78,7 @@ class CustomFieldNavbar(LoginRequiredMixin, HorillaNavView):
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required_or_denied(VIEW_PERM), name="dispatch")
-class CustomFieldListView(LoginRequiredMixin, HorillaListView):
+class CustomFieldListView(LoginRequiredMixin, FinloListView):
     """List view for custom field definitions."""
 
     model = CustomFieldDefinition
@@ -138,7 +138,7 @@ class CustomFieldListView(LoginRequiredMixin, HorillaListView):
 
 
 @method_decorator(htmx_required, name="dispatch")
-class CustomFieldFormView(LoginRequiredMixin, HorillaSingleFormView):
+class CustomFieldFormView(LoginRequiredMixin, FinloSingleFormView):
     """Create / update form view for a custom field definition."""
 
     model = CustomFieldDefinition
@@ -162,7 +162,7 @@ class CustomFieldFormView(LoginRequiredMixin, HorillaSingleFormView):
     permission_required_or_denied(DELETE_PERM, modal=True),
     name="dispatch",
 )
-class CustomFieldDeleteView(LoginRequiredMixin, HorillaSingleDeleteView):
+class CustomFieldDeleteView(LoginRequiredMixin, FinloSingleDeleteView):
     """Delete view for custom field definitions."""
 
     model = CustomFieldDefinition

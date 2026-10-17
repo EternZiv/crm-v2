@@ -1,8 +1,8 @@
 """
-Shared helpers so custom fields appear in Horilla's Select Columns to Export
+Shared helpers so custom fields appear in Finlo's Select Columns to Export
 modal and are written into exported files.
 
-Horilla's export catalog only knows about model columns. The functions here
+Finlo's export catalog only knows about model columns. The functions here
 are consumed by extension registrations, not applied as monkey-patches
 themselves:
 
@@ -12,7 +12,7 @@ themselves:
   ``_inherit_view`` applies).
 - ``_install_export_properties``/``_uninstall_export_properties`` are used
   by ``CustomFieldBulkExportExtension`` in
-  ``custom_fields/extensions/mixin.py`` (``HorillaBulkExportMixin`` is a
+  ``custom_fields/extensions/mixin.py`` (``FinloBulkExportMixin`` is a
   bare mixin, and ``get_export_cell_value`` a bare module function — neither
   is ever dispatched or resolved, so both are extended through
   ``MixinExtension``/``_inherit_mixin`` instead). They install/uninstall
@@ -29,7 +29,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
 from custom_fields.hooks.detail import custom_field_selector_items
-from horilla.contrib.core.utils import sanitize_export_value
+from finlo.contrib.core.utils import sanitize_export_value
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def _cf_property(name):
 
 
 def _install_export_properties(model, extras):
-    """Expose ``cf_*`` names as properties so Horilla's export catalog includes them."""
+    """Expose ``cf_*`` names as properties so Finlo's export catalog includes them."""
     installed = []
     for _label, name in extras:
         if not hasattr(model, name):
@@ -92,7 +92,7 @@ def _cell_values(obj, extra_pairs):
 
 def add_custom_fields_to_export_modules(modules):
     """Add custom fields to Settings → Export Data column pickers."""
-    from horilla.apps import apps
+    from finlo.apps import apps
 
     for module in modules or []:
         app_label = module.get("app_label")

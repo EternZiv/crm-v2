@@ -1,4 +1,4 @@
-# Windows Requirements for Horilla-CRM
+# Windows Requirements for Finlo CRM
 # Additional packages needed for Windows deployment
 
 # Core Django requirements (from main requirements.txt)
@@ -52,12 +52,8 @@ python-windows-service>=0.1.0
 redis>=4.0.0
 channels-redis>=4.0.0
 
-# Optional: Database drivers
-# For PostgreSQL
+# Required Supabase PostgreSQL driver
 psycopg2-binary>=2.9.0
-
-# For MySQL/MariaDB
-mysqlclient>=2.1.0
 
 # Optional: Production web server
 waitress>=2.1.0

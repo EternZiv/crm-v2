@@ -1,0 +1,189 @@
+"""
+Global (standalone) per-type list views — shown in the tabbed activity page.
+"""
+
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+from finlo.contrib.generics.views import FinloListView
+from finlo.urls import reverse_lazy
+from finlo.utils.decorators import (
+    htmx_required,
+    method_decorator,
+    permission_required_or_denied,
+)
+from finlo.utils.translation import gettext_lazy as _
+
+from .mixins import GlobalTypeListMixin
+
+
+@method_decorator(htmx_required, name="dispatch")
+@method_decorator(
+    permission_required_or_denied(
+        ["activity.view_activity", "activity.view_own_activity"]
+    ),
+    name="dispatch",
+)
+class GlobalTaskListView(GlobalTypeListMixin, LoginRequiredMixin, FinloListView):
+    """Global Task list — all tasks across all related objects."""
+
+    _activity_type = "task"
+    view_id = "global-task-list"
+
+    columns = [
+        "subject",
+        "due_datetime",
+        "task_priority",
+        (_("Related To"), "related_object_col"),
+        ("status", "status_col"),
+    ]
+    # Activity is shared across Task/Meeting/Call/Event views; keep the other
+    # types' exclusive fields out of this view's "Available Fields" picker.
+    exclude_columns = [
+        "start_datetime",
+        "end_datetime",
+        "location",
+        "is_online",
+        "meeting_provider",
+        "meeting_url",
+        "is_all_day",
+        "meeting_host",
+        "mail_template",
+        "google_event_id",
+        "call_duration_display",
+        "call_duration_seconds",
+        "call_type",
+        "call_purpose",
+        "recipient_email",
+        "external_participants",
+    ]
+
+    def get_search_url(self):
+        """Return the search URL for the global task list."""
+        return reverse_lazy("activity:global_task_list")
+
+
+@method_decorator(htmx_required, name="dispatch")
+@method_decorator(
+    permission_required_or_denied(
+        ["activity.view_activity", "activity.view_own_activity"]
+    ),
+    name="dispatch",
+)
+class GlobalMeetingListView(GlobalTypeListMixin, LoginRequiredMixin, FinloListView):
+    """Global Meeting list — all meetings across all related objects."""
+
+    _activity_type = "meeting"
+    view_id = "global-meeting-list"
+
+    columns = [
+        "subject",
+        ("start_datetime", "get_start_date"),
+        ("end_datetime", "get_end_date"),
+        ("meeting_url", "meeting_link_col"),
+        (_("Related To"), "related_object_col"),
+        ("status", "status_col"),
+    ]
+    # Activity is shared across Task/Meeting/Call/Event views; keep the other
+    # types' exclusive fields out of this view's "Available Fields" picker.
+    exclude_columns = [
+        "task_priority",
+        "due_datetime",
+        "call_duration_display",
+        "call_duration_seconds",
+        "call_type",
+        "call_purpose",
+        "recipient_email",
+        "external_participants",
+    ]
+
+    def get_search_url(self):
+        """Return the search URL for the global meeting list."""
+        return reverse_lazy("activity:global_meeting_list")
+
+
+@method_decorator(htmx_required, name="dispatch")
+@method_decorator(
+    permission_required_or_denied(
+        ["activity.view_activity", "activity.view_own_activity"]
+    ),
+    name="dispatch",
+)
+class GlobalCallListView(GlobalTypeListMixin, LoginRequiredMixin, FinloListView):
+    """Global Call list — all calls across all related objects."""
+
+    _activity_type = "log_call"
+    view_id = "global-call-list"
+
+    columns = [
+        "subject",
+        "call_purpose",
+        "call_type",
+        "call_duration_display",
+        (_("Related To"), "related_object_col"),
+        ("status", "status_col"),
+    ]
+    # Activity is shared across Task/Meeting/Call/Event views; keep the other
+    # types' exclusive fields out of this view's "Available Fields" picker.
+    exclude_columns = [
+        "task_priority",
+        "due_datetime",
+        "start_datetime",
+        "end_datetime",
+        "location",
+        "is_online",
+        "meeting_provider",
+        "meeting_url",
+        "is_all_day",
+        "meeting_host",
+        "mail_template",
+        "google_event_id",
+    ]
+
+    def get_search_url(self):
+        """Return the search URL for the global call list."""
+        return reverse_lazy("activity:global_call_list")
+
+
+@method_decorator(htmx_required, name="dispatch")
+@method_decorator(
+    permission_required_or_denied(
+        ["activity.view_activity", "activity.view_own_activity"]
+    ),
+    name="dispatch",
+)
+class GlobalEventListView(GlobalTypeListMixin, LoginRequiredMixin, FinloListView):
+    """Global Event list — all events across all related objects."""
+
+    _activity_type = "event"
+    view_id = "global-event-list"
+
+    columns = [
+        "subject",
+        ("start_datetime", "get_start_date"),
+        ("end_datetime", "get_end_date"),
+        "location",
+        (_("Related To"), "related_object_col"),
+        ("status", "status_col"),
+    ]
+    # Activity is shared across Task/Meeting/Call/Event views; keep the other
+    # types' exclusive fields out of this view's "Available Fields" picker.
+    exclude_columns = [
+        "task_priority",
+        "due_datetime",
+        "call_duration_display",
+        "call_duration_seconds",
+        "call_type",
+        "call_purpose",
+        "recipient_email",
+        "external_participants",
+        "is_online",
+        "meeting_provider",
+        "meeting_url",
+        "meeting_host",
+        "mail_template",
+        "google_event_id",
+    ]
+
+    def get_search_url(self):
+        """Return the search URL for the global event list."""
+        return reverse_lazy("activity:global_event_list")

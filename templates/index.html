@@ -78,7 +78,11 @@
         {% endfor %}
     </head>
 
-    <body class="bg-secondary-50 font-[Inter,_sans-serif]" data-user-id="{{ request.user.id|default:0 }}">
+    <body
+        class="bg-secondary-50 font-[Inter,_sans-serif]"
+        data-user-id="{{ request.user.id|default:0 }}"
+        data-company-scope="{% if request.session.show_all_companies %}all{% else %}{{ request.active_company.pk|default:request.user.company_id|default:'none' }}{% endif %}"
+    >
         <!-- Body Start: Early body initialization -->
         {% load_registered_html "body_start" as body_start_html %}
         {% for tpl in body_start_html %}
@@ -104,7 +108,7 @@
             {% block content %}{% endblock content %}
 
             <!-- Modals -->
-            {% include "components/horilla_modals.html" %}
+            {% include "components/finlo_modals.html" %}
         </div>
 
         <!-- Sidebar -->
@@ -121,11 +125,6 @@
             hidden
         >
         </button>
-        <button
-            id="navigationHistoryRefresh"
-            hx-select="#mainContent"
-            hidden
-        ></button>
         <div id="reloadMessages">
             {% include "messages.html" %}
         </div>
@@ -145,7 +144,7 @@
         <script src="{% static 'assets/js/list_view.js' %}"></script>
         <script src="{% static 'assets/js/select2_htmx_cleanup.js' %}"></script>
         <script src="{% static 'assets/js/action_tooltip.js' %}"></script>
-        <script src="{% static 'assets/js/horilla_charts.js' %}"></script>
+        <script src="{% static 'assets/js/finlo_charts.js' %}"></script>
         <script src="{% static 'assets/js/calendar.js' %}"></script>
         <script src="{% static 'assets/js/full_calendar.js' %}"></script>
 

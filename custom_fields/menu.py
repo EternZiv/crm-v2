@@ -1,8 +1,8 @@
 """Settings menu registration for Custom Fields."""
 
-from horilla.menu import settings_menu
-from horilla.urls import reverse_lazy
-from horilla.utils.translation import gettext_lazy as _
+from finlo.menu import settings_menu
+from finlo.urls import reverse_lazy
+from finlo.utils.translation import gettext_lazy as _
 
 
 @settings_menu.register

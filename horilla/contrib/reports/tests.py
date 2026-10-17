@@ -1,6 +1,0 @@
-"""Unit tests for `horilla.contrib.reports`.
-
-Add tests here to cover report creation, loading defaults, and report helpers.
-"""
-
-# Create your reports tests here.

@@ -1,12 +1,12 @@
-# Horilla-CRM Windows Installer
+# Finlo CRM Windows Installer
 
-This directory contains the complete Windows installer infrastructure for Horilla-CRM, including NSIS installer script, Windows service integration, and management tools.
+This directory contains the complete Windows installer infrastructure for Finlo CRM, including NSIS installer script, Windows service integration, and management tools.
 
 ## Overview
 
 The Windows installer provides:
 - **Automated Installation**: One-click setup with dependency management
-- **Windows Service**: Background operation with automatic startup
+- **Windows Service**: Background operation, started explicitly by an administrator
 - **Management Tools**: Batch scripts for administration and control
 - **System Integration**: Start Menu shortcuts and desktop integration
 - **Security**: Runs as dedicated service with proper permissions
@@ -35,20 +35,19 @@ build-installer.bat
 ### Method 2: Manual Build
 ```batch
 cd windows-installer
-makensis horilla-crm-installer.nsi
+makensis finlo-crm-installer.nsi
 ```
 
 ## Installation Structure
 
 ### Installation Directories:
-- **Application**: `C:\Program Files\Horilla-CRM\`
-- **Configuration**: `%APPDATA%\Horilla-CRM\config\`
-- **Data**: `%APPDATA%\Horilla-CRM\data\`
-- **Logs**: `%APPDATA%\Horilla-CRM\logs\`
-- **Media Files**: `%APPDATA%\Horilla-CRM\media\`
+- **Application**: `C:\Program Files\Finlo-CRM\`
+- **Configuration**: `%ProgramData%\Finlo-CRM\config\`
+- **Logs**: `%ProgramData%\Finlo-CRM\logs\`
+- **Media Files**: `%ProgramData%\Finlo-CRM\media\`
 
 ### Installed Components:
-- Core Horilla-CRM application
+- Core Finlo CRM application
 - Python virtual environment with dependencies
 - Windows service wrapper
 - Management batch scripts
@@ -58,9 +57,9 @@ makensis horilla-crm-installer.nsi
 ## Management Scripts
 
 ### Core Scripts:
-- **`horilla-crm-start.bat`**: Start the application server
-- **`horilla-crm-stop.bat`**: Stop the application server
-- **`horilla-crm-admin.bat`**: Administration interface
+- **`finlo-crm-start.bat`**: Start the application server
+- **`finlo-crm-stop.bat`**: Stop the application server
+- **`finlo-crm-admin.bat`**: Administration interface
 - **`setup-environment.bat`**: Environment setup (auto-run during install)
 
 ### Service Management:
@@ -68,7 +67,7 @@ makensis horilla-crm-installer.nsi
 - **`uninstall-service.bat`**: Remove Windows service
 
 ### Service Features:
-- **Automatic Startup**: Starts with Windows
+- **Manual Startup**: Installed stopped and set to demand-start
 - **Background Operation**: Runs without user login
 - **Crash Recovery**: Automatic restart on failure
 - **Logging**: Comprehensive error and access logs
@@ -77,100 +76,78 @@ makensis horilla-crm-installer.nsi
 ## Configuration
 
 ### Main Configuration File:
-`%APPDATA%\Horilla-CRM\config\horilla-crm.conf`
+`%ProgramData%\Finlo-CRM\config\finlo-crm.conf`
 
 Key settings:
 ```ini
 # Security
-SECRET_KEY=auto-generated-key
+# SECRET_KEY is generated uniquely during setup; keep it private
 DEBUG=0
 
 # Network
 ALLOWED_HOSTS=localhost,127.0.0.1
 CSRF_TRUSTED_ORIGINS=http://localhost:8000
 
-# Database (examples)
-# SQLite (default):
-DATABASE_URL=sqlite:///C:/Users/{user}/AppData/Roaming/Horilla-CRM/data/horilla.db
-
-# PostgreSQL:
-DATABASE_URL=postgres://username:password@localhost:5432/horilla_crm
-
-# MySQL:
-DATABASE_URL=mysql://username:password@localhost:3306/horilla_crm
-```
+# Required Supabase PostgreSQL connection URL (sslmode=require)
+DATABASE_URL=<Supabase connection URL>
 
 ## Usage Instructions
 
 ### After Installation:
 
 1. **First-time Setup**:
+   Configure the Supabase `DATABASE_URL` before starting the application.
+   This installer does not create a local database. Existing Supabase users
+   should sign in with their existing account; create an administrator only
+   when authorized.
    ```batch
    # Create administrative user
-   "C:\Program Files\Horilla-CRM\scripts\horilla-crm-admin.bat"
-   # Choose option 1: Create superuser
+   "C:\Program Files\Finlo-CRM\scripts\finlo-crm-admin.bat"
+   # Choose option 1 only if you are authorized to create an administrator
    ```
 
 2. **Start Application**:
-   - **Manual**: Use Start Menu → Horilla-CRM
-   - **Service**: Automatic startup (if service installed)
+   - Configure `DATABASE_URL` in the machine-wide configuration first.
+   - **Manual**: Use Start Menu → Finlo CRM
+   - **Service**: Start explicitly with `net start FinloCRM` after configuration.
+     The installer does not start the service or configure automatic startup.
    - **URL**: http://localhost:8000
 
 3. **Administration**:
    ```batch
    # Open admin interface
-   "C:\Program Files\Horilla-CRM\scripts\horilla-crm-admin.bat"
+   "C:\Program Files\Finlo-CRM\scripts\finlo-crm-admin.bat"
    ```
 
 4. **Service Management**:
    ```batch
-   # Install service (requires admin)
-   "C:\Program Files\Horilla-CRM\scripts\install-service.bat"
+   # Install service (requires admin); installed in demand-start mode
+   "C:\Program Files\Finlo-CRM\scripts\install-service.bat"
 
-   # Control via Windows services or:
-   net start HorillaCRM
-   net stop HorillaCRM
+   # Start and stop explicitly:
+   net start FinloCRM
+   net stop FinloCRM
    ```
 
 ## Database Setup
 
-### SQLite (Default):
-- **Auto-configured**: Works out of the box
-- **Location**: `%APPDATA%\Horilla-CRM\data\horilla.db`
-- **Good for**: Testing, small deployments
+Finlo CRM requires Supabase PostgreSQL. Configure `DATABASE_URL` in
+`%ProgramData%\Finlo-CRM\config\finlo-crm.conf` using the Supabase Project
+Settings > Database connection URL, with `sslmode=require`. Local SQLite and
+MySQL are not supported application databases. Never commit or share the
+connection string.
 
-### PostgreSQL (Recommended for Production):
-1. Install PostgreSQL
-2. Create database and user:
-   ```sql
-   CREATE DATABASE horilla_crm;
-   CREATE USER horilla_user WITH PASSWORD 'secure_password';
-   GRANT ALL PRIVILEGES ON DATABASE horilla_crm TO horilla_user;
-   ```
-3. Update configuration:
-   ```ini
-   DATABASE_URL=postgres://horilla_user:secure_password@localhost:5432/horilla_crm
-   ```
-
-### MySQL:
-1. Install MySQL/MariaDB
-2. Create database and user:
-   ```sql
-   CREATE DATABASE horilla_crm;
-   CREATE USER 'horilla_user'@'localhost' IDENTIFIED BY 'secure_password';
-   GRANT ALL PRIVILEGES ON horilla_crm.* TO 'horilla_user'@'localhost';
-   ```
-3. Update configuration:
-   ```ini
-   DATABASE_URL=mysql://horilla_user:secure_password@localhost:3306/horilla_crm
-   ```
+The installer and application startup do not apply database migrations. Before
+starting a newly installed or upgraded version, review the release's migrations
+and back up the shared database. Then run the admin script and select option 2
+to apply migrations intentionally. This changes the Supabase schema.
 
 ## Web Server Integration
 
 ### IIS Integration:
 1. Install IIS with CGI support
 2. Install Python CGI handler
-3. Configure virtual directory pointing to Horilla-CRM
+3. Configure the virtual directory to point to the Finlo CRM installation
 
 ### Nginx for Windows:
 1. Download Nginx for Windows
@@ -201,7 +178,7 @@ DATABASE_URL=mysql://username:password@localhost:3306/horilla_crm
 - **Network**: Bound to localhost by default
 
 ### Hardening:
-- Change default SECRET_KEY
+- Keep the generated `SECRET_KEY` private and back it up securely
 - Use strong database passwords
 - Enable HTTPS in production
 - Regular security updates
@@ -221,10 +198,10 @@ DATABASE_URL=mysql://username:password@localhost:3306/horilla_crm
 ### Application Issues:
 1. **Can't Access Web Interface**: Check if server is running on correct port
 2. **Static Files Missing**: Run `collectstatic` command via admin interface
-3. **Database Migration Errors**: Run migrations via admin interface
+3. **Database Migration Errors**: Review the migration output. Apply migrations explicitly from the admin interface only after reviewing and backing up the shared database; startup does not migrate automatically.
 
 ### Log Files:
-- **Application Logs**: `%APPDATA%\Horilla-CRM\logs\`
+- **Application Logs**: `%ProgramData%\Finlo-CRM\logs\`
 - **Service Logs**: Windows Event Viewer → Applications and Services
 - **Web Server Logs**: Access and error logs in logs directory
 
@@ -232,18 +209,18 @@ DATABASE_URL=mysql://username:password@localhost:3306/horilla_crm
 
 ```
 windows-installer/
-├── horilla-crm-installer.nsi     # Main NSIS installer script
+├── finlo-crm-installer.nsi     # Main NSIS installer script
 ├── build-installer.bat           # Automated build script
 ├── scripts/                      # Management scripts
-│   ├── horilla_service.py        # Windows service wrapper
+│   ├── finlo_service.py        # Windows service wrapper
 │   ├── setup-environment.bat     # Environment setup
-│   ├── horilla-crm-start.bat     # Start application
-│   ├── horilla-crm-stop.bat      # Stop application
-│   ├── horilla-crm-admin.bat     # Admin interface
+│   ├── finlo-crm-start.bat     # Start application
+│   ├── finlo-crm-stop.bat      # Stop application
+│   ├── finlo-crm-admin.bat     # Admin interface
 │   ├── install-service.bat       # Install service
 │   └── uninstall-service.bat     # Remove service
 ├── config/                       # Configuration files
-│   ├── horilla-crm.conf          # Main configuration
+│   ├── finlo-crm.conf          # Main configuration
 │   ├── logging.conf              # Logging configuration
 │   └── requirements-windows.txt  # Windows-specific dependencies
 ├── icons/                        # Application icons (add custom)
@@ -256,7 +233,7 @@ windows-installer/
 ### Signing the Installer:
 For production distribution, sign the installer with a code signing certificate:
 ```batch
-signtool sign /f certificate.pfx /p password /t http://timestamp.digicert.com Horilla-CRM-1.0.0-Setup.exe
+signtool sign /f certificate.pfx /p password /t http://timestamp.digicert.com Finlo-CRM-1.0.0-Setup.exe
 ```
 
 ### Deployment Options:
@@ -268,7 +245,7 @@ signtool sign /f certificate.pfx /p password /t http://timestamp.digicert.com Ho
 ## Support
 
 - **Documentation**: Available in installed application
-- **GitHub**: https://github.com/horilla-opensource/horilla-crm
+- **GitHub**: https://github.com/EternZiv/crm-v2
 - **Issues**: Use GitHub issue tracker
 - **Community**: Check project documentation for community resources
 

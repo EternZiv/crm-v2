@@ -122,34 +122,34 @@ Keep these unchanged unless intentional:
 
 ### Calendar
 
-- `horilla/contrib/calendar/templates/calendar.html`
+- `finlo/contrib/calendar/templates/calendar.html`
 
 ### Dashboard
 
-- `horilla/contrib/dashboard/templates/dashboard_list_view.html`
-- `horilla/contrib/dashboard/templates/dashboard_detail_view.html`
-- `horilla/contrib/dashboard/templates/favourite_dashboard.html`
-- `horilla/contrib/dashboard/templates/dashboard_folder_detail.html`
-- `horilla/contrib/dashboard/templates/favourite_folder.html`
-- `horilla/contrib/dashboard/templates/home/default_home.html`
+- `finlo/contrib/dashboard/templates/dashboard_list_view.html`
+- `finlo/contrib/dashboard/templates/dashboard_detail_view.html`
+- `finlo/contrib/dashboard/templates/favourite_dashboard.html`
+- `finlo/contrib/dashboard/templates/dashboard_folder_detail.html`
+- `finlo/contrib/dashboard/templates/favourite_folder.html`
+- `finlo/contrib/dashboard/templates/home/default_home.html`
 
 ### Generics
 
-- `horilla/contrib/generics/templates/base.html`
-- `horilla/contrib/generics/templates/detail_view.html`
-- `horilla/contrib/generics/templates/global_search.html`
+- `finlo/contrib/generics/templates/base.html`
+- `finlo/contrib/generics/templates/detail_view.html`
+- `finlo/contrib/generics/templates/global_search.html`
 
 ### Reports
 
-- `horilla/contrib/reports/templates/report_list_view.html`
-- `horilla/contrib/reports/templates/report_detail.html`
-- `horilla/contrib/reports/templates/report_folder_detail.html`
-- `horilla/contrib/reports/templates/favourite_report_list_view.html`
-- `horilla/contrib/reports/templates/favourite_folder_list.html`
+- `finlo/contrib/reports/templates/report_list_view.html`
+- `finlo/contrib/reports/templates/report_detail.html`
+- `finlo/contrib/reports/templates/report_folder_detail.html`
+- `finlo/contrib/reports/templates/favourite_report_list_view.html`
+- `finlo/contrib/reports/templates/favourite_folder_list.html`
 
 ### Process approvals
 
-- `horilla/contrib/process/approvals/templates/approval_job_detail_page.html`
+- `finlo/contrib/process/approvals/templates/approval_job_detail_page.html`
 
 ## Special Cases
 

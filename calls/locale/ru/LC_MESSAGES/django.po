@@ -588,7 +588,7 @@ msgstr ""
 msgid "Call Now"
 msgstr ""
 
-msgid "Connect a calling provider to make and log calls from Horilla."
+msgid "Connect a calling provider to make and log calls from Finlo."
 msgstr ""
 
 msgid "Call Settings"

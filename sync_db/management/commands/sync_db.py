@@ -72,31 +72,31 @@ class LogMixin:
 
 
 class Command(LogMixin, BaseCommand):
-    """Migrate and remap Horilla CRM v1.9 database labels to v1.10.0."""
+    """Migrate and remap legacy v1.9 database labels to v1.10.0."""
 
     help = "Sync db: migrate DB structure, remap app labels, update references"
 
     APP_REMAP = {
-        "horilla_activity": "activity",
-        "horilla_automations": "automations",
-        "horilla_cadences": "cadences",
-        "horilla_calendar": "calendar",
-        "horilla_core": "core",
-        "horilla_dashboard": "dashboard",
-        "horilla_duplicates": "duplicates",
-        "horilla_generics": "generics",
-        "horilla_keys": "keys",
-        "horilla_mail": "mail",
-        "horilla_notifications": "notifications",
-        "horilla_reports": "reports",
-        "horilla_theme": "theme",
-        "horilla_utils": "utils",
+        "finlo_activity": "activity",
+        "finlo_automations": "automations",
+        "finlo_cadences": "cadences",
+        "finlo_calendar": "calendar",
+        "finlo_core": "core",
+        "finlo_dashboard": "dashboard",
+        "finlo_duplicates": "duplicates",
+        "finlo_generics": "generics",
+        "finlo_keys": "keys",
+        "finlo_mail": "mail",
+        "finlo_notifications": "notifications",
+        "finlo_reports": "reports",
+        "finlo_theme": "theme",
+        "finlo_utils": "utils",
     }
 
     def handle(self, *args, **options):
         """Run migration remap, content-type updates, audit fixes, and session clear."""
         self.section("SYNC DB STARTED")
-        self.info("Syncing DB from Horilla CRM v1.9 to v1.10.0")
+        self.info("Syncing legacy database labels to v1.10.0")
 
         # ==========================================
         # 1. Migration records
@@ -186,7 +186,7 @@ class Command(LogMixin, BaseCommand):
     # CONTENT TYPE REMAP
     # =====================================================
     def remap_content_types(self):
-        """Remap ContentType app_label values from legacy horilla_* names."""
+        """Remap ContentType app_label values from legacy finlo_* names."""
         self.warn("Remapping content types...")
 
         new_labels = list(self.APP_REMAP.values())

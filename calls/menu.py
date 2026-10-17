@@ -1,14 +1,14 @@
 """
 Registers Settings → Integrations and My Settings menu entries
-for the Horilla Calls Integration app.
+for the Finlo Calls Integration app.
 """
 
-from horilla.contrib.core.menu import IntegrationsSettings
-from horilla.menu import my_settings_menu
+from finlo.contrib.core.menu import IntegrationsSettings
+from finlo.menu import my_settings_menu
 
-# First party imports (Horilla)
-from horilla.urls import reverse_lazy
-from horilla.utils.translation import gettext_lazy as _
+# First party imports (Finlo)
+from finlo.urls import reverse_lazy
+from finlo.utils.translation import gettext_lazy as _
 
 # Local imports
 from .models import CallIntegrationSetting

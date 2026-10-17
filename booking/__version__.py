@@ -1,6 +1,6 @@
 """Version and metadata for the booking app."""
 
-from horilla.utils.translation import gettext_lazy as _
+from finlo.utils.translation import gettext_lazy as _
 
 __version__ = "1.11.9"
 __module_name__ = _("Booking")
@@ -33,7 +33,7 @@ __1_11_6__ = _(
 )
 
 __1_11_5__ = _(
-    "Use shared WEEK_ORDER / weekday choices and the Horilla generic View base. "
+    "Use shared WEEK_ORDER / weekday choices and the Finlo generic View base. "
     "Apply runtime viewport fit on booking settings list and detail pages."
 )
 

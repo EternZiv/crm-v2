@@ -1,5 +1,5 @@
 """
-Telephony provider adapters for Horilla Calls Integration.
+Telephony provider adapters for Finlo Calls Integration.
 
 Import all adapters here so they self-register via @register_adapter() when
 AppConfig.ready() triggers auto_import_modules.

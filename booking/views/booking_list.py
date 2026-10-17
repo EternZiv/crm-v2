@@ -9,24 +9,24 @@ from functools import cached_property
 # Third-party imports (Django)
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from horilla.contrib.generics.views import (
-    HorillaListView,
-    HorillaModalDetailView,
-    HorillaNavView,
-    HorillaView,
+from finlo.contrib.generics.views import (
+    FinloListView,
+    FinloModalDetailView,
+    FinloNavView,
+    FinloView,
 )
-from horilla.shortcuts import get_object_or_404, render
-from horilla.urls import reverse_lazy
-from horilla.utils.decorators import (
+from finlo.shortcuts import get_object_or_404, render
+from finlo.urls import reverse_lazy
+from finlo.utils.decorators import (
     htmx_required,
     method_decorator,
     permission_required,
 )
-from horilla.utils.translation import gettext_lazy as _
-from horilla.views.generic import View
+from finlo.utils.translation import gettext_lazy as _
+from finlo.views.generic import View
 
-# First party imports (Horilla)
-from horilla.web import ScriptResponse
+# First party imports (Finlo)
+from finlo.web import ScriptResponse
 
 # Local imports
 from ..filters import BookingFilter
@@ -52,7 +52,7 @@ class BookingPageDetailView(LoginRequiredMixin, View):
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required("booking.view_booking"), name="dispatch")
-class BookingListNavView(LoginRequiredMixin, HorillaNavView):
+class BookingListNavView(LoginRequiredMixin, FinloNavView):
     """Navbar for the per-BookingPage booking list."""
 
     model_name = "booking"
@@ -99,7 +99,7 @@ class BookingListNavView(LoginRequiredMixin, HorillaNavView):
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required("booking.view_booking"), name="dispatch")
-class BookingListView(LoginRequiredMixin, HorillaListView):
+class BookingListView(LoginRequiredMixin, FinloListView):
     """List bookings made against a specific BookingPage."""
 
     model = Booking
@@ -169,7 +169,7 @@ class BookingListView(LoginRequiredMixin, HorillaListView):
         )
 
 
-class MyBookingsView(LoginRequiredMixin, HorillaView):
+class MyBookingsView(LoginRequiredMixin, FinloView):
     """Shell page for My Bookings under My Jobs."""
 
     nav_url = reverse_lazy("booking:my_bookings_nav")
@@ -178,7 +178,7 @@ class MyBookingsView(LoginRequiredMixin, HorillaView):
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required("booking.view_booking"), name="dispatch")
-class MyBookingsNavView(LoginRequiredMixin, HorillaNavView):
+class MyBookingsNavView(LoginRequiredMixin, FinloNavView):
     """Navbar partial for My Bookings."""
 
     _nav_title = _("My Bookings")
@@ -196,7 +196,7 @@ class MyBookingsNavView(LoginRequiredMixin, HorillaNavView):
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required("booking.view_booking"), name="dispatch")
-class MyBookingsListView(LoginRequiredMixin, HorillaListView):
+class MyBookingsListView(LoginRequiredMixin, FinloListView):
     """HTMX list partial — bookings where current user is host or participant."""
 
     model = Booking
@@ -252,7 +252,7 @@ class MyBookingsListView(LoginRequiredMixin, HorillaListView):
     ]
 
     def get_queryset(self):
-        from horilla.db.models import Q
+        from finlo.db.models import Q
 
         qs = super().get_queryset()
         user = self.request.user
@@ -299,7 +299,7 @@ class BookingStatusUpdateView(LoginRequiredMixin, View):
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required("booking.view_booking"), name="dispatch")
-class BookingDetailModalView(LoginRequiredMixin, HorillaModalDetailView):
+class BookingDetailModalView(LoginRequiredMixin, FinloModalDetailView):
     """Modal detail view for a single Booking."""
 
     model = Booking

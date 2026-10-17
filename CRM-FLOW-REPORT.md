@@ -14,16 +14,16 @@ behavior.
 
 ## 1. What the application is
 
-Finlo CRM is a Django CRM product built on the shared Horilla platform. The
+Finlo CRM is a Django CRM product built on the shared application platform. The
 CRM owns sales/marketing records such as accounts, contacts, leads,
 opportunities, campaigns, and forecasts. Shared platform apps supply users,
 roles, activities, calendar, mail, dashboards, reports, notifications,
 automation, and settings.
 
-- Main CRM product: `horilla_crm/`
-- Shared platform: `horilla/`, especially `horilla/contrib/`
+- Main CRM product: `finlo_crm/`
+- Shared platform: `finlo/`, especially `finlo/contrib/`
 - Django settings and active application configuration:
-  [`horilla/settings/base.py`](./horilla/settings/base.py)
+  [`finlo/settings/base.py`](./finlo/settings/base.py)
 - Project structure and platform explanation:
   [`README.md`](./README.md)
 
@@ -36,7 +36,7 @@ automation, and settings.
 2. The first account created by that setup flow becomes a staff user and
    superuser, and is logged in.
 3. In the existing local setup, an administrator can also create an account
-   using `manage.py create_horilla_user`.
+   using `manage.py create_finlo_user`.
 4. Normal login authenticates the user, rejects inactive accounts, tracks
    failed logins by IP, locks out repeated failures, and uses a safe redirect
    after authentication.
@@ -44,8 +44,8 @@ automation, and settings.
    product sections; subordinate navigation and settings items can be filtered
    by permissions.
 
-Implementation: `horilla/contrib/core/views/initialiaze_database.py`,
-`horilla/contrib/core/views/core.py`, and `horilla/contrib/core/menu.py`.
+Implementation: `finlo/contrib/core/views/initialiaze_database.py`,
+`finlo/contrib/core/views/core.py`, and `finlo/contrib/core/menu.py`.
 
 ### B. Configure the organization and access
 
@@ -66,9 +66,9 @@ Users qualify the lead and can track activity against it. When the lead is
 ready, the conversion action coordinates creation/reuse of the downstream
 sales records.
 
-Implementation: `horilla_crm/leads/models/base.py`,
-`horilla_crm/leads/views/lead_conversion.py`, and
-`horilla_crm/leads/signals.py`.
+Implementation: `finlo_crm/leads/models/base.py`,
+`finlo_crm/leads/views/lead_conversion.py`, and
+`finlo_crm/leads/signals.py`.
 
 ### D. Convert the lead into sales records
 
@@ -85,7 +85,7 @@ Lead conversion is wrapped in a database transaction. It:
 This makes the converted Lead the origin record for the account/contact/deal
 relationship, rather than requiring a user to recreate those records manually.
 
-Implementation: `horilla_crm/leads/views/lead_conversion.py` (conversion
+Implementation: `finlo_crm/leads/views/lead_conversion.py` (conversion
 transaction and record creation).
 
 ### E. Work the account, contacts, and opportunity
@@ -101,9 +101,9 @@ transaction and record creation).
 - Contact roles, opportunity teams, and splits support multiple participants
   on a deal.
 
-Implementation: `horilla_crm/accounts/models.py`,
-`horilla_crm/contacts/models.py`, and
-`horilla_crm/opportunities/models.py`.
+Implementation: `finlo_crm/accounts/models.py`,
+`finlo_crm/contacts/models.py`, and
+`finlo_crm/opportunities/models.py`.
 
 ### F. Track interactions and schedule work
 
@@ -119,10 +119,10 @@ pages collect availability and booking details. A new public booking starts
 pending; its signal links it to a matching lead/contact or creates a website
 lead and meeting activity. Confirmation is asynchronous.
 
-Implementation: `horilla/contrib/activity/models.py`,
-`horilla/contrib/calendar/models.py`, `horilla/contrib/mail/models.py`,
+Implementation: `finlo/contrib/activity/models.py`,
+`finlo/contrib/calendar/models.py`, `finlo/contrib/mail/models.py`,
 `calls/models.py`, `calls/views/call_log.py`, `booking/models.py`,
-`booking/views/public.py`, and `horilla_crm/leads/signals.py`.
+`booking/views/public.py`, and `finlo_crm/leads/signals.py`.
 
 ### G. Run campaigns and assess results
 
@@ -131,7 +131,7 @@ arranged hierarchically. Campaign members connect a campaign to a Lead or
 Contact and track their member type/status. A response updates the campaign's
 response count.
 
-Implementation: `horilla_crm/campaigns/models.py`.
+Implementation: `finlo_crm/campaigns/models.py`.
 
 ### H. Forecast, analyze, and report
 
@@ -145,9 +145,9 @@ Reports define a module, columns, groupings, aggregates, filters, and chart
 settings. Dashboard components can be driven by a report or module and have
 their own metric/grouping/criteria configuration.
 
-Implementation: `horilla_crm/forecast/models.py`,
-`horilla_crm/forecast/utils.py`, `horilla/contrib/reports/models.py`, and
-`horilla/contrib/dashboard/models.py`.
+Implementation: `finlo_crm/forecast/models.py`,
+`finlo_crm/forecast/utils.py`, `finlo/contrib/reports/models.py`, and
+`finlo/contrib/dashboard/models.py`.
 
 ### I. Automate follow-up and notify users
 
@@ -161,16 +161,16 @@ Implementation: `horilla_crm/forecast/models.py`,
 - **Notifications** belong to a user and can link back to the relevant CRM
   record.
 
-Implementation: `horilla/contrib/workflow/models.py`,
-`horilla/contrib/workflow/signals.py`,
-`horilla/contrib/automations/models.py`,
-`horilla/contrib/automations/signals.py`,
-`horilla/contrib/automations/tasks.py`, and
-`horilla/contrib/notifications/models.py`.
+Implementation: `finlo/contrib/workflow/models.py`,
+`finlo/contrib/workflow/signals.py`,
+`finlo/contrib/automations/models.py`,
+`finlo/contrib/automations/signals.py`,
+`finlo/contrib/automations/tasks.py`, and
+`finlo/contrib/notifications/models.py`.
 
 ## 3. Page and screen-family inventory
 
-Horilla uses shared list, detail, form, and filter components; a particular
+The shared platform provides list, detail, form, and filter components; a particular
 module may expose more than one list representation or action route.
 
 | Area | Main screens and user tasks |
@@ -197,7 +197,7 @@ The repository's product areas and platform apps are listed in
 
 ## 4. Route-family index
 
-The root URL configuration uses `horilla.urls.project`. Apps register their URL
+The root URL configuration uses `finlo.urls.project`. Apps register their URL
 module and prefix dynamically; namespaces are configured per app. The root
 also exposes health, admin, localization, JavaScript catalog, Summernote,
 `/api/`, and DEBUG-only static/media routes. CRM APIs are nested below
@@ -209,37 +209,37 @@ under `/api/`.
 
 | App / prefix | Page and action families | URL source |
 |---|---|---|
-| Accounts `/crm/accounts/` | Overview/list; split, kanban, card, group, chart, and timeline layouts; create/edit/delete and change owner; detail tabs for details, activity, notes/attachments, related lists, and history; hierarchy, child/partner accounts, and account-contact relations. | `horilla_crm/accounts/urls.py` |
-| Campaigns `/crm/campaigns/` | List/layout/kanban/card/group/chart/timeline; create/edit/delete and owner change; detail tabs; hierarchy and child campaigns; campaign members and contacts. | `horilla_crm/campaigns/urls.py` |
-| Contacts `/crm/contacts/` | List/layout/kanban/card/timeline/chart/group; create/edit/delete and owner change; detail tabs, notes, history, related lists, hierarchy/child contacts, and account relations. | `horilla_crm/contacts/urls.py` |
-| Leads `/crm/leads/` | List/card/layout/kanban/group/chart/timeline; create/edit/delete; details, tabs, history, and notes; lead conversion and owner change; stage setup; lead email configuration; public lead capture/form-builder; assignment rules and conditions. | `horilla_crm/leads/urls.py` |
-| Opportunities `/crm/opportunities/` | List/kanban/card/group/layout/chart/timeline; create/edit/delete; details/tabs and contact roles; stage management; big-deal alerts; opportunity teams/members; team-selling and splits. | `horilla_crm/opportunities/urls.py` |
-| Forecast `/crm/forecast/` | Forecasts, opportunity drill-downs/charts; target lists/forms and role-based controls; forecast type lists/forms. | `horilla_crm/forecast/urls.py` |
-| Scoring rules (CRM scoring route prefix configured in app registration) | Scoring-rule list/create/edit/delete/detail; criteria CRUD; activation. | `horilla_crm/scoring_rules/urls.py` |
+| Accounts `/crm/accounts/` | Overview/list; split, kanban, card, group, chart, and timeline layouts; create/edit/delete and change owner; detail tabs for details, activity, notes/attachments, related lists, and history; hierarchy, child/partner accounts, and account-contact relations. | `finlo_crm/accounts/urls.py` |
+| Campaigns `/crm/campaigns/` | List/layout/kanban/card/group/chart/timeline; create/edit/delete and owner change; detail tabs; hierarchy and child campaigns; campaign members and contacts. | `finlo_crm/campaigns/urls.py` |
+| Contacts `/crm/contacts/` | List/layout/kanban/card/timeline/chart/group; create/edit/delete and owner change; detail tabs, notes, history, related lists, hierarchy/child contacts, and account relations. | `finlo_crm/contacts/urls.py` |
+| Leads `/crm/leads/` | List/card/layout/kanban/group/chart/timeline; create/edit/delete; details, tabs, history, and notes; lead conversion and owner change; stage setup; lead email configuration; public lead capture/form-builder; assignment rules and conditions. | `finlo_crm/leads/urls.py` |
+| Opportunities `/crm/opportunities/` | List/kanban/card/group/layout/chart/timeline; create/edit/delete; details/tabs and contact roles; stage management; big-deal alerts; opportunity teams/members; team-selling and splits. | `finlo_crm/opportunities/urls.py` |
+| Forecast `/crm/forecast/` | Forecasts, opportunity drill-downs/charts; target lists/forms and role-based controls; forecast type lists/forms. | `finlo_crm/forecast/urls.py` |
+| Scoring rules (CRM scoring route prefix configured in app registration) | Scoring-rule list/create/edit/delete/detail; criteria CRUD; activation. | `finlo_crm/scoring_rules/urls.py` |
 
 ### Shared platform, settings, and operational pages
 
 | App / prefix | Page and action families | URL source |
 |---|---|---|
-| Core `/` | Home/login/logout; settings and personal settings; company information, fiscal year, and company switching; holidays; users/profile/login history; roles, branches, departments, and organization settings; recycle bin; imports/import history; role/permission administration. | `horilla/contrib/core/urls.py` |
-| Dashboard `/dashboard/` | Home; dashboard list/detail/create/edit/delete; chart/table components; folders, favorites, ordering; add report/chart content. | `horilla/contrib/dashboard/urls.py` |
-| Reports `/reports/` | Report/favorite lists; detail, filter, update, preview, export; report/folder CRUD; column/group/aggregate/filter/chart controls. | `horilla/contrib/reports/urls.py` |
-| Activity `/activity/` | Global activity and task/meeting/call/event list and kanban; create/update forms; per-record task/meeting/call/email/event lists; activity details/tabs/history/attachments and status updates. | `horilla/contrib/activity/urls.py` |
-| Calendar `/calendar/` | Calendar/events/preferences; completion and availability; custom calendars; Google Calendar settings, OAuth, and sync. The webhook is a provider callback, not a user page. | `horilla/contrib/calendar/urls.py` |
-| Mail `/mail/` | Incoming/outgoing mail-server management and test email; compose, preview, draft, scheduling; templates; Outlook authorization; mail history and inbox actions. | `horilla/contrib/mail/urls.py` |
-| Notifications `/notifications/` | Mark/open/delete notifications; notification-template list/detail/create/edit/delete. | `horilla/contrib/notifications/urls.py` |
-| Theme `/theme/` | Theme settings, change theme, set default. | `horilla/contrib/theme/urls.py` |
-| Generics `/generics/` | Shared search; kanban/group-by; saved lists and column/detail-field controls; dynamic create/edit; related-list content; user pickers; notes and attachments. Primarily shared UI actions/fragments. | `horilla/contrib/generics/urls.py` |
-| Workflow `/workflow/` | Rule list/detail/create/edit/delete/activation; actions, time triggers, trigger history. | `horilla/contrib/workflow/urls.py` |
-| Approvals `/approvals/` | Approval-process setup/rules; approval jobs, review/respond, detail tabs; approval history, resubmission, task status. | `horilla/contrib/process/approvals/urls.py` |
-| Reviews `/review-process/` | Review-process/rule setup and activation; review jobs and field-level review. | `horilla/contrib/process/reviews/urls.py` |
-| Automations `/automations/` | Automation list/create/edit/delete; load-automation flow and supporting field/template choices. | `horilla/contrib/automations/urls.py` |
-| Cadences `/cadences/` | Cadence setup, follow-up steps, activation/detail, reports, and task/call/email tabs and lists. | `horilla/contrib/cadences/urls.py` |
-| Duplicates `/duplicates/` | Matching/duplicate rule setup and detail; duplicate review, compare, and merge. | `horilla/contrib/duplicates/urls.py` |
-| Field requirements `/field-requirements/` | Requirement list/create/edit/delete and field-choice helper. | `horilla/contrib/field_requirements/urls.py` |
-| Form layouts `/form-layouts/` | Layout view/editor/save/reset. | `horilla/contrib/form_layouts/urls.py` |
-| Shortcuts `/shortkeys/` | Shortcut-key list/create/edit/delete/data. | `horilla/contrib/keys/urls.py` |
-| Meetings `/meeting/` | Integration/access settings, user settings, meeting-link generation, Zoom and Teams authorization callbacks. | `horilla/contrib/meeting/urls.py` |
+| Core `/` | Home/login/logout; settings and personal settings; company information, fiscal year, and company switching; holidays; users/profile/login history; roles, branches, departments, and organization settings; recycle bin; imports/import history; role/permission administration. | `finlo/contrib/core/urls.py` |
+| Dashboard `/dashboard/` | Home; dashboard list/detail/create/edit/delete; chart/table components; folders, favorites, ordering; add report/chart content. | `finlo/contrib/dashboard/urls.py` |
+| Reports `/reports/` | Report/favorite lists; detail, filter, update, preview, export; report/folder CRUD; column/group/aggregate/filter/chart controls. | `finlo/contrib/reports/urls.py` |
+| Activity `/activity/` | Global activity and task/meeting/call/event list and kanban; create/update forms; per-record task/meeting/call/email/event lists; activity details/tabs/history/attachments and status updates. | `finlo/contrib/activity/urls.py` |
+| Calendar `/calendar/` | Calendar/events/preferences; completion and availability; custom calendars; Google Calendar settings, OAuth, and sync. The webhook is a provider callback, not a user page. | `finlo/contrib/calendar/urls.py` |
+| Mail `/mail/` | Incoming/outgoing mail-server management and test email; compose, preview, draft, scheduling; templates; Outlook authorization; mail history and inbox actions. | `finlo/contrib/mail/urls.py` |
+| Notifications `/notifications/` | Mark/open/delete notifications; notification-template list/detail/create/edit/delete. | `finlo/contrib/notifications/urls.py` |
+| Theme `/theme/` | Theme settings, change theme, set default. | `finlo/contrib/theme/urls.py` |
+| Generics `/generics/` | Shared search; kanban/group-by; saved lists and column/detail-field controls; dynamic create/edit; related-list content; user pickers; notes and attachments. Primarily shared UI actions/fragments. | `finlo/contrib/generics/urls.py` |
+| Workflow `/workflow/` | Rule list/detail/create/edit/delete/activation; actions, time triggers, trigger history. | `finlo/contrib/workflow/urls.py` |
+| Approvals `/approvals/` | Approval-process setup/rules; approval jobs, review/respond, detail tabs; approval history, resubmission, task status. | `finlo/contrib/process/approvals/urls.py` |
+| Reviews `/review-process/` | Review-process/rule setup and activation; review jobs and field-level review. | `finlo/contrib/process/reviews/urls.py` |
+| Automations `/automations/` | Automation list/create/edit/delete; load-automation flow and supporting field/template choices. | `finlo/contrib/automations/urls.py` |
+| Cadences `/cadences/` | Cadence setup, follow-up steps, activation/detail, reports, and task/call/email tabs and lists. | `finlo/contrib/cadences/urls.py` |
+| Duplicates `/duplicates/` | Matching/duplicate rule setup and detail; duplicate review, compare, and merge. | `finlo/contrib/duplicates/urls.py` |
+| Field requirements `/field-requirements/` | Requirement list/create/edit/delete and field-choice helper. | `finlo/contrib/field_requirements/urls.py` |
+| Form layouts `/form-layouts/` | Layout view/editor/save/reset. | `finlo/contrib/form_layouts/urls.py` |
+| Shortcuts `/shortkeys/` | Shortcut-key list/create/edit/delete/data. | `finlo/contrib/keys/urls.py` |
+| Meetings `/meeting/` | Integration/access settings, user settings, meeting-link generation, Zoom and Teams authorization callbacks. | `finlo/contrib/meeting/urls.py` |
 | Custom fields `/custom-fields/` | Custom-field settings/list/create/edit/delete. | `custom_fields/urls.py` |
 
 ### Integrations and booking pages
@@ -280,11 +280,11 @@ foreign key.
 
 ### User and role model
 
-- The configured authentication model is `core.HorillaUser`, based on
+- The configured authentication model is `core.FinloUser`, based on
   Django's `AbstractUser`. It retains Django's standard groups,
-  `user_permissions`, `is_staff`, and `is_superuser`, and adds Horilla user and
+  `user_permissions`, `is_staff`, and `is_superuser`, and adds Finlo user and
   organization fields.
-- A Horilla **Role** is a separate model from a Django **Group**. Roles have
+- A Finlo **Role** is a separate model from a Django **Group**. Roles have
   a parent-role link and a many-to-many set of Django permissions. A parent
   role does **not** automatically inherit its parent's permissions in the
   model.
@@ -297,10 +297,10 @@ foreign key.
   modes are `readonly`, `readwrite`, and `hidden`; explicit user settings take
   precedence over role settings, which take precedence over model defaults.
 
-Implementation: `horilla/contrib/core/models/user.py`,
-`horilla/contrib/core/models/organization.py`,
-`horilla/contrib/core/signals.py`, and
-`horilla/contrib/core/views/groups_and_permissions/`.
+Implementation: `finlo/contrib/core/models/user.py`,
+`finlo/contrib/core/models/organization.py`,
+`finlo/contrib/core/signals.py`, and
+`finlo/contrib/core/views/groups_and_permissions/`.
 
 ### Permission behavior
 
@@ -321,13 +321,13 @@ Implementation: `horilla/contrib/core/models/user.py`,
 - User-management list/grouped views are scoped to active users and the active
   company unless `show_all_companies` is set in the session.
 
-Implementation: `horilla/contrib/core/models/user.py`,
-`horilla/utils/decorators/wrapper.py`,
-`horilla/contrib/generics/views/toolkit/form_mixin.py`,
-`horilla/contrib/generics/views/details.py`,
-`horilla/api/permissions.py`, `horilla/api/mixins.py`,
-`horilla/menu/sub_section_menu.py`, and
-`horilla/contrib/core/views/users.py`.
+Implementation: `finlo/contrib/core/models/user.py`,
+`finlo/utils/decorators/wrapper.py`,
+`finlo/contrib/generics/views/toolkit/form_mixin.py`,
+`finlo/contrib/generics/views/details.py`,
+`finlo/api/permissions.py`, `finlo/api/mixins.py`,
+`finlo/menu/sub_section_menu.py`, and
+`finlo/contrib/core/views/users.py`.
 
 ### Administering permissions
 
@@ -340,11 +340,11 @@ Custom permissions include profile, company-switching, and global-settings
 capabilities. Role/user permission actions may also synchronize the assigned
 permissions to role members.
 
-Implementation: `horilla/contrib/core/menu.py`,
-`horilla/contrib/core/views/roles.py`,
-`horilla/contrib/core/views/groups_and_permissions/permission_utils.py`,
-`horilla/contrib/core/views/groups_and_permissions/base.py`, and
-`horilla/contrib/core/views/groups_and_permissions/user_permissions_actions.py`.
+Implementation: `finlo/contrib/core/menu.py`,
+`finlo/contrib/core/views/roles.py`,
+`finlo/contrib/core/views/groups_and_permissions/permission_utils.py`,
+`finlo/contrib/core/views/groups_and_permissions/base.py`, and
+`finlo/contrib/core/views/groups_and_permissions/user_permissions_actions.py`.
 
 ## 7. Important implementation caveats
 
@@ -382,27 +382,27 @@ security review or an operational policy.
 
 ## 8. Key implementation references
 
-- Lead conversion: `horilla_crm/leads/views/lead_conversion.py`
-- Lead model and booking linkage: `horilla_crm/leads/models/base.py`,
-  `horilla_crm/leads/signals.py`
-- Accounts and contacts: `horilla_crm/accounts/models.py`,
-  `horilla_crm/contacts/models.py`
-- Opportunity pipeline: `horilla_crm/opportunities/models.py`
-- Campaign management: `horilla_crm/campaigns/models.py`
-- Forecasts: `horilla_crm/forecast/models.py`,
-  `horilla_crm/forecast/utils.py`
-- User, role, and permission behavior: `horilla/contrib/core/models/user.py`,
-  `horilla/contrib/core/models/organization.py`,
-  `horilla/contrib/core/signals.py`
-- Shared access checks: `horilla/utils/decorators/wrapper.py`,
-  `horilla/contrib/generics/views/toolkit/form_mixin.py`,
-  `horilla/contrib/generics/views/details.py`
+- Lead conversion: `finlo_crm/leads/views/lead_conversion.py`
+- Lead model and booking linkage: `finlo_crm/leads/models/base.py`,
+  `finlo_crm/leads/signals.py`
+- Accounts and contacts: `finlo_crm/accounts/models.py`,
+  `finlo_crm/contacts/models.py`
+- Opportunity pipeline: `finlo_crm/opportunities/models.py`
+- Campaign management: `finlo_crm/campaigns/models.py`
+- Forecasts: `finlo_crm/forecast/models.py`,
+  `finlo_crm/forecast/utils.py`
+- User, role, and permission behavior: `finlo/contrib/core/models/user.py`,
+  `finlo/contrib/core/models/organization.py`,
+  `finlo/contrib/core/signals.py`
+- Shared access checks: `finlo/utils/decorators/wrapper.py`,
+  `finlo/contrib/generics/views/toolkit/form_mixin.py`,
+  `finlo/contrib/generics/views/details.py`
 - Activity, mail, calendar, booking, and calls:
-  `horilla/contrib/activity/models.py`,
-  `horilla/contrib/mail/models.py`,
-  `horilla/contrib/calendar/models.py`,
+  `finlo/contrib/activity/models.py`,
+  `finlo/contrib/mail/models.py`,
+  `finlo/contrib/calendar/models.py`,
   `booking/`, and `calls/`
 - Reports, dashboards, and automation:
-  `horilla/contrib/reports/models.py`,
-  `horilla/contrib/dashboard/models.py`,
-  `horilla/contrib/workflow/`, and `horilla/contrib/automations/`
+  `finlo/contrib/reports/models.py`,
+  `finlo/contrib/dashboard/models.py`,
+  `finlo/contrib/workflow/`, and `finlo/contrib/automations/`

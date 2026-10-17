@@ -1,0 +1,7 @@
+{% load static finlo_jalali_tags %}
+{% uses_jalali_calendar as jalali %}
+{% if jalali %}
+    <link rel="stylesheet" href="{% static 'finlo_jalali/css/jalalidatepicker.min.css' %}">
+    <link rel="stylesheet" href="{% static 'finlo_jalali/css/finlo_jalali.css' %}">
+    <link rel="stylesheet" href="{% static 'finlo_jalali/css/finlo_calendar_jalali.css' %}">
+{% endif %}

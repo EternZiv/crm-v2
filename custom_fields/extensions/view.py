@@ -1,14 +1,14 @@
 """
-``_inherit_view`` extensions so Horilla export, bulk inline edit, and other
+``_inherit_view`` extensions so Finlo export, bulk inline edit, and other
 view hooks work for ``cf_*`` fields.
 
 ``ExportView`` is a single, concrete, model-agnostic view (routed directly
 in ``urls.py``, never subclassed per app) — exactly the shape ``_inherit_view``
 targets cleanly, so its two custom-fields hooks live here too, registered
 declaratively instead of monkey-patched in ``custom_fields/hooks/export.py``.
-This became possible once ``horilla.views.generic.TemplateView`` started
-inheriting ``horilla.views.generic.base.View`` (the resolving base) — see
-that class's docstring. ``HorillaBulkExportMixin.handle_export`` and the
+This became possible once ``finlo.views.generic.TemplateView`` started
+inheriting ``finlo.views.generic.base.View`` (the resolving base) — see
+that class's docstring. ``FinloBulkExportMixin.handle_export`` and the
 module-level ``get_export_cell_value`` are registered declaratively too,
 through ``MixinExtension``/``_inherit_mixin`` in
 ``custom_fields/extensions/mixin.py`` — the former is a bare mixin never
@@ -22,12 +22,12 @@ about real ``obj._meta.get_fields()`` columns) — same single-concrete-class
 shape as ``ExportView``, registered here too.
 
 ``CustomFieldMultiStepFormKwargsExtension`` targets the shared
-``HorillaMultiStepFormView`` **base** class instead of one concrete wizard —
+``FinloMultiStepFormView`` **base** class instead of one concrete wizard —
 ``resolve_view_class()`` (the same resolver every ``_inherit_view``
 registration goes through) checks a concrete-class match first, then falls
 back to checking base classes in the MRO, so this one registration applies
 to every wizard view automatically. See
-``horilla/extension/view/resolve.py``'s ``_resolve_via_base_class``.
+``finlo/extension/view/resolve.py``'s ``_resolve_via_base_class``.
 """
 
 from custom_fields.hooks.detail import (
@@ -36,7 +36,7 @@ from custom_fields.hooks.detail import (
     save_custom_field_from_post,
 )
 from custom_fields.hooks.list import attach_custom_field_values_to_objects
-from horilla.extension.view import ViewExtension
+from finlo.extension.view import ViewExtension
 
 
 class CustomFieldExportViewExtension(ViewExtension):
@@ -51,7 +51,7 @@ class CustomFieldExportViewExtension(ViewExtension):
     template-copy trick those modules use.
     """
 
-    _inherit_view = "horilla.contrib.core.views.export_data.ExportView"
+    _inherit_view = "finlo.contrib.core.views.export_data.ExportView"
 
     def get_available_models(self):
         """Augment export model catalogs with custom-field columns."""
@@ -128,7 +128,7 @@ class CustomFieldListColumnSelectFormViewExtension(ViewExtension):
     """
 
     _inherit_view = (
-        "horilla.contrib.generics.views.helpers.list_column.ListColumnSelectFormView"
+        "finlo.contrib.generics.views.helpers.list_column.ListColumnSelectFormView"
     )
 
     def get_context_data(self, **kwargs):
@@ -173,7 +173,7 @@ class CustomFieldExtraFieldsProviderExtension(ViewExtension):
     """
 
     _inherit_view = (
-        "horilla.contrib.generics.views.helpers.edit_field.ExtraFieldsProvider"
+        "finlo.contrib.generics.views.helpers.edit_field.ExtraFieldsProvider"
     )
 
     def get_extra_fields(self, obj, request, can_update):
@@ -202,20 +202,20 @@ class CustomFieldMultiStepFormKwargsExtension(ViewExtension):
     Keep every selected Multiple Choice custom-field value across multi-step
     wizard steps.
 
-    Targets the shared ``HorillaMultiStepFormView`` base class — every
+    Targets the shared ``FinloMultiStepFormView`` base class — every
     concrete wizard view (``LeadCreateWizard``, etc., across every CRM app,
     present and future) inherits ``get_form_kwargs`` from it, so a
     per-concrete-view registration would need to name every wizard in
-    advance. ``horilla.extension.view.resolve.resolve_view_class`` — the
+    advance. ``finlo.extension.view.resolve.resolve_view_class`` — the
     same resolver every ``_inherit_view`` registration goes through at
     ``as_view()`` time — checks an exact match for the concrete class
     first, then falls back to checking each base class in the concrete
-    class's MRO, so a registration on ``HorillaMultiStepFormView`` here is
+    class's MRO, so a registration on ``FinloMultiStepFormView`` here is
     picked up by every concrete wizard automatically. See
-    ``horilla/extension/view/resolve.py``'s ``_resolve_via_base_class``.
+    ``finlo/extension/view/resolve.py``'s ``_resolve_via_base_class``.
     """
 
-    _inherit_view = "horilla.contrib.generics.views.multi_form.HorillaMultiStepFormView"
+    _inherit_view = "finlo.contrib.generics.views.multi_form.FinloMultiStepFormView"
 
     def get_form_kwargs(self):
         """Overlay POST multi-choice ``cf_*`` values onto wizard form data."""

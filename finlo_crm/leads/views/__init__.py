@@ -1,0 +1,150 @@
+"""Aggregate view modules for the `leads.views` package."""
+
+# Local imports
+from finlo_crm.leads.views.core import (
+    LeadView,
+    LeadNavbar,
+    LeadListView,
+    LeadCardView,
+    LeadDetailView,
+    LeadGroupByView,
+    LeadChartView,
+    LeadKanbanView,
+    LeadSplitView,
+    LeadTimelineView,
+)
+from finlo_crm.leads.views.lead_stage import (
+    LeadsStageView,
+    LeadStageNavbar,
+    LeadStageListView,
+    ChangeFinalStage,
+    CreateLeadStage,
+    ToggleOrderFieldView,
+    LeadStatusDeleteView,
+    UpdateLeadStageOrderView,
+    LoadLeadStagesView,
+    CustomStagesFormView,
+    SaveCustomStagesView,
+    AddStageView,
+    RemoveStageView,
+    CreateStageGroupView,
+    InitializeDatabaseLeadStages,
+)
+from finlo_crm.leads.views.mail_to_lead import (
+    MailToLeadView,
+    MailToLeadNavbar,
+    MailToLeadListView,
+    MailToLeadFormView,
+    EmailToLeadConfigDeleteView,
+)
+from finlo_crm.leads.views.web_to_lead import (
+    LeadFormBuilderView,
+    UpdateFormHeadingView,
+    UpdateFormPreviewView,
+    SaveLeadFormView,
+    AddFieldView,
+    RemoveFieldView,
+    PublicLeadFormView,
+    ToggleReturnUrlView,
+)
+from finlo_crm.leads.views.lead_actions import (
+    LeadDeleteView,
+    LeadFormView,
+    LeadsSingleFormView,
+    LeadChangeOwnerForm,
+)
+from finlo_crm.leads.views.lead_conversion import LeadConversionView
+from finlo_crm.leads.views.assignment_rule import (
+    LeadsAssignmentView,
+    LeadAssignmentNavbar,
+    LeadAssignmentListView,
+    LeadAssignmentActivateView,
+    LeadAssignmentForm,
+    LeadAssignmentDelete,
+    AssignmentRuleDetailView,
+    AssignmentRuleDetailNavbar,
+    AssignmentConditionFormView,
+    AssignmentConditionDeleteView,
+    ToggleAssignToFieldView,
+    ToggleNotifyMethodFieldView,
+)
+from finlo_crm.leads.views.detail_tabs import (
+    LeadsDetailTab,
+    LeadsDetailViewTabView,
+    LeadsActivityTabView,
+    LeadRelatedLists,
+    LeadsHistoryTabView,
+    LeadsNotesAndAttachments,
+)
+
+__all__ = [
+    # Core Views
+    "LeadView",
+    "LeadNavbar",
+    "LeadListView",
+    "LeadCardView",
+    "LeadDetailView",
+    "LeadGroupByView",
+    "LeadChartView",
+    "LeadKanbanView",
+    "LeadSplitView",
+    "LeadTimelineView",
+    # Lead Stage Views
+    "LeadsStageView",
+    "LeadStageNavbar",
+    "LeadStageListView",
+    "ChangeFinalStage",
+    "CreateLeadStage",
+    "ToggleOrderFieldView",
+    "LeadStatusDeleteView",
+    "UpdateLeadStageOrderView",
+    "LoadLeadStagesView",
+    "CustomStagesFormView",
+    "SaveCustomStagesView",
+    "AddStageView",
+    "RemoveStageView",
+    "CreateStageGroupView",
+    "InitializeDatabaseLeadStages",
+    # Mail to Lead Views
+    "MailToLeadView",
+    "MailToLeadNavbar",
+    "MailToLeadListView",
+    "MailToLeadFormView",
+    "EmailToLeadConfigDeleteView",
+    # Web to Lead Views
+    "LeadFormBuilderView",
+    "UpdateFormHeadingView",
+    "UpdateFormPreviewView",
+    "SaveLeadFormView",
+    "AddFieldView",
+    "RemoveFieldView",
+    "PublicLeadFormView",
+    "ToggleReturnUrlView",
+    # Lead Actions Views
+    "LeadDeleteView",
+    "LeadFormView",
+    "LeadsSingleFormView",
+    "LeadChangeOwnerForm",
+    # Lead Conversion Views
+    "LeadConversionView",
+    # Assignment Rule Views
+    "LeadsAssignmentView",
+    "LeadAssignmentNavbar",
+    "LeadAssignmentListView",
+    "LeadAssignmentActivateView",
+    "LeadAssignmentForm",
+    "LeadAssignmentDelete",
+    "AssignmentRuleDetailView",
+    "AssignmentRuleDetailNavbar",
+    "AssignmentConditionFormView",
+    "AssignmentConditionDeleteView",
+    "ToggleAssignToFieldView",
+    "ToggleNotifyMethodFieldView",
+    # Detail Tabs Views
+    "LeadsDetailTab",
+    "LeadsDetailViewTabView",
+    "LeadsActivityTabView",
+    "LeadRelatedLists",
+    "LeadsHistoryTabView",
+    "LeadsNotesAndAttachments",
+]

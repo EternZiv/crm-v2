@@ -1,6 +1,7 @@
 (function () {
     const historyCacheKey = "htmx-history-cache";
-    const activeUserKey = "horilla-history-cache-user";
+    const activeUserKey = "finlo-history-cache-user";
+    const activeScopeKey = "finlo-history-cache-scope";
     const persistentStorage = window.localStorage;
     const tabStorage = window.sessionStorage;
 
@@ -79,24 +80,27 @@
         value: localStorageForTab,
     });
 
-    function clearCacheWhenUserChanges() {
+    function clearCacheWhenContextChanges() {
         const currentUser = document.body?.dataset.userId || "0";
+        const currentScope = document.body?.dataset.companyScope || "none";
         const previousUser = tabStorage.getItem(activeUserKey);
+        const previousScope = tabStorage.getItem(activeScopeKey);
 
-        if (previousUser !== null && previousUser !== currentUser) {
+        if (previousUser !== currentUser || previousScope !== currentScope) {
             tabStorage.removeItem(historyCacheKey);
         }
 
         tabStorage.setItem(activeUserKey, currentUser);
+        tabStorage.setItem(activeScopeKey, currentScope);
     }
 
     if (document.readyState === "loading") {
         document.addEventListener(
             "DOMContentLoaded",
-            clearCacheWhenUserChanges,
+            clearCacheWhenContextChanges,
             { once: true },
         );
     } else {
-        clearCacheWhenUserChanges();
+        clearCacheWhenContextChanges();
     }
 })();

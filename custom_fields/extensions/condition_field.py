@@ -4,7 +4,7 @@ assignment rules) through the generic condition-field extension hook
 (``register_condition_field_extension``), instead of generics/core or a
 consumer app (e.g. leads) importing custom_fields by name.
 
-See horilla/horilla-crm#45.
+See finlo/finlo-crm#45.
 """
 
 # Standard library imports
@@ -27,19 +27,19 @@ from custom_fields.utils import (
     safe_custom_field_label,
 )
 
-# First party imports (Horilla)
-from horilla.contrib.core.models import HorillaContentType
-from horilla.contrib.generics.forms.condition_fields import (
+# First party imports (Finlo)
+from finlo.contrib.core.models import FinloContentType
+from finlo.contrib.generics.forms.condition_fields import (
     register_condition_field_extension,
 )
-from horilla.utils import timezone
+from finlo.utils import timezone
 
 logger = logging.getLogger(__name__)
 
 
 # Maps custom_fields' own CustomFieldDefinition.FIELD_TYPES to the small,
 # custom_fields-agnostic vocabulary condition_widget.py renders widgets from,
-# and to a key into horilla.contrib.generics.filters.OPERATOR_CHOICES.
+# and to a key into finlo.contrib.generics.filters.OPERATOR_CHOICES.
 _WIDGET_BY_FIELD_TYPE = {
     "small_text": "text",
     "large_text": "textarea",
@@ -116,7 +116,7 @@ class CustomFieldConditionExtension:
                 field_name,
             )
             return None
-        content_type = HorillaContentType.objects.get_for_model(instance)
+        content_type = FinloContentType.objects.get_for_model(instance)
         cfv = CustomFieldValue.objects.filter(
             field_definition=definition,
             content_type=content_type,
@@ -156,7 +156,7 @@ def render_date_condition_value_widget(
     Uses the condition-widget view's own ``_render_date*`` helpers, so the
     inputs are identical to a model date field's (and get the Jalali picker
     the same way). Operators with no value (empty, today, …) are left to
-    Horilla, which renders no input for them.
+    Finlo, which renders no input for them.
     """
     if existing_operator in ("isnull", "isnotnull", *RELATIVE_DATE_OPERATORS):
         return None
@@ -206,7 +206,7 @@ def evaluate_date_criterion(field_name, operator, value, instance):
     definition = _date_field_definition(field_name)
     if definition is None:
         return None
-    content_type = HorillaContentType.objects.get_for_model(instance)
+    content_type = FinloContentType.objects.get_for_model(instance)
     cfv = CustomFieldValue.objects.filter(
         field_definition=definition,
         content_type=content_type,

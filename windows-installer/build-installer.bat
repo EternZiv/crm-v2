@@ -1,10 +1,10 @@
 @echo off
-REM Build Horilla-CRM Windows Installer
+REM Build Finlo CRM Windows Installer
 REM Requires NSIS (Nullsoft Scriptable Install System)
 
 setlocal enabledelayedexpansion
 
-echo Building Horilla-CRM Windows Installer...
+echo Building Finlo CRM Windows Installer...
 echo ==========================================
 
 cd /d "%~dp0"
@@ -16,7 +16,7 @@ if errorlevel 1 (
     echo.
     echo Please install NSIS from: https://nsis.sourceforge.io/
     echo After installation, add NSIS to your PATH or run:
-    echo   "C:\Program Files (x86)\NSIS\makensis.exe" horilla-crm-installer.nsi
+    echo   "C:\Program Files (x86)\NSIS\makensis.exe" finlo-crm-installer.nsi
     echo.
     pause
     exit /b 1
@@ -25,7 +25,7 @@ if errorlevel 1 (
 REM Check if required files exist
 echo Checking required files...
 
-set REQUIRED_FILES=horilla-crm-installer.nsi scripts\horilla_service.py scripts\setup-environment.bat scripts\horilla-crm-start.bat scripts\horilla-crm-admin.bat scripts\horilla-crm-stop.bat scripts\install-service.bat scripts\uninstall-service.bat config\horilla-crm.conf config\logging.conf config\requirements-windows.txt
+set REQUIRED_FILES=finlo-crm-installer.nsi scripts\finlo_service.py scripts\setup-environment.bat scripts\finlo-crm-start.bat scripts\finlo-crm-admin.bat scripts\finlo-crm-stop.bat scripts\install-service.bat scripts\uninstall-service.bat config\finlo-crm.conf config\logging.conf config\requirements-windows.txt
 
 for %%f in (%REQUIRED_FILES%) do (
     if not exist "%%f" (
@@ -39,7 +39,7 @@ REM Create default icons if they don't exist (placeholder files)
 echo Creating default icons...
 if not exist "icons" mkdir "icons"
 
-if not exist "icons\horilla-icon.ico" (
+if not exist "icons\finlo-icon.ico" (
     echo INFO: Default icon not found, using Windows default
     echo This is normal - you can add custom icons later
 )
@@ -52,16 +52,16 @@ if exist "..\LICENSE" (
     copy "..\LICENSE" "resources\LICENSE.txt" >nul
 ) else (
     echo License file not found - creating placeholder
-    echo Horilla-CRM License > "resources\LICENSE.txt"
+    echo Finlo CRM License > "resources\LICENSE.txt"
 )
 
 REM Create README for installation
 echo Creating installation README...
 (
-echo Horilla-CRM Windows Installation
+echo Finlo CRM Windows Installation
 echo ================================
 echo.
-echo This installer will set up Horilla-CRM on your Windows system.
+echo This installer will set up Finlo CRM on your Windows system.
 echo.
 echo System Requirements:
 echo - Windows 10 or later ^(64-bit^)
@@ -78,14 +78,14 @@ echo.
 echo After Installation:
 echo - Access via Start Menu shortcuts
 echo - Default URL: http://localhost:8000
-echo - Admin interface: Use horilla-crm-admin.bat
+echo - Admin interface: Use finlo-crm-admin.bat
 echo.
-echo For support, visit: https://github.com/horilla-opensource/horilla-crm
+echo For support, visit: https://github.com/EternZiv/crm-v2
 ) > "resources\README.txt"
 
 REM Build the installer
 echo Building installer with NSIS...
-makensis horilla-crm-installer.nsi
+makensis finlo-crm-installer.nsi
 
 if errorlevel 1 (
     echo ERROR: Failed to build installer
@@ -94,14 +94,14 @@ if errorlevel 1 (
 )
 
 REM Check if installer was created
-if exist "Horilla-CRM-1.0.0-Setup.exe" (
+if exist "Finlo-CRM-1.0.0-Setup.exe" (
     echo.
     echo SUCCESS: Installer built successfully!
-    echo File: Horilla-CRM-1.0.0-Setup.exe
+    echo File: Finlo-CRM-1.0.0-Setup.exe
     echo Size:
-    for %%f in ("Horilla-CRM-1.0.0-Setup.exe") do echo   %%~zf bytes
+    for %%f in ("Finlo-CRM-1.0.0-Setup.exe") do echo   %%~zf bytes
     echo.
-    echo You can now distribute this installer to install Horilla-CRM on Windows systems.
+    echo You can now distribute this installer to install Finlo CRM on Windows systems.
     echo.
 
     REM Ask if user wants to test the installer
@@ -109,9 +109,9 @@ if exist "Horilla-CRM-1.0.0-Setup.exe" (
     if /i "!test_install!"=="y" (
         echo.
         echo Starting installer in test mode...
-        echo WARNING: This will install Horilla-CRM on this system!
+        echo WARNING: This will install Finlo CRM on this system!
         timeout /t 5 /nobreak
-        start "Horilla-CRM Installer" "Horilla-CRM-1.0.0-Setup.exe"
+        start "Finlo CRM Installer" "Finlo-CRM-1.0.0-Setup.exe"
     )
 ) else (
     echo ERROR: Installer file not found after build

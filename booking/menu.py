@@ -1,12 +1,12 @@
 """
 This module registers Floating, Settings, My Settings, and Main Section menus
-for the horilla_booking app.
+for the finlo_booking app.
 """
 
-from horilla.contrib.core.menu import GeneralSettings
-from horilla.menu import MAIN_CONTENT_HX_ATTRS, sub_section_menu
-from horilla.urls import reverse_lazy
-from horilla.utils.translation import gettext_lazy as _
+from finlo.contrib.core.menu import GeneralSettings
+from finlo.menu import MAIN_CONTENT_HX_ATTRS, sub_section_menu
+from finlo.urls import reverse_lazy
+from finlo.utils.translation import gettext_lazy as _
 
 
 @sub_section_menu.register

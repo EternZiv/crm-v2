@@ -586,6 +586,13 @@ input[type="checkbox"] {
   color: #374151;
   /* text-gray-700 */
   min-width: 3.5rem;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-link {
+    transition: none;
+  }
 }
 
 .nav-link-label {
@@ -2151,29 +2158,29 @@ input::placeholder {
 }
 
 /* Search fields with start/end icons (RTL-safe) */
-.horilla-search-input {
+.finlo-search-input {
   padding-inline-start: 2.25rem;
   padding-inline-end: 2rem;
 }
 
-.horilla-search-input--toolbar {
+.finlo-search-input--toolbar {
   padding-inline-start: 0.5rem;
   padding-inline-end: 2.5rem;
 }
 
-.horilla-search-icon-start {
+.finlo-search-icon-start {
   position: absolute;
   inset-inline-start: 10px;
   top: 9px;
 }
 
-.horilla-search-icon-end {
+.finlo-search-icon-end {
   position: absolute;
   inset-inline-end: 10px;
   top: 9px;
 }
 
-.horilla-search-btn-end {
+.finlo-search-btn-end {
   position: absolute;
   inset-inline-end: 0.75rem;
   top: 0;

@@ -1,8 +1,8 @@
 """Extends activity app with call-specific behaviour via _inherit_model/_inherit_mixin."""
 
-from horilla.contrib.core.models import HorillaCoreModel
-from horilla.extension.mixin import MixinExtension
-from horilla.urls import reverse_lazy
+from finlo.contrib.core.models import FinloCoreModel
+from finlo.extension.mixin import MixinExtension
+from finlo.urls import reverse_lazy
 
 _CALL_NOW_ACTION = {
     "action": "Call Now",
@@ -19,7 +19,7 @@ _CALL_NOW_ACTION = {
 class CallListActionsExtension(MixinExtension):
     """Prepend the "Call Now" action to the call activity tab's action list."""
 
-    _inherit_mixin = "horilla.contrib.activity.views.list_view.tab_views.CallListView"
+    _inherit_mixin = "finlo.contrib.activity.views.list_view.tab_views.CallListView"
 
     def get_context_data(self, original, *args, **kwargs):
         """Prepend Call Now to visible actions and refresh dropdown overflow."""
@@ -37,7 +37,7 @@ class CallListActionsExtension(MixinExtension):
         return context
 
 
-class ActivityCallExtension(HorillaCoreModel):
+class ActivityCallExtension(FinloCoreModel):
     """Injects get_call_now_url onto the Activity model."""
 
     _inherit_model = "activity.Activity"

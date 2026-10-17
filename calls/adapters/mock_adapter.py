@@ -1,4 +1,4 @@
-"""Mock adapter for Horilla Calls Integration — use for UI/local testing only."""
+"""Mock adapter for Finlo Calls Integration — use for UI/local testing only."""
 
 import logging
 import uuid

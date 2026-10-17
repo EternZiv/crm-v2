@@ -2,7 +2,7 @@
 
 Reusable markup for **prerequisite gates** and **no-data** screens (image + message + optional CTA). Introduced in v1.13.8 to replace duplicated `not-found.svg` / `activate-company.svg` blocks across settings and module templates.
 
-`static`, `i18n`, and `horilla_tags` are **built in** — do not add `{% load static %}` or `{% load i18n %}`. See [settings `base.py` — Template builtins](../../horilla/settings/base.md#-template-builtins) and [coding_rule.md](../../coding_rule.md#django-templates--built-in-tag-libraries).
+`static`, `i18n`, and `finlo_tags` are **built in** — do not add `{% load static %}` or `{% load i18n %}`. See [settings `base.py` — Template builtins](../../finlo/settings/base.md#-template-builtins) and [coding_rule.md](../../coding_rule.md#django-templates--built-in-tag-libraries).
 
 ---
 
@@ -43,10 +43,10 @@ Optional action buttons that need permissions, HTMX, or `onclick` should stay **
 
 **Used in:**
 
-- `horilla/contrib/core/templates/settings/company_information.html`
-- `horilla/contrib/core/templates/settings/multiple_currency.html`
-- `horilla_crm/forecast/templates/forecast_target/forecast_target_view.html` (`has_company` branch)
-- `horilla_crm/forecast/templates/forecast_view.html` (no `request.active_company` branch)
+- `finlo/contrib/core/templates/settings/company_information.html`
+- `finlo/contrib/core/templates/settings/multiple_currency.html`
+- `finlo_crm/forecast/templates/forecast_target/forecast_target_view.html` (`has_company` branch)
+- `finlo_crm/forecast/templates/forecast_view.html` (no `request.active_company` branch)
 
 Context: views set `has_company` from `request.active_company`, or templates test `request.active_company` directly.
 
@@ -79,7 +79,7 @@ Generic layout views (`list_view.html`, `card_view.html`, `kanban_view.html`, �
 
 - `no_record_msg`
 - `has_active_filters`
-- `{% empty_add_message model_verbose_name %}` ([misc_tags.md](../../horilla/contrib/generics/templatetags/horilla_tags/misc_tags.md))
+- `{% empty_add_message model_verbose_name %}` ([misc_tags.md](../../finlo/contrib/generics/templatetags/finlo_tags/misc_tags.md))
 
 When touching those templates, prefer resolving `empty_state_message` with the same if/elif chain, then:
 
@@ -91,6 +91,6 @@ When touching those templates, prefer resolving `empty_state_message` with the s
 
 ## Related documentation
 
-- [Settings list shell](../../horilla/contrib/core/settings_list_shell.md)
-- [Forecast targets](../../horilla_crm/forecast/forecast_target.md)
-- [Booking app](../../horilla/contrib/booking/booking.md)
+- [Settings list shell](../../finlo/contrib/core/settings_list_shell.md)
+- [Forecast targets](../../finlo_crm/forecast/forecast_target.md)
+- [Booking app](../../finlo/contrib/booking/booking.md)

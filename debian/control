@@ -1,7 +1,7 @@
-Source: horilla-crm
+Source: finlo-crm
 Section: web
 Priority: optional
-Maintainer: Horilla CRM Team <support@horilla.com>
+Maintainer: Finlo CRM Team <support@finlocrm.com>
 Build-Depends: debhelper-compat (= 13),
                python3-dev (>= 3.12),
                python3-setuptools,
@@ -18,11 +18,11 @@ Build-Depends: debhelper-compat (= 13),
                dh-python,
                dh-systemd
 Standards-Version: 4.6.0
-Homepage: https://github.com/horilla-opensource/horilla-crm
-Vcs-Git: https://github.com/horilla-opensource/horilla-crm.git
-Vcs-Browser: https://github.com/horilla-opensource/horilla-crm
+Homepage: https://github.com/EternZiv/crm-v2
+Vcs-Git: https://github.com/EternZiv/crm-v2.git
+Vcs-Browser: https://github.com/EternZiv/crm-v2
 
-Package: horilla-crm
+Package: finlo-crm
 Architecture: all
 Depends: ${misc:Depends},
          ${python3:Depends},
@@ -31,7 +31,6 @@ Depends: ${misc:Depends},
          python3-venv,
          adduser,
          systemd,
-         postgresql-client | mysql-client | sqlite3,
          nginx-light | apache2 | httpd,
          libjpeg62-turbo,
          zlib1g,
@@ -43,12 +42,11 @@ Depends: ${misc:Depends},
          curl
 Recommends: postgresql-server-dev-all,
            redis-server,
-           postgresql (>= 12) | mysql-server (>= 8.0)
 Suggests: logrotate,
          fail2ban,
          ufw
 Description: Enterprise Customer Relationship Management System
- Horilla-CRM is a comprehensive Customer Relationship Management system
+ Finlo CRM is a comprehensive Customer Relationship Management system
  designed for enterprise-level customer engagement, sales tracking, and
  business process automation.
  .

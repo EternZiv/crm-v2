@@ -1,11 +1,11 @@
-"""DRF ViewSets for the Horilla Calls Integration app."""
+"""DRF ViewSets for the Finlo Calls Integration app."""
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 
 from calls.models import AgentMapping, CallLog, CallProvider
-from horilla.api.permissions import HorillaModelPermissions, IsCompanyMember
-from horilla.contrib.generics.views.helpers.queryset_utils import (
+from finlo.api.permissions import FinloModelPermissions, IsCompanyMember
+from finlo.contrib.generics.views.helpers.queryset_utils import (
     get_queryset_for_module,
 )
 
@@ -25,7 +25,7 @@ class CallProviderViewSet(ModelViewSet):
         IsAuthenticated,
         IsCompanyMember,
         HasCallsAccess,
-        HorillaModelPermissions,
+        FinloModelPermissions,
     ]
     filterset_fields = ["provider_type", "status"]
     queryset = CallProvider.objects.all()
@@ -43,7 +43,7 @@ class AgentMappingViewSet(ModelViewSet):
         IsAuthenticated,
         IsCompanyMember,
         HasCallsAccess,
-        HorillaModelPermissions,
+        FinloModelPermissions,
     ]
     filterset_fields = ["provider", "user"]
     queryset = AgentMapping.objects.all()
@@ -61,7 +61,7 @@ class CallLogViewSet(ModelViewSet):
         IsAuthenticated,
         IsCompanyMember,
         HasCallsAccess,
-        HorillaModelPermissions,
+        FinloModelPermissions,
     ]
     filterset_fields = ["direction", "status", "provider", "agent"]
     queryset = CallLog.objects.all()

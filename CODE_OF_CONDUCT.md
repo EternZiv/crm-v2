@@ -60,8 +60,8 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement by contacting the
-maintainers of this repository privately (GitHub organization owners for the
-Horilla / Cybro repositories that host Horilla CRM). Please do **not** open a
+maintainers of this repository privately (the GitHub organization owners for
+Finlo CRM). Please do **not** open a
 public issue for sensitive reports.
 
 Code of Conduct reports are separate from security vulnerability reports. For

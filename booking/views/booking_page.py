@@ -10,26 +10,26 @@ from functools import cached_property
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from horilla.contrib.generics.views import (
-    HorillaListView,
-    HorillaNavView,
-    HorillaSingleDeleteView,
-    HorillaSingleFormView,
+from finlo.contrib.generics.views import (
+    FinloListView,
+    FinloNavView,
+    FinloSingleDeleteView,
+    FinloSingleFormView,
 )
-from horilla.contrib.mail.models import HorillaMailConfiguration
-from horilla.shortcuts import get_object_or_404, render
-from horilla.urls import reverse_lazy
-from horilla.utils.choices import DAY_LABELS, WEEK_ORDER
-from horilla.utils.decorators import (
+from finlo.contrib.mail.models import FinloMailConfiguration
+from finlo.shortcuts import get_object_or_404, render
+from finlo.urls import reverse_lazy
+from finlo.utils.choices import DAY_LABELS, WEEK_ORDER
+from finlo.utils.decorators import (
     htmx_required,
     method_decorator,
     permission_required,
 )
-from horilla.utils.translation import gettext_lazy as _
-from horilla.views.generic import View
+from finlo.utils.translation import gettext_lazy as _
+from finlo.views.generic import View
 
-# First party imports (Horilla)
-from horilla.web import HttpResponseRedirect
+# First party imports (Finlo)
+from finlo.web import HttpResponseRedirect
 
 # Local imports
 from ..filters import BookingPageFilter
@@ -52,7 +52,7 @@ class GoToWorkingHoursView(LoginRequiredMixin, View):
 
     def get(self, request, *args, **kwargs):
         """Activate the Working Hours tab and redirect to Company Information."""
-        from horilla.contrib.core.models import ActiveTab
+        from finlo.contrib.core.models import ActiveTab
 
         tab_path = "/company-tab-view/"
         tab_target = "tab-business-hour-view-content"
@@ -75,7 +75,7 @@ class BookingSettingsView(LoginRequiredMixin, View):
 
     def get(self, request, *args, **kwargs):
         """Render the booking settings page with nav and list URLs."""
-        from horilla.contrib.core.models.business_hours import BusinessHour
+        from finlo.contrib.core.models.business_hours import BusinessHour
 
         active_company = getattr(request, "active_company", None)
         has_business_hour = (
@@ -96,8 +96,8 @@ class BookingSettingsView(LoginRequiredMixin, View):
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required("booking.view_bookingpage"), name="dispatch")
-class BookingPageNavView(LoginRequiredMixin, HorillaNavView):
-    """Horilla navbar for the Booking Pages settings view."""
+class BookingPageNavView(LoginRequiredMixin, FinloNavView):
+    """Finlo navbar for the Booking Pages settings view."""
 
     nav_description = _("Create booking pages so others can schedule time with you.")
     search_url = reverse_lazy("booking:booking_page_list")
@@ -126,7 +126,7 @@ class BookingPageNavView(LoginRequiredMixin, HorillaNavView):
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required("booking.view_bookingpage"), name="dispatch")
-class BookingPageListView(LoginRequiredMixin, HorillaListView):
+class BookingPageListView(LoginRequiredMixin, FinloListView):
     """List view for BookingPage records in settings."""
 
     model = BookingPage
@@ -229,7 +229,7 @@ class BookingPageListView(LoginRequiredMixin, HorillaListView):
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required("booking.add_bookingpage"), name="dispatch")
-class BookingPageCreateView(LoginRequiredMixin, HorillaSingleFormView):
+class BookingPageCreateView(LoginRequiredMixin, FinloSingleFormView):
     """Create a new BookingPage."""
 
     model = BookingPage
@@ -257,7 +257,7 @@ class BookingPageCreateView(LoginRequiredMixin, HorillaSingleFormView):
     def form_valid(self, form):
         """Save the booking page, warning if no outgoing mail server is configured."""
         response = super().form_valid(form)
-        if not HorillaMailConfiguration.objects.filter(
+        if not FinloMailConfiguration.objects.filter(
             mail_channel="outgoing"
         ).exists():
             messages.warning(
@@ -304,7 +304,7 @@ class BookingToggleLocationView(LoginRequiredMixin, View):
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required("booking.delete_bookingpage"), name="dispatch")
-class BookingPageDeleteView(LoginRequiredMixin, HorillaSingleDeleteView):
+class BookingPageDeleteView(LoginRequiredMixin, FinloSingleDeleteView):
     """Delete a BookingPage."""
 
     model = BookingPage
@@ -359,7 +359,7 @@ class BookingAvailabilityView(LoginRequiredMixin, View):
 
     def get(self, request, pk):
         """Render the availability modal for the given BookingPage."""
-        from horilla.contrib.calendar.models import UserAvailability
+        from finlo.contrib.calendar.models import UserAvailability
 
         page = get_object_or_404(BookingPage, pk=pk)
         bh = page.business_hour

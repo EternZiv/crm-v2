@@ -1,16 +1,16 @@
 """
-Forms for the horilla_booking app.
+Forms for the finlo_booking app.
 """
 
 # Django imports
 from django import forms
 
-# Horilla imports
-from horilla.contrib.generics.forms import HorillaModelForm
-from horilla.urls import reverse_lazy
-from horilla.utils.html import format_html
-from horilla.utils.text import slugify
-from horilla.utils.translation import gettext_lazy as _
+# Finlo imports
+from finlo.contrib.generics.forms import FinloModelForm
+from finlo.urls import reverse_lazy
+from finlo.utils.html import format_html
+from finlo.utils.text import slugify
+from finlo.utils.translation import gettext_lazy as _
 
 # Local imports
 from .models import BookingPage
@@ -21,10 +21,10 @@ class ColorPickerWidget(forms.TextInput):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.attrs["type"] = "color"  # ensures HorillaModelForm skips class injection
+        self.attrs["type"] = "color"  # ensures FinloModelForm skips class injection
 
     def render(self, name, value, attrs=None, renderer=None):
-        """Render a native color input styled to match Horilla form fields."""
+        """Render a native color input styled to match Finlo form fields."""
         final_attrs = self.build_attrs(self.attrs, attrs or {})
         input_id = final_attrs.get("id", f"id_{name}")
 
@@ -39,7 +39,7 @@ class ColorPickerWidget(forms.TextInput):
         )
 
 
-class BookingPageForm(HorillaModelForm):
+class BookingPageForm(FinloModelForm):
     """
     Zoho-style multi-section form for creating and editing BookingPage instances.
     Requires a BusinessHour to exist for the company before a page can be created.
@@ -104,8 +104,8 @@ class BookingPageForm(HorillaModelForm):
         if not user:
             return choices
         try:
-            from horilla.contrib.calendar.models import GoogleCalendarConfig
-            from horilla.contrib.meeting.models import (
+            from finlo.contrib.calendar.models import GoogleCalendarConfig
+            from finlo.contrib.meeting.models import (
                 MeetingIntegrationSetting,
                 MicrosoftTeamsOAuthConfig,
                 UserMeetingConfig,
@@ -216,10 +216,10 @@ class BookingPageForm(HorillaModelForm):
         self.fields["shift_hour"].required = False
         self.fields["participants"].required = False
         try:
-            from horilla.auth.models import User
-            from horilla.contrib.core.models import ShiftHour
-            from horilla.contrib.core.models.business_hours import BusinessHour
-            from horilla.contrib.utils.middlewares import _thread_local
+            from finlo.auth.models import User
+            from finlo.contrib.core.models import ShiftHour
+            from finlo.contrib.core.models.business_hours import BusinessHour
+            from finlo.contrib.utils.middlewares import _thread_local
 
             request = getattr(_thread_local, "request", None)
             company = getattr(request, "active_company", None) if request else None
@@ -250,7 +250,7 @@ class BookingPageForm(HorillaModelForm):
         # Meeting provider choices are limited to providers the requesting
         # user has actually connected (and only when the company's Meeting
         # Integration setting grants them access) — mirrors the same
-        # provider-choice logic used in horilla.contrib.activity.forms.
+        # provider-choice logic used in finlo.contrib.activity.forms.
         provider_choices = self._meeting_provider_choices(user)
         self.fields["meeting_provider"].choices = provider_choices
         self._has_meeting_access = len(provider_choices) > 1
@@ -302,19 +302,19 @@ class BookingPageForm(HorillaModelForm):
         ):
             self.fields[field_name].required = False
         try:
-            from horilla.contrib.core.models import HorillaContentType
-            from horilla.contrib.mail.models import HorillaMailTemplate
-            from horilla.db.models import Q
+            from finlo.contrib.core.models import FinloContentType
+            from finlo.contrib.mail.models import FinloMailTemplate
+            from finlo.db.models import Q
 
-            booking_ct = HorillaContentType.objects.filter(
+            booking_ct = FinloContentType.objects.filter(
                 app_label="booking", model="bookingpage"
             ).first()
             qs = (
-                HorillaMailTemplate.objects.filter(
+                FinloMailTemplate.objects.filter(
                     Q(content_type=booking_ct) | Q(content_type__isnull=True)
                 )
                 if booking_ct
-                else HorillaMailTemplate.objects.filter(content_type__isnull=True)
+                else FinloMailTemplate.objects.filter(content_type__isnull=True)
             )
             for field_name in (
                 "confirmation_mail_template",

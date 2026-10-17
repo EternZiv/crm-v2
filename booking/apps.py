@@ -2,13 +2,13 @@
 App configuration for the booking app.
 """
 
-from horilla.apps import AppLauncher
-from horilla.utils.translation import gettext_lazy as _
+from finlo.apps import AppLauncher
+from finlo.utils.translation import gettext_lazy as _
 
 
 class BookingConfig(AppLauncher):
     """
-    Configuration class for the booking app in Horilla.
+    Configuration class for the booking app in Finlo.
     """
 
     default = True
@@ -28,4 +28,4 @@ class BookingConfig(AppLauncher):
     ]
 
     celery_schedule_module = "celery_schedules"
-    celery_schedule_variable = "HORILLA_BEAT_SCHEDULE"
+    celery_schedule_variable = "FINLO_BEAT_SCHEDULE"

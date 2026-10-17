@@ -4,79 +4,79 @@ Repository coding rules. Add new topics as additional `##` sections below.
 
 ## Avoid direct Django usage
 
-Horilla re-exports common Django APIs under `horilla.*` packages so app code has one consistent import path.
+Finlo re-exports common Django APIs under `finlo.*` packages so app code has one consistent import path.
 
-**Rule:** If Horilla exposes the symbol (see table below), import from Horilla. If not, import from Django or the third-party package as usual.
+**Rule:** If Finlo exposes the symbol (see table below), import from Finlo. If not, import from Django or the third-party package as usual.
 
 | Situation | Import from |
 |-----------|-------------|
-| Symbol listed in a Horilla package below | `horilla.<package>` |
-| Symbol not re-exported by Horilla | `django.*` (or third-party) |
-| Code that implements the re-export | `django.*` only inside the Horilla wrapper module |
+| Symbol listed in a Finlo package below | `finlo.<package>` |
+| Symbol not re-exported by Finlo | `django.*` (or third-party) |
+| Code that implements the re-export | `django.*` only inside the Finlo wrapper module |
 
-### Horilla import map (use these instead of Django)
+### Finlo import map (use these instead of Django)
 
 #### Database & ORM
 
 | Import from | Instead of | Symbols (common) |
 |-------------|------------|------------------|
-| `horilla.db` | `django.db` | `models`, `transaction`, `connection` |
-| `horilla.db.models.signals` | `django.db.models.signals` | `post_save`, `pre_save`, `post_delete`, `m2m_changed`, … |
-| `horilla.db.models` | `django.db.models` | `Q`, `F`, `Count`, `ForeignKey`, … (via `horilla.db.models` re-export) |
+| `finlo.db` | `django.db` | `models`, `transaction`, `connection` |
+| `finlo.db.models.signals` | `django.db.models.signals` | `post_save`, `pre_save`, `post_delete`, `m2m_changed`, … |
+| `finlo.db.models` | `django.db.models` | `Q`, `F`, `Count`, `ForeignKey`, … (via `finlo.db.models` re-export) |
 
-Details: [docs/horilla/contrib/core/models.md](horilla/contrib/core/models.md)
+Details: [docs/finlo/contrib/core/models.md](finlo/contrib/core/models.md)
 
 #### HTTP, views, URLs
 
 | Import from | Instead of | Symbols (common) |
 |-------------|------------|------------------|
-| `horilla.web` | `django.http` | `HttpResponse`, `JsonResponse`, `QueryDict`, `Http404`, `StreamingHttpResponse`, `HttpNotFound`, `RedirectResponse`, … |
-| `horilla.views.generic` | `django.views.generic` | `FormView`, `View`, `TemplateView`, `ListView`, `DetailView` |
-| `horilla.shortcuts` | `django.shortcuts` | `redirect`, `render`, `get_object_or_404` |
-| `horilla.urls` | `django.urls` | `path`, `re_path`, `include`, `reverse`, `reverse_lazy`, `resolve` |
+| `finlo.web` | `django.http` | `HttpResponse`, `JsonResponse`, `QueryDict`, `Http404`, `StreamingHttpResponse`, `HttpNotFound`, `RedirectResponse`, … |
+| `finlo.views.generic` | `django.views.generic` | `FormView`, `View`, `TemplateView`, `ListView`, `DetailView` |
+| `finlo.shortcuts` | `django.shortcuts` | `redirect`, `render`, `get_object_or_404` |
+| `finlo.urls` | `django.urls` | `path`, `re_path`, `include`, `reverse`, `reverse_lazy`, `resolve` |
 
-> **Note:** The platform package was renamed from `horilla.http` to **`horilla.web`**. The old name shadowed Python’s standard-library `http` module when Django management commands ran from inside the `horilla/` directory (for example `makemessages`). Update any remaining `from horilla.http import …` imports to `from horilla.web import …`. Do not keep a `horilla/http/` compatibility shim — it would restore the import conflict.
+> **Note:** The platform package was renamed from `finlo.http` to **`finlo.web`**. The old name shadowed Python’s standard-library `http` module when Django management commands ran from inside the `finlo/` directory (for example `makemessages`). Update any remaining `from finlo.http import …` imports to `from finlo.web import …`. Do not keep a `finlo/http/` compatibility shim — it would restore the import conflict.
 
-Details: [docs/horilla/web/web.md](horilla/web/web.md), [docs/horilla/shortcuts/shortcuts.md](horilla/shortcuts/shortcuts.md), [docs/horilla/urls/urls.md](horilla/urls/urls.md)
+Details: [docs/finlo/web/web.md](finlo/web/web.md), [docs/finlo/shortcuts/shortcuts.md](finlo/shortcuts/shortcuts.md), [docs/finlo/urls/urls.md](finlo/urls/urls.md)
 
 #### Apps, auth, exceptions
 
 | Import from | Instead of | Symbols (common) |
 |-------------|------------|------------------|
-| `horilla.apps` | `django.apps` | `AppLauncher`, `AppConfig`, `apps` (registry) |
-| `horilla.auth.models` | `django.contrib.auth.models` | `User` (wraps `AUTH_USER_MODEL`) |
-| `horilla.core.exceptions` | `django.core.exceptions` | `ValidationError`, `PermissionDenied`, `ObjectDoesNotExist`, … |
+| `finlo.apps` | `django.apps` | `AppLauncher`, `AppConfig`, `apps` (registry) |
+| `finlo.auth.models` | `django.contrib.auth.models` | `User` (wraps `AUTH_USER_MODEL`) |
+| `finlo.core.exceptions` | `django.core.exceptions` | `ValidationError`, `PermissionDenied`, `ObjectDoesNotExist`, … |
 
-Details: [docs/horilla/apps/apps.md](horilla/apps/apps.md), [docs/horilla/contrib/core/user_model.md](horilla/contrib/core/user_model.md), [docs/horilla/core/exceptions.md](horilla/core/exceptions.md)
+Details: [docs/finlo/apps/apps.md](finlo/apps/apps.md), [docs/finlo/contrib/core/user_model.md](finlo/contrib/core/user_model.md), [docs/finlo/core/exceptions.md](finlo/core/exceptions.md)
 
 #### Utilities (i18n, time, HTML, text, functional, decorators)
 
 | Import from | Instead of | Symbols (common) |
 |-------------|------------|------------------|
-| `horilla.utils.translation` | `django.utils.translation` | `gettext_lazy`, `gettext`, `ngettext_lazy`, `activate`, `override`, … |
-| `horilla.utils` or `horilla.utils.timezone` | `django.utils.timezone` | `timezone.now()`, `make_aware`, `localtime`, `UTC`, … |
-| `horilla.utils.html` | `django.utils.html` | `format_html`, `format_html_join`, `escape`, `strip_tags`, `conditional_escape`, … |
-| `horilla.utils.text` | `django.utils.text` | `slugify`, `Truncator`, `capfirst`, `get_valid_filename`, … |
-| `horilla.utils.functional` | `django.utils.functional` | `cached_property`, `lazy`, `Promise`, `SimpleLazyObject`, … |
-| `horilla.utils.decorators` | `django.utils.decorators` + custom | `method_decorator`, `permission_required`, `htmx_required`, `db_initialization`, … |
+| `finlo.utils.translation` | `django.utils.translation` | `gettext_lazy`, `gettext`, `ngettext_lazy`, `activate`, `override`, … |
+| `finlo.utils` or `finlo.utils.timezone` | `django.utils.timezone` | `timezone.now()`, `make_aware`, `localtime`, `UTC`, … |
+| `finlo.utils.html` | `django.utils.html` | `format_html`, `format_html_join`, `escape`, `strip_tags`, `conditional_escape`, … |
+| `finlo.utils.text` | `django.utils.text` | `slugify`, `Truncator`, `capfirst`, `get_valid_filename`, … |
+| `finlo.utils.functional` | `django.utils.functional` | `cached_property`, `lazy`, `Promise`, `SimpleLazyObject`, … |
+| `finlo.utils.decorators` | `django.utils.decorators` + custom | `method_decorator`, `permission_required`, `htmx_required`, `db_initialization`, … |
 
-Details: [docs/horilla/utils/translation.md](horilla/utils/translation.md), [docs/horilla/utils/html.md](horilla/utils/html.md), [docs/horilla/utils/text.md](horilla/utils/text.md), [docs/horilla/utils/functional.md](horilla/utils/functional.md), [docs/horilla/utils/utils.md](horilla/utils/utils.md), [docs/horilla/utils/decorators.md](horilla/utils/decorators.md)
+Details: [docs/finlo/utils/translation.md](finlo/utils/translation.md), [docs/finlo/utils/html.md](finlo/utils/html.md), [docs/finlo/utils/text.md](finlo/utils/text.md), [docs/finlo/utils/functional.md](finlo/utils/functional.md), [docs/finlo/utils/utils.md](finlo/utils/utils.md), [docs/finlo/utils/decorators.md](finlo/utils/decorators.md)
 
-#### Framework types (not Django re-exports — still use Horilla)
+#### Framework types (not Django re-exports — still use Finlo)
 
 | Import from | Role |
 |-------------|------|
-| `horilla.contrib.core.models` | `HorillaCoreModel`, `CompanyFilteredManager`, … |
-| `horilla.contrib.generics` | `HorillaListView`, `HorillaModelForm`, … |
-| `horilla.menu` | `floating_menu`, `main_section_menu`, … |
-| `horilla.registry.feature` | `register_model_for_feature`, `FEATURE_REGISTRY` |
+| `finlo.contrib.core.models` | `FinloCoreModel`, `CompanyFilteredManager`, … |
+| `finlo.contrib.generics` | `FinloListView`, `FinloModelForm`, … |
+| `finlo.menu` | `floating_menu`, `main_section_menu`, … |
+| `finlo.registry.feature` | `register_model_for_feature`, `FEATURE_REGISTRY` |
 
-When adding a new Horilla wrapper, document it under `docs/horilla/<package>/` and add a row to the tables above.
+When adding a new Finlo wrapper, document it under `docs/finlo/<package>/` and add a row to the tables above.
 
 ### Examples
 
 ```python
-# ❌ Avoid when Horilla re-exports the symbol
+# ❌ Avoid when Finlo re-exports the symbol
 from django.db import models, transaction
 from django.http import HttpResponse
 from django.urls import reverse_lazy
@@ -89,28 +89,28 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.apps import apps
 
-# ✅ Prefer — Horilla import map
-from horilla.db import models, transaction
-from horilla.web import HttpResponse
-from horilla.urls import reverse_lazy
-from horilla.shortcuts import render, redirect
-from horilla.utils.translation import gettext_lazy as _
-from horilla.utils import timezone
-from horilla.utils.html import format_html, escape
-from horilla.utils.text import slugify
-from horilla.utils.functional import cached_property
-from horilla.core.exceptions import ValidationError
-from horilla.auth.models import User
-from horilla.apps import apps, AppLauncher
-from horilla.utils.decorators import permission_required, htmx_required
+# ✅ Prefer — Finlo import map
+from finlo.db import models, transaction
+from finlo.web import HttpResponse
+from finlo.urls import reverse_lazy
+from finlo.shortcuts import render, redirect
+from finlo.utils.translation import gettext_lazy as _
+from finlo.utils import timezone
+from finlo.utils.html import format_html, escape
+from finlo.utils.text import slugify
+from finlo.utils.functional import cached_property
+from finlo.core.exceptions import ValidationError
+from finlo.auth.models import User
+from finlo.apps import apps, AppLauncher
+from finlo.utils.decorators import permission_required, htmx_required
 
-# ✅ OK — not wrapped by Horilla (use Django directly)
+# ✅ OK — not wrapped by Finlo (use Django directly)
 from django.db import IntegrityError, migrations
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import close_old_connections
 ```
 
-### Still import from Django when Horilla does not wrap it
+### Still import from Django when Finlo does not wrap it
 
 Examples (not exhaustive):
 
@@ -122,9 +122,9 @@ Examples (not exhaustive):
 ### Exceptions (intentional `django.*` imports)
 
 - **Migrations** — `from django.db import migrations` in `migrations/*.py` only.
-- **Early bootstrap** — e.g. `horilla/extension/models/metaclass.py` uses Django `Field` only (no `horilla.db` at import time) to avoid `AppRegistryNotReady`; see [docs/Plan_HORILLA_INHERIT_MIGRATION.md](Plan_HORILLA_INHERIT_MIGRATION.md).
-- **Re-export implementation** — only the Horilla wrapper module (e.g. `horilla/db/__init__.py`, `horilla/web/__init__.py`) may import the symbol from Django.
-- **Gaps** — any symbol not in the Horilla package’s `__all__` / docs stays on Django.
+- **Early bootstrap** — e.g. `finlo/extension/models/metaclass.py` uses Django `Field` only (no `finlo.db` at import time) to avoid `AppRegistryNotReady`; see [docs/Plan_FINLO_INHERIT_MIGRATION.md](Plan_FINLO_INHERIT_MIGRATION.md).
+- **Re-export implementation** — only the Finlo wrapper module (e.g. `finlo/db/__init__.py`, `finlo/web/__init__.py`) may import the symbol from Django.
+- **Gaps** — any symbol not in the Finlo package’s `__all__` / docs stays on Django.
 
 ### Import order and section comments
 
@@ -133,27 +133,27 @@ Group imports in this order. Use the **exact** section headers below so reviewer
 | Order | Section header | What goes here |
 |-------|----------------|----------------|
 | 1 | `# Standard library imports` | `import os`, `from pathlib import Path`, … |
-| 2 | `# Third-party imports (Django)` | `django.*` only (symbols **not** re-exported by Horilla) |
+| 2 | `# Third-party imports (Django)` | `django.*` only (symbols **not** re-exported by Finlo) |
 | 3 | `# Third-party imports (other)` | Optional — `rest_framework`, `djmoney`, `celery`, … |
-| 4 | `# First party imports (Horilla)` | **Every** `from horilla…` / `import horilla…` import |
-| 5 | `# Local imports` | Same-app modules — relative imports (`.models`, `.forms`) or `horilla_crm.*` / client extension apps |
+| 4 | `# First party imports (Finlo)` | **Every** `from finlo…` / `import finlo…` import |
+| 5 | `# Local imports` | Same-app modules — relative imports (`.models`, `.forms`) or `finlo_crm.*` / client extension apps |
 
-**Mandatory:** Any import whose top-level package is `horilla` (`horilla.db`, `horilla.contrib.*`, `horilla_crm` does **not** apply — that is CRM app code, usually under **Local imports**) must appear only under `# First party imports (Horilla)`, never under Django or third-party blocks.
+**Mandatory:** Any import whose top-level package is `finlo` (`finlo.db`, `finlo.contrib.*`, `finlo_crm` does **not** apply — that is CRM app code, usually under **Local imports**) must appear only under `# First party imports (Finlo)`, never under Django or third-party blocks.
 
 Within **stdlib**, **Django**, and **other** sections, sort imports alphabetically by module path.
 
-Within **`# First party imports (Horilla)`**, use **two sub-blocks** (do not mix):
+Within **`# First party imports (Finlo)`**, use **two sub-blocks** (do not mix):
 
 | Sub-order | Packages | Notes |
 |-----------|----------|--------|
-| **1 — Platform** | `horilla.apps`, `horilla.auth`, `horilla.core`, `horilla.db`, `horilla.web`, `horilla.menu`, `horilla.registry`, `horilla.shortcuts`, `horilla.urls`, `horilla.utils`, … | Top-level Horilla infrastructure — **not** `horilla.contrib` |
-| **2 — Contrib apps** | `horilla.contrib.*` | Always **last** in the Horilla block; contrib is a bundle of horilla apps (core, generics, mail, …) |
+| **1 — Platform** | `finlo.apps`, `finlo.auth`, `finlo.core`, `finlo.db`, `finlo.web`, `finlo.menu`, `finlo.registry`, `finlo.shortcuts`, `finlo.urls`, `finlo.utils`, … | Top-level Finlo infrastructure — **not** `finlo.contrib` |
+| **2 — Contrib apps** | `finlo.contrib.*` | Always **last** in the Finlo block; contrib is a bundle of finlo apps (core, generics, mail, …) |
 
-Sort **alphabetically by full module path** inside each sub-block. Typical platform order (all before any `horilla.contrib` line):
+Sort **alphabetically by full module path** inside each sub-block. Typical platform order (all before any `finlo.contrib` line):
 
 ```text
-horilla.apps → horilla.auth → horilla.core → horilla.db → horilla.web → horilla.menu
-→ horilla.registry → horilla.shortcuts → horilla.urls → horilla.utils → …
+finlo.apps → finlo.auth → finlo.core → finlo.db → finlo.web → finlo.menu
+→ finlo.registry → finlo.shortcuts → finlo.urls → finlo.utils → …
 ```
 
 #### Example (correct)
@@ -172,19 +172,19 @@ from django.views.generic import DeleteView
 # Third-party imports (other)
 from djmoney.models.fields import MoneyField
 
-# First party imports (Horilla)
-from horilla.apps import apps
-from horilla.auth.models import User
-from horilla.db import models, transaction
-from horilla.web import HttpResponse
-from horilla.views.generic import View
-from horilla.shortcuts import redirect, render
-from horilla.urls import reverse_lazy
-from horilla.utils import timezone
-from horilla.utils.decorators import permission_required
-from horilla.utils.translation import gettext_lazy as _
-from horilla.contrib.core.models import HorillaCoreModel
-from horilla.contrib.generics.views import HorillaListView
+# First party imports (Finlo)
+from finlo.apps import apps
+from finlo.auth.models import User
+from finlo.db import models, transaction
+from finlo.web import HttpResponse
+from finlo.views.generic import View
+from finlo.shortcuts import redirect, render
+from finlo.urls import reverse_lazy
+from finlo.utils import timezone
+from finlo.utils.decorators import permission_required
+from finlo.utils.translation import gettext_lazy as _
+from finlo.contrib.core.models import FinloCoreModel
+from finlo.contrib.generics.views import FinloListView
 
 # Local imports
 from .models import Lead
@@ -195,32 +195,32 @@ from .models import Lead
 ```python
 # Third-party imports (Django)
 from django.contrib.auth.mixins import LoginRequiredMixin
-from horilla.db import transaction  # ❌ horilla.* must not be in Django block
+from finlo.db import transaction  # ❌ finlo.* must not be in Django block
 
-# First party imports (Horilla)
-from horilla.contrib.generics.views import HorillaListView  # ❌ contrib before platform
-from horilla.db import models
+# First party imports (Finlo)
+from finlo.contrib.generics.views import FinloListView  # ❌ contrib before platform
+from finlo.db import models
 ```
 
-Use `# First party imports (Horilla)` (not `First party / Horilla` or other variants) in new and touched files.
+Use `# First party imports (Finlo)` (not `First party / Finlo` or other variants) in new and touched files.
 
-See also [.claude/rules/horilla-coding-style.md](../.claude/rules/horilla-coding-style.md).
+See also [.claude/rules/finlo-coding-style.md](../.claude/rules/finlo-coding-style.md).
 
 ### Reviewer checklist
 
-- [ ] All `horilla.*` imports are under `# First party imports (Horilla)` only.
-- [ ] Within First party: platform (`horilla.db`, `horilla.auth`, `horilla.web`, …) before `horilla.contrib.*`.
-- [ ] Django block contains only `django.*` (and no `horilla.*`).
-- [ ] Database: `models`, `transaction`, `connection`, and model signals use `horilla.db` / `horilla.db.models.signals`.
-- [ ] HTTP/views: responses and shortcuts use `horilla.web` / `horilla.shortcuts` when listed above.
-- [ ] URLs: `path`, `reverse`, `reverse_lazy` use `horilla.urls`.
-- [ ] i18n / time / HTML / text / functional / decorators: use `horilla.utils.translation`, `horilla.utils.timezone` (or `from horilla.utils import timezone`), `horilla.utils.html`, `horilla.utils.text`, `horilla.utils.functional`, `horilla.utils.decorators`.
-- [ ] User model and registry: `horilla.auth.models.User`, `horilla.apps.apps` — not `django.contrib.auth.models.User`.
-- [ ] Exceptions: `horilla.core.exceptions` — not `django.core.exceptions` for re-exported types.
+- [ ] All `finlo.*` imports are under `# First party imports (Finlo)` only.
+- [ ] Within First party: platform (`finlo.db`, `finlo.auth`, `finlo.web`, …) before `finlo.contrib.*`.
+- [ ] Django block contains only `django.*` (and no `finlo.*`).
+- [ ] Database: `models`, `transaction`, `connection`, and model signals use `finlo.db` / `finlo.db.models.signals`.
+- [ ] HTTP/views: responses and shortcuts use `finlo.web` / `finlo.shortcuts` when listed above.
+- [ ] URLs: `path`, `reverse`, `reverse_lazy` use `finlo.urls`.
+- [ ] i18n / time / HTML / text / functional / decorators: use `finlo.utils.translation`, `finlo.utils.timezone` (or `from finlo.utils import timezone`), `finlo.utils.html`, `finlo.utils.text`, `finlo.utils.functional`, `finlo.utils.decorators`.
+- [ ] User model and registry: `finlo.auth.models.User`, `finlo.apps.apps` — not `django.contrib.auth.models.User`.
+- [ ] Exceptions: `finlo.core.exceptions` — not `django.core.exceptions` for re-exported types.
 - [ ] Re-raised exceptions use `raise NewError(...) from exc` when translating caught errors (see [Exception chaining](#exception-chaining-raise--from)).
 - [ ] `@cached_property` values are read via accessor methods or explicit resolution — not passed as descriptors into ORM filters (see [`@cached_property` on views](#cached_property-on-views)).
-- [ ] Templates omit redundant `{% load static %}`, `{% load i18n %}`, and `{% load horilla_tags %}` (see [Django templates — built-in tag libraries](#django-templates--built-in-tag-libraries)).
-- [ ] New direct `django.*` imports are justified (not in Horilla map) or documented.
+- [ ] Templates omit redundant `{% load static %}`, `{% load i18n %}`, and `{% load finlo_tags %}` (see [Django templates — built-in tag libraries](#django-templates--built-in-tag-libraries)).
+- [ ] New direct `django.*` imports are justified (not in Finlo map) or documented.
 
 ---
 
@@ -233,13 +233,13 @@ except ValueError as exc:
     raise forms.ValidationError(_("Invalid JSON file.")) from exc
 ```
 
-Do **not** swallow the original exception unless the handler fully recovers. Details and examples: [docs/horilla/core/exceptions.md](docs/horilla/core/exceptions.md#exception-chaining-raise--from).
+Do **not** swallow the original exception unless the handler fully recovers. Details and examples: [docs/finlo/core/exceptions.md](docs/finlo/core/exceptions.md#exception-chaining-raise--from).
 
 ---
 
 ## `@cached_property` on views
 
-`horilla.utils.functional.cached_property` (re-export of Django’s helper) caches a **computed value** on the instance. The attribute name is not the value itself.
+`finlo.utils.functional.cached_property` (re-export of Django’s helper) caches a **computed value** on the instance. The attribute name is not the value itself.
 
 ```python
 @cached_property
@@ -257,46 +257,46 @@ def company_for_user(self):
 | Boolean tests | Prefer `if company is not None:` over `if company:` when pylint W0125 flags constant-test false positives on ternaries |
 | Currency / display fallbacks | Initialize default, then assign inside `if company is not None:` |
 
-Example (forecast views): [docs/horilla_crm/forecast/forecast_type_tab.md](docs/horilla_crm/forecast/forecast_type_tab.md#forecasttypetabmixin--cached-context-accessors).
+Example (forecast views): [docs/finlo_crm/forecast/forecast_type_tab.md](docs/finlo_crm/forecast/forecast_type_tab.md#forecasttypetabmixin--cached-context-accessors).
 
 ---
 
 ## Django templates — built-in tag libraries
 
-Horilla registers common template tag libraries globally via `BUILTINS` in [`horilla/settings/base.py`](../horilla/settings/base.py). They are passed to Django as `OPTIONS["builtins"]` on the template engine.
+Finlo registers common template tag libraries globally via `BUILTINS` in [`finlo/settings/base.py`](../finlo/settings/base.py). They are passed to Django as `OPTIONS["builtins"]` on the template engine.
 
-**Rule:** Do **not** add `{% load static %}`, `{% load i18n %}`, or `{% load horilla_tags %}` at the top of templates. Those libraries are already available in every template.
+**Rule:** Do **not** add `{% load static %}`, `{% load i18n %}`, or `{% load finlo_tags %}` at the top of templates. Those libraries are already available in every template.
 
 | Built-in library | Provides (common) |
 |------------------|-------------------|
 | `django.templatetags.static` | `{% static %}`, `{% get_static_prefix %}`, … |
 | `django.templatetags.i18n` | `{% trans %}`, `{% blocktrans %}`, `{% get_current_language %}`, … |
-| `horilla.contrib.generics.templatetags.horilla_tags` | `{% has_perm %}`, `{% is_active %}`, `{% display_field_value %}`, … |
+| `finlo.contrib.generics.templatetags.finlo_tags` | `{% has_perm %}`, `{% is_active %}`, `{% display_field_value %}`, … |
 
-Other tag libraries (e.g. `{% load horilla_call_tags %}`, app-specific libraries) are **not** built in — use `{% load … %}` only when you need tags from those modules.
+Other tag libraries (e.g. `{% load finlo_call_tags %}`, app-specific libraries) are **not** built in — use `{% load … %}` only when you need tags from those modules.
 
 ### Examples
 
 ```django
-{# ✅ OK — no {% load %} needed for static, i18n, or horilla_tags #}
+{# ✅ OK — no {% load %} needed for static, i18n, or finlo_tags #}
 <img src="{% static 'assets/img/activate-company.svg' %}" alt="{% trans 'Activate company' %}">
 {% has_perm "core.view_company" as can_view_company %}
 
 {# ❌ Avoid — redundant with BUILTINS #}
 {% load static %}
 {% load i18n %}
-{% load horilla_tags %}
+{% load finlo_tags %}
 ```
 
 ```django
 {# ✅ OK — library not in BUILTINS #}
-{% load horilla_call_tags %}
+{% load finlo_call_tags %}
 {% calls_enabled as calls_active %}
 ```
 
 ### Reviewer checklist
 
-- [ ] New or touched templates do not add `{% load static %}`, `{% load i18n %}`, or `{% load horilla_tags %}` unless removing legacy lines during a refactor.
+- [ ] New or touched templates do not add `{% load static %}`, `{% load i18n %}`, or `{% load finlo_tags %}` unless removing legacy lines during a refactor.
 - [ ] `{% load … %}` is present only for tag libraries outside `BUILTINS`.
 - [ ] Prerequisite / no-data screens use [empty_state partials](templates/components/empty_state.md) instead of duplicating SVG markup.
 
@@ -309,8 +309,8 @@ Conventions for **functions**, **classes**, and **variables**. Follow PEP 8 unle
 **Related docs**
 
 - Import map and section headers: [Avoid direct Django usage](#avoid-direct-django-usage) (same file)
-- Extension system: [docs/horilla/extension/inherit.md](docs/horilla/extension/inherit.md)
-- ORM / `horilla.db`: [docs/horilla/contrib/core/models.md](docs/horilla/contrib/core/models.md)
+- Extension system: [docs/finlo/extension/inherit.md](docs/finlo/extension/inherit.md)
+- ORM / `finlo.db`: [docs/finlo/contrib/core/models.md](docs/finlo/contrib/core/models.md)
 - Commit format: [CLAUDE.md](CLAUDE.md) (`[ADD/FIX/UPDT/REMOVE] SECTION: description`)
 
 ### General Python style
@@ -321,50 +321,50 @@ Conventions for **functions**, **classes**, and **variables**. Follow PEP 8 unle
 | **Functions / methods** | `snake_case` | `resolve_list_view_class`, `bootstrap_extensions` |
 | **Variables / attributes** | `snake_case` | `target_path`, `composed_map` |
 | **Constants** | `UPPER_SNAKE_CASE` | `LIST_EXTENSION_REGISTRY`, `FORM_COMPOSED_MAP` |
-| **Modules / packages** | `snake_case` | `metaclass.py`, `horilla_crm` |
+| **Modules / packages** | `snake_case` | `metaclass.py`, `finlo_crm` |
 | **Private (module)** | Leading `_` | `_patch_migration_autodetectors` |
-| **Django apps** | `snake_case` package name | `my_lead_extensions`, `horilla_crm.leads` |
+| **Django apps** | `snake_case` package name | `my_lead_extensions`, `finlo_crm.leads` |
 
 Avoid abbreviations unless they are domain-standard (`pk`, `fk`, `url`, `htmx`).
 
-### The `Horilla` prefix — when to use it
+### The `Finlo` prefix — when to use it
 
-The package is already named `horilla`. **Do not repeat `Horilla` in every symbol** inside `horilla/` when the import path or base class already makes the context clear.
+The package is already named `finlo`. **Do not repeat `Finlo` in every symbol** inside `finlo/` when the import path or base class already makes the context clear.
 
-#### Omit redundant `Horilla` (preferred inside `horilla/`)
+#### Omit redundant `Finlo` (preferred inside `finlo/`)
 
 Use short, domain-specific names:
 
 | Do | Do not |
 |----|--------|
-| `ListExtension` | `HorillaListExtension` |
-| `DetailExtension` | `HorillaDetailExtension` |
-| `FormExtension` | `HorillaFormExtension` |
-| `bootstrap_extensions()` | `bootstrap_horilla_extensions()` |
-| `_is_list_extension` | `_is_horilla_list_extension` |
-| `_is_form_extension` | `_is_horilla_form_extension` |
-| `apply_list_extensions()` | `apply_horilla_list_extensions()` |
+| `ListExtension` | `FinloListExtension` |
+| `DetailExtension` | `FinloDetailExtension` |
+| `FormExtension` | `FinloFormExtension` |
+| `bootstrap_extensions()` | `bootstrap_finlo_extensions()` |
+| `_is_list_extension` | `_is_finlo_list_extension` |
+| `_is_form_extension` | `_is_finlo_form_extension` |
+| `apply_list_extensions()` | `apply_finlo_list_extensions()` |
 
-#### Keep `Horilla` for established framework types
+#### Keep `Finlo` for established framework types
 
 These names are public API across apps and templates. **Do not rename** for consistency with generics, core, and docs:
 
 | Keep as-is | Role |
 |------------|------|
-| `HorillaCoreModel` | Base model (`horilla.contrib.core`) |
-| `HorillaListView`, `HorillaDetailView`, … | Generic CBVs (`horilla.contrib.generics`) |
-| `HorillaModelForm`, `HorillaFormMixin` | Form stack |
-| `HorillaFilterSet` | Filters |
-| `HorillaUser` | Auth user model |
+| `FinloCoreModel` | Base model (`finlo.contrib.core`) |
+| `FinloListView`, `FinloDetailView`, … | Generic CBVs (`finlo.contrib.generics`) |
+| `FinloModelForm`, `FinloFormMixin` | Form stack |
+| `FinloFilterSet` | Filters |
+| `FinloUser` | Auth user model |
 
-**Rule of thumb:** If the symbol lives in `horilla.contrib.*` and is imported by many CRM apps, it likely keeps the `Horilla` prefix. If it lives in `horilla.extension.*` or other internal platform code added for extensions, prefer the short name.
+**Rule of thumb:** If the symbol lives in `finlo.contrib.*` and is imported by many CRM apps, it likely keeps the `Finlo` prefix. If it lives in `finlo.extension.*` or other internal platform code added for extensions, prefer the short name.
 
 #### Client / third-party extension apps
 
-Extension apps (e.g. `my_lead_extensions`) sit **outside** `horilla/`:
+Extension apps (e.g. `my_lead_extensions`) sit **outside** `finlo/`:
 
 - **Classes:** describe the target + role — `LeadListExtension`, `LeadSingleFormExtension`, `LeadExtension` (model).
-- **Do not** prefix every class with `Horilla` — the app is already Horilla-specific.
+- **Do not** prefix every class with `Finlo` — the app is already Finlo-specific.
 - **Functions:** `snake_case` helpers — `_clean_industry_code_value`, `_make_industry_optional` (module-private with `_`).
 
 ### Classes
@@ -372,11 +372,11 @@ Extension apps (e.g. `my_lead_extensions`) sit **outside** `horilla/`:
 #### Views and forms (CRM modules)
 
 ```python
-# Good — matches horilla_crm patterns
-class LeadListView(LoginRequiredMixin, HorillaListView):
+# Good — matches finlo_crm patterns
+class LeadListView(LoginRequiredMixin, FinloListView):
     ...
 
-class LeadSingleForm(HorillaModelForm):
+class LeadSingleForm(FinloModelForm):
     ...
 ```
 
@@ -385,56 +385,56 @@ class LeadSingleForm(HorillaModelForm):
 Subclass the platform base and set the registration attribute on the class body:
 
 ```python
-from horilla.extension.list import ListExtension
+from finlo.extension.list import ListExtension
 
 class LeadListExtension(ListExtension):
-    _inherit_list = "horilla_crm.leads.views.core.LeadListView"
+    _inherit_list = "finlo_crm.leads.views.core.LeadListView"
     columns_insert = [("industry", "industry_code")]
 ```
 
 ```python
-# Kanban — see docs/horilla/extension/kanban/inherit.md
-from horilla.extension.kanban import KanbanExtension
+# Kanban — see docs/finlo/extension/kanban/inherit.md
+from finlo.extension.kanban import KanbanExtension
 
 class LeadKanbanExtension(KanbanExtension):
-    _inherit_kanban = "horilla_crm.leads.views.core.LeadKanbanView"
+    _inherit_kanban = "finlo_crm.leads.views.core.LeadKanbanView"
 ```
 
 ```python
-# Detail — see docs/horilla/extension/detail/inherit.md
-from horilla.extension.detail import DetailExtension
+# Detail — see docs/finlo/extension/detail/inherit.md
+from finlo.extension.detail import DetailExtension
 
 class LeadDetailExtension(DetailExtension):
-    _inherit_detail = "horilla_crm.leads.views.core.LeadDetailView"
+    _inherit_detail = "finlo_crm.leads.views.core.LeadDetailView"
 ```
 
 ```python
-from horilla.extension.forms import FormExtension
+from finlo.extension.forms import FormExtension
 
 class LeadSingleFormExtension(FormExtension):
-    _inherit_form = "horilla_crm.leads.forms.LeadSingleForm"
+    _inherit_form = "finlo_crm.leads.forms.LeadSingleForm"
 ```
 
 ```python
-from horilla.extension.filter import FilterExtension
+from finlo.extension.filter import FilterExtension
 
 class LeadFilterExtension(FilterExtension):
-    _inherit_filter = "horilla_crm.leads.filters.LeadFilter"
+    _inherit_filter = "finlo_crm.leads.filters.LeadFilter"
     search_fields_append = ["industry_code"]
 ```
 
 ```python
-from horilla.extension.nav import NavExtension
+from finlo.extension.nav import NavExtension
 
 class LeadNavbarExtension(NavExtension):
-    _inherit_nav = "horilla_crm.leads.views.core.LeadNavbar"
+    _inherit_nav = "finlo_crm.leads.views.core.LeadNavbar"
     column_selector_exclude_fields_append = ["industry_code"]
 ```
 
 ```python
-from horilla.contrib.core.models import HorillaCoreModel
+from finlo.contrib.core.models import FinloCoreModel
 
-class LeadExtension(HorillaCoreModel):
+class LeadExtension(FinloCoreModel):
     _inherit_model = "leads.Lead"
 ```
 
@@ -444,21 +444,21 @@ Platform-generated classes may carry **marker attributes** (do not use these nam
 
 | Attribute | Meaning |
 |-----------|---------|
-| `__horilla_list_composed__` | Composed list view |
-| `__horilla_list_path__` | Original list view import path |
+| `__finlo_list_composed__` | Composed list view |
+| `__finlo_list_path__` | Original list view import path |
 | `__wrapped_list_view__` | Core list view behind composed list |
-| `__horilla_kanban_composed__` | Composed kanban view |
-| `__horilla_kanban_path__` | Original kanban view import path |
+| `__finlo_kanban_composed__` | Composed kanban view |
+| `__finlo_kanban_path__` | Original kanban view import path |
 | `__wrapped_kanban_view__` | Core kanban view behind composed kanban |
-| `__horilla_detail_composed__` | Composed detail view |
-| `__horilla_detail_path__` | Original detail view import path |
+| `__finlo_detail_composed__` | Composed detail view |
+| `__finlo_detail_path__` | Original detail view import path |
 | `__wrapped_detail_view__` | Core detail view behind composed detail |
-| `__horilla_composed__` | Composed form |
-| `__horilla_form_path__` | Original form import path |
-| `__horilla_filter_path__` | Original filterset import path |
+| `__finlo_composed__` | Composed form |
+| `__finlo_form_path__` | Original form import path |
+| `__finlo_filter_path__` | Original filterset import path |
 | `__wrapped_filter__` | Core filterset behind composed filter |
-| `__horilla_nav_composed__` | Composed nav view |
-| `__horilla_nav_path__` | Original nav view import path |
+| `__finlo_nav_composed__` | Composed nav view |
+| `__finlo_nav_path__` | Original nav view import path |
 | `__wrapped_nav_view__` | Core nav view behind composed nav |
 
 #### App config
@@ -478,7 +478,7 @@ class MyLeadExtensionsConfig(AppLauncher):  # PascalCase + Config suffix
 | **is_ / has_** for booleans | `is_composed_view`, checks in validators |
 | **setup_*_extension** for extension hooks | `setup_list_view_extension`, `setup_nav_view_extension`, `setup_filter_extension` |
 | **clean_<field>** on forms | `clean_industry_code` |
-| **No** `Horilla` in new platform helpers under `horilla/extension/` | `bootstrap_extensions()` not `bootstrap_horilla_extensions()` |
+| **No** `Finlo` in new platform helpers under `finlo/extension/` | `bootstrap_extensions()` not `bootstrap_finlo_extensions()` |
 
 Module-level “script” helpers in extension apps may use a leading `_` if not part of the public API.
 
@@ -561,8 +561,8 @@ Keep small connecting words in Title Case when they are part of the label (`To`,
 Extension `_inherit_*` values are **full dotted paths** to an existing class:
 
 ```python
-_inherit_list = "horilla_crm.leads.views.core.LeadListView"
-_inherit_form = "horilla_crm.leads.forms.LeadSingleForm"
+_inherit_list = "finlo_crm.leads.views.core.LeadListView"
+_inherit_form = "finlo_crm.leads.forms.LeadSingleForm"
 _inherit_model = "leads.Lead"  # app_label.ModelName for models only
 ```
 
@@ -571,38 +571,38 @@ _inherit_model = "leads.Lead"  # app_label.ModelName for models only
 
 ### Naming — reviewer checklist
 
-- [ ] New code under `horilla/extension/` avoids redundant `Horilla*` on classes and functions.
-- [ ] Public framework types in `horilla.contrib.*` keep existing `Horilla*` names.
+- [ ] New code under `finlo/extension/` avoids redundant `Finlo*` on classes and functions.
+- [ ] Public framework types in `finlo.contrib.*` keep existing `Finlo*` names.
 - [ ] Extension apps use `*Extension` class names and `_inherit_model` / `_inherit_form` / `_inherit_list`.
 - [ ] Functions and variables are `snake_case`; constants are `UPPER_SNAKE_CASE`.
 - [ ] `verbose_name`, `verbose_name_plural`, and form `label` strings are Title Case (see [User-facing labels](#user-facing-labels--title-case)).
-- [ ] No new `HorillaHorilla*` or duplicated prefix typos.
-- [ ] Client-only apps are registered via `local_settings.py` (`INSTALLED_APPS += [...]`), not by editing `horilla/settings/base.py` unless you are core maintainers.
+- [ ] No new `FinloFinlo*` or duplicated prefix typos.
+- [ ] Client-only apps are registered via `local_settings.py` (`INSTALLED_APPS += [...]`), not by editing `finlo/settings/base.py` unless you are core maintainers.
 
 ### Naming — examples
 
 ```python
-# Platform (horilla/extension/bootstrap.py)
+# Platform (finlo/extension/bootstrap.py)
 def bootstrap_extensions() -> None: ...
 
-# Platform (horilla/extension/list/metaclass.py)
+# Platform (finlo/extension/list/metaclass.py)
 class ListExtension: ...
 
-# CRM view (horilla_crm)
-class LeadListView(LoginRequiredMixin, HorillaListView): ...
+# CRM view (finlo_crm)
+class LeadListView(LoginRequiredMixin, FinloListView): ...
 
 # Client extension (my_lead_extensions/lists.py)
 class LeadListExtension(ListExtension):
-    _inherit_list = "horilla_crm.leads.views.core.LeadListView"
+    _inherit_list = "finlo_crm.leads.views.core.LeadListView"
 ```
 
-When in doubt: **match the nearest existing file in the same package**, then check [docs/horilla/extension/inherit.md](docs/horilla/extension/inherit.md).
+When in doubt: **match the nearest existing file in the same package**, then check [docs/finlo/extension/inherit.md](docs/finlo/extension/inherit.md).
 
 ---
 
 ## Field renames / removals — review stored field-name references
 
-Several Horilla models **persist field names as strings** in the database (visibility prefs, permissions, filters, automations, archived snapshots, etc.). Renaming, removing, or changing a model field’s definition can leave those rows pointing at obsolete names and break UI, filters, permissions, or workflows at runtime.
+Several Finlo models **persist field names as strings** in the database (visibility prefs, permissions, filters, automations, archived snapshots, etc.). Renaming, removing, or changing a model field’s definition can leave those rows pointing at obsolete names and break UI, filters, permissions, or workflows at runtime.
 
 **Rule:** Whenever **any model field is updated** (renamed, removed, or its behavior/definition is changed), review the models below and their related logic so stored field-name references stay valid. Plan data migrations or cleanup when existing rows would break.
 
@@ -610,15 +610,15 @@ Several Horilla models **persist field names as strings** in the database (visib
 
 | Model | Location | Notes |
 |-------|----------|--------|
-| `ListColumnVisibility` | [`horilla/contrib/core/models/visibility.py`](../horilla/contrib/core/models/visibility.py) (~L16) | List column visibility |
-| `DetailFieldVisibility` | [`horilla/contrib/core/models/visibility.py`](../horilla/contrib/core/models/visibility.py) (~L62) | Detail field visibility |
-| `FieldPermission` | [`horilla/contrib/core/models/user.py`](../horilla/contrib/core/models/user.py) (~L342) | Per-field permissions |
-| `SavedFilterList`, `KanbanGroupBy`, `TimelineSpanBy`, `QuickFilter` | [`horilla/contrib/core/models/filters.py`](../horilla/contrib/core/models/filters.py) | Saved filters / group-by / span-by |
-| `RecycleBin` | [`horilla/contrib/core/models/recyclebin.py`](../horilla/contrib/core/models/recyclebin.py) (~L25) | Archived JSON snapshot of records |
-| `ImportHistory`, `ExportSchedule` | [`horilla/contrib/core/models/import_export.py`](../horilla/contrib/core/models/import_export.py) | Import/export field mappings & schedules |
-| `HorillaAutomation`, `AutomationCondition` | [`horilla/contrib/automations/models.py`](../horilla/contrib/automations/models.py) | Automation triggers & conditions |
-| `WorkflowCondition`, `WorkflowTimeTriggerAction` | [`horilla/contrib/workflow/models.py`](../horilla/contrib/workflow/models.py) | Workflow conditions & time-trigger actions |
-| `CadenceCondition` | [`horilla/contrib/cadences/models.py`](../horilla/contrib/cadences/models.py) | Cadence conditions |
+| `ListColumnVisibility` | [`finlo/contrib/core/models/visibility.py`](../finlo/contrib/core/models/visibility.py) (~L16) | List column visibility |
+| `DetailFieldVisibility` | [`finlo/contrib/core/models/visibility.py`](../finlo/contrib/core/models/visibility.py) (~L62) | Detail field visibility |
+| `FieldPermission` | [`finlo/contrib/core/models/user.py`](../finlo/contrib/core/models/user.py) (~L342) | Per-field permissions |
+| `SavedFilterList`, `KanbanGroupBy`, `TimelineSpanBy`, `QuickFilter` | [`finlo/contrib/core/models/filters.py`](../finlo/contrib/core/models/filters.py) | Saved filters / group-by / span-by |
+| `RecycleBin` | [`finlo/contrib/core/models/recyclebin.py`](../finlo/contrib/core/models/recyclebin.py) (~L25) | Archived JSON snapshot of records |
+| `ImportHistory`, `ExportSchedule` | [`finlo/contrib/core/models/import_export.py`](../finlo/contrib/core/models/import_export.py) | Import/export field mappings & schedules |
+| `FinloAutomation`, `AutomationCondition` | [`finlo/contrib/automations/models.py`](../finlo/contrib/automations/models.py) | Automation triggers & conditions |
+| `WorkflowCondition`, `WorkflowTimeTriggerAction` | [`finlo/contrib/workflow/models.py`](../finlo/contrib/workflow/models.py) | Workflow conditions & time-trigger actions |
+| `CadenceCondition` | [`finlo/contrib/cadences/models.py`](../finlo/contrib/cadences/models.py) | Cadence conditions |
 
 ### What to check
 

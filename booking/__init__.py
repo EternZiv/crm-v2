@@ -1,3 +1,3 @@
 """
-Package initialization for the horilla_booking app
+Package initialization for the finlo_booking app
 """

@@ -1,4 +1,4 @@
-"""Telnyx adapter for Horilla Calls Integration."""
+"""Telnyx adapter for Finlo Calls Integration."""
 
 # Standard library imports
 import logging
@@ -8,7 +8,7 @@ import requests
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-# First party imports (Horilla)
+# First party imports (Finlo)
 from .base import BaseCallAdapter
 from .factory import register_adapter
 

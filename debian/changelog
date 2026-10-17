@@ -1,6 +1,6 @@
-horilla-crm (1.0.0-1) unstable; urgency=medium
+finlo-crm (1.0.0-1) unstable; urgency=medium
 
-  * Initial release of Horilla-CRM Debian package
+  * Initial release of Finlo-CRM Debian package
   * Complete Customer Relationship Management system
   * Features include:
     - User Management with role-based access control
@@ -25,4 +25,4 @@ horilla-crm (1.0.0-1) unstable; urgency=medium
   * Web server integration ready for Nginx/Apache
   * Redis support for WebSocket notifications
 
- -- Horilla CRM Team <support@horilla.com>  Wed, 11 Sep 2025 00:00:00 +0000
+ -- Finlo CRM Team <support@finlocrm.com>  Wed, 11 Sep 2025 00:00:00 +0000

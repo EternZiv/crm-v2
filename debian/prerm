@@ -1,18 +1,18 @@
 #!/bin/bash
-# Pre-removal script for horilla-crm
+# Pre-removal script for finlo-crm
 
 set -e
 
 case "$1" in
     remove|upgrade|deconfigure)
         # Stop the service if it's running
-        if systemctl is-active --quiet horilla-crm; then
-            systemctl stop horilla-crm
+        if systemctl is-active --quiet finlo-crm; then
+            systemctl stop finlo-crm
         fi
 
         # Disable the service
-        if systemctl is-enabled --quiet horilla-crm; then
-            systemctl disable horilla-crm
+        if systemctl is-enabled --quiet finlo-crm; then
+            systemctl disable finlo-crm
         fi
         ;;
 

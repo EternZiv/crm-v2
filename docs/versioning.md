@@ -2,15 +2,15 @@
 
 Source of truth for humans and AI assistants that update `__version__.py` files.
 
-Related: [CHANGELOG.md](../CHANGELOG.md) · collection UI: `horilla/utils/version.py`
+Related: [CHANGELOG.md](../CHANGELOG.md) · collection UI: `finlo/utils/version.py`
 
 ---
 
-## Rule 1 — Platform version = whole CRM product (not the `horilla/` folder)
+## Rule 1 — Platform version = whole CRM product (not the `finlo/` folder)
 
-**`horilla/__version__.py` is the Finlo CRM product version on the Horilla platform for the entire project.**
+**`finlo/__version__.py` is the Finlo CRM product version for the entire project.**
 
-It is **not** “the version of code only under the `horilla/` directory.”
+It is **not** “the version of code only under the `finlo/` directory.”
 
 It drives:
 
@@ -20,15 +20,15 @@ It drives:
 
 So when deciding the platform bump and writing `__1_14_0__` (etc.), include
 **project-wide** highlights: new top-level apps (`custom_fields/`, `booking/`,
-`calls/`, …), `horilla_crm/`, contrib apps, and shared platform work.
+`calls/`, …), `finlo_crm/`, contrib apps, and shared platform work.
 
 ### Do not under-weight (common AI mistake)
 
-**Do not under-weight** that `horilla/__version__.py` is the whole CRM product version.
+**Do not under-weight** that `finlo/__version__.py` is the whole CRM product version.
 
 Wrong mental model:
 
-- “Only files under `horilla/` count for platform `1.x.y`”
+- “Only files under `finlo/` count for platform `1.x.y`”
 - “Custom Fields lives in `custom_fields/`, so platform stays a patch”
 - “Weekly = always patch (`1.13.8` → `1.13.9`) even if a headline app shipped”
 
@@ -45,7 +45,7 @@ Correct mental model:
 
 | File | Versions | Bump from |
 |------|----------|-----------|
-| `horilla/__version__.py` | **Whole CRM product / platform** | Platform line only |
+| `finlo/__version__.py` | **Whole CRM product / platform** | Platform line only |
 | Every other `**/__version__.py` | **That module only** | That file’s current `__version__` |
 
 **Never** set mail/CRM/booking/custom_fields versions equal to the platform number.
@@ -54,10 +54,10 @@ Example for one week:
 
 | File | Old → new | Why |
 |------|-----------|-----|
-| `horilla/__version__.py` | `1.13.8` → `1.14.0` | Product release; Custom Fields is the headline |
+| `finlo/__version__.py` | `1.13.8` → `1.14.0` | Product release; Custom Fields is the headline |
 | `custom_fields/__version__.py` | `1.0.0` (first ship) | Module’s own line |
-| `horilla_crm/__version__.py` | `1.11.14` → `1.11.15` | CRM-only commits |
-| `horilla/contrib/mail/__version__.py` | `1.11.9` → `1.11.10` | Mail-only commits |
+| `finlo_crm/__version__.py` | `1.11.14` → `1.11.15` | CRM-only commits |
+| `finlo/contrib/mail/__version__.py` | `1.11.9` → `1.11.10` | Mail-only commits |
 
 ---
 
@@ -86,8 +86,8 @@ Example for one week:
 7. Leave `__release_date__` as-is unless the project already sets it.
 8. Match existing file style (`gettext_lazy`, metadata fields).
 
-Typical paths: `horilla/__version__.py` (product), `horilla/contrib/*/__version__.py`,
-`horilla_crm/__version__.py`, `booking/`, `calls/`, `custom_fields/`, `horilla_jalali/`, …
+Typical paths: `finlo/__version__.py` (product), `finlo/contrib/*/__version__.py`,
+`finlo_crm/__version__.py`, `booking/`, `calls/`, `custom_fields/`, `finlo_jalali/`, …
 
 ---
 
@@ -95,8 +95,8 @@ Typical paths: `horilla/__version__.py` (product), `horilla/contrib/*/__version_
 
 1. `git log --since="START" --until="END+1day" --no-merges` (and per-app paths).
 2. Decide platform **patch vs minor** using Rules 1 and 3 — **do not under-weight**
-   features outside the `horilla/` folder.
-3. Update `horilla/__version__.py` + `__X_Y_Z__` with **project-wide** highlights.
+   features outside the `finlo/` folder.
+3. Update `finlo/__version__.py` + `__X_Y_Z__` with **project-wide** highlights.
 4. Patch-bump each impacted module from **its own** last version + module changelog.
 5. Leave unchanged modules alone.
 6. Summary table: App | Old | New | Changelog key | Reason.
@@ -106,5 +106,5 @@ Typical paths: `horilla/__version__.py` (product), `horilla/contrib/*/__version_
 
 ## `CHANGELOG.md`
 
-Tracks the **same product numbers** as `horilla/__version__.py`. Per-app versions
-are not listed there; they show in Modules & Versions via `horilla.utils.version`.
+Tracks the **same product numbers** as `finlo/__version__.py`. Per-app versions
+are not listed there; they show in Modules & Versions via `finlo.utils.version`.

@@ -1,8 +1,8 @@
 """
-URLs for the horilla_booking app.
+URLs for the finlo_booking app.
 """
 
-from horilla.urls import path
+from finlo.urls import path
 
 from . import views
 

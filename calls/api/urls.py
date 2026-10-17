@@ -1,4 +1,4 @@
-"""DRF URL router for the Horilla Calls Integration API."""
+"""DRF URL router for the Finlo Calls Integration API."""
 
 from rest_framework.routers import DefaultRouter
 

@@ -37,9 +37,6 @@
         id="sideMenu"
         class="w-[230px] fixed {% if LANGUAGE_BIDI %}right-[5rem] border-l border-l-primary-100{% else %}left-[5rem] border-r border-r-primary-100{% endif %} transition-all duration-300 bg-white overflow-hidden h-[calc(100vh-60px)] z-30"
     >
-        <button id="hiddenReloadSidebar" type="button" class="hidden" data-app-label="{{ current_app_label }}">
-            Reload Sidebar
-        </button>
         {% with current_items=sub_section_menu|get_item:current_section %}
             {% if current_items %}
                 <ul class="flex flex-col gap-[5px] p-5 pt-8" id="subSidebar" hx-swap-oob="true">

@@ -8,11 +8,11 @@ via a ``get_*_class()`` call — nothing calls either of those on a mixin that
 is only ever composed in through ordinary Python inheritance, or on a plain
 module-level function — so ``_inherit_view``/``_inherit_list``/
 ``_inherit_form`` etc. cannot reach them. See
-``docs/horilla/extension/mixin/inherit.md`` for the full mechanism.
+``docs/finlo/extension/mixin/inherit.md`` for the full mechanism.
 
-- ``HorillaListFilterFieldsMixin._get_model_fields`` — the "Filter Records"
-  field dropdown. Mixed into every ``HorillaListView`` subclass.
-- ``HorillaBulkExportMixin.get_export_objects``/``.handle_export`` — the
+- ``FinloListFilterFieldsMixin._get_model_fields`` — the "Filter Records"
+  field dropdown. Mixed into every ``FinloListView`` subclass.
+- ``FinloBulkExportMixin.get_export_objects``/``.handle_export`` — the
   actual export-file writer. Mixed into ``ExportView``.
 - ``get_export_cell_value`` — a bare module-level function that renders one
   export cell.
@@ -20,7 +20,7 @@ module-level function — so ``_inherit_view``/``_inherit_list``/
   ``._ensure_json_serializable`` — bare module-level functions in the detail
   field selector/inline-edit module.
 - ``ColumnSelectionForm.__init__`` — a plain ``django.forms.Form`` (not a
-  ``HorillaModelForm``/``HorillaMultiStepForm``), routed to as a literal
+  ``FinloModelForm``/``FinloMultiStepForm``), routed to as a literal
   ``FormView.form_class`` attribute, never through ``get_form_class()`` /
   ``resolve_form_class()`` — so ``FormExtension`` cannot reach it either. Its
   own ``__init__`` also builds ``self.fields["visible_fields"].choices`` and
@@ -29,9 +29,9 @@ module-level function — so ``_inherit_view``/``_inherit_list``/
   ``setup_form_extension_fields()``) that runs early enough to add ``cf_*``
   choices before that filtering happens.
 - ``GetFieldValueWidgetView._get_value_widget_html`` — the condition-builder
-  value widget. Horilla only renders date pickers for real model date
+  value widget. Finlo only renders date pickers for real model date
   fields; this renders them for custom Date / Date and Time fields too.
-- ``horilla_crm.leads.signals._eval_single_criterion`` — a bare module-level
+- ``finlo_crm.leads.signals._eval_single_criterion`` — a bare module-level
   function (Lead assignment rules). It compares values as text or floats, so
   "after"/"before"/"between"/"today" never match a date; custom date fields
   are evaluated by value here instead. Registered only when the Leads app is
@@ -59,7 +59,7 @@ from custom_fields.hooks.export import (
 )
 from custom_fields.hooks.filter import add_custom_fields_to_field_dicts
 from custom_fields.hooks.list import attach_custom_field_values_to_objects
-from horilla.extension.mixin import MixinExtension
+from finlo.extension.mixin import MixinExtension
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ logger = logging.getLogger(__name__)
 class CustomFieldFilterFieldsExtension(MixinExtension):
     """Append custom-field dicts onto the Filter Records field dropdown."""
 
-    _inherit_mixin = "horilla.contrib.generics.mixins.HorillaListFilterFieldsMixin"
+    _inherit_mixin = "finlo.contrib.generics.mixins.FinloListFilterFieldsMixin"
 
     def _get_model_fields(self, original, include_properties=False, for_export=False):
         fields = list(
@@ -97,7 +97,7 @@ class CustomFieldBulkExportExtension(MixinExtension):
     writes rows from them, so the writer's own row-building sees ``cf_*``
     attributes on each in-memory object.
 
-    ``HorillaBulkExportMixin.get_export_objects`` exists specifically as the
+    ``FinloBulkExportMixin.get_export_objects`` exists specifically as the
     overridable seam for this: it is the one place ``handle_export`` reads
     its queryset from, so materializing it here and attaching values onto
     the resulting list reaches the row-building loop without touching
@@ -105,7 +105,7 @@ class CustomFieldBulkExportExtension(MixinExtension):
     """
 
     _inherit_mixin = (
-        "horilla.contrib.generics.views.toolkit.bulk_export.HorillaBulkExportMixin"
+        "finlo.contrib.generics.views.toolkit.bulk_export.FinloBulkExportMixin"
     )
 
     def get_export_objects(self, original, queryset):
@@ -123,7 +123,7 @@ class CustomFieldBulkExportExtension(MixinExtension):
         return items
 
     def handle_export(self, original, record_ids, columns, export_format):
-        """Expose ``cf_*`` as export columns while Horilla streams the export."""
+        """Expose ``cf_*`` as export columns while Finlo streams the export."""
         model = getattr(self, "model", None)
         extras = custom_field_selector_items(model) if model is not None else []
         if not extras:
@@ -139,10 +139,10 @@ class CustomFieldBulkExportExtension(MixinExtension):
 class CustomFieldExportCellExtension(MixinExtension):
     """Render ``cf_*`` export cells directly from the object's attached value."""
 
-    _inherit_mixin = "horilla.contrib.core.views.export_data.get_export_cell_value"
+    _inherit_mixin = "finlo.contrib.core.views.export_data.get_export_cell_value"
 
     def get_export_cell_value(self, original, obj, field_name, field, user):
-        """Return attached ``cf_*`` values; otherwise defer to Horilla."""
+        """Return attached ``cf_*`` values; otherwise defer to Finlo."""
         if str(field_name).startswith("cf_"):
             value = obj.__dict__.get(field_name, "")
             return "" if value is None else str(value)
@@ -152,7 +152,7 @@ class CustomFieldExportCellExtension(MixinExtension):
 class CustomFieldDetailRenderExtension(MixinExtension):
     """Inject custom fields into the "Change Detail View Fields" selector modal."""
 
-    _inherit_mixin = "horilla.contrib.generics.views.helpers.detail_field.render"
+    _inherit_mixin = "finlo.contrib.generics.views.helpers.detail_field.render"
 
     def render(self, original, request, template_name, context=None, *args, **kwargs):
         """Add custom fields to the detail field-picker template context."""
@@ -165,7 +165,7 @@ class CustomFieldDetailDefaultsExtension(MixinExtension):
     """Add custom fields to the default header/detail field lists."""
 
     _inherit_mixin = (
-        "horilla.contrib.generics.views.helpers.detail_field._get_detail_field_defaults"
+        "finlo.contrib.generics.views.helpers.detail_field._get_detail_field_defaults"
     )
 
     def _get_detail_field_defaults(self, original, model, request):
@@ -183,7 +183,7 @@ class CustomFieldDetailEnsureSerializableExtension(MixinExtension):
     """Relabel ``cf_*`` pairs to their live custom-field label."""
 
     _inherit_mixin = (
-        "horilla.contrib.generics.views.helpers.detail_field._ensure_json_serializable"
+        "finlo.contrib.generics.views.helpers.detail_field._ensure_json_serializable"
     )
 
     def _ensure_json_serializable(self, original, fields_list):
@@ -204,7 +204,7 @@ class CustomFieldColumnSelectionFormExtension(MixinExtension):
     ``FormExtension.setup_form_extension_fields()`` could run).
     """
 
-    _inherit_mixin = "horilla.contrib.generics.forms.generics.ColumnSelectionForm"
+    _inherit_mixin = "finlo.contrib.generics.forms.generics.ColumnSelectionForm"
 
     def __init__(self, original, *args, **kwargs):
         model = kwargs.get("model")
@@ -254,7 +254,7 @@ class CustomFieldDateConditionWidgetExtension(MixinExtension):
     """Render date pickers for custom date fields in condition builders."""
 
     _inherit_mixin = (
-        "horilla.contrib.generics.views.helpers.condition_widget."
+        "finlo.contrib.generics.views.helpers.condition_widget."
         "GetFieldValueWidgetView"
     )
 
@@ -281,12 +281,12 @@ class CustomFieldDateConditionWidgetExtension(MixinExtension):
         )
 
 
-if django_apps.is_installed("horilla_crm.leads"):
+if django_apps.is_installed("finlo_crm.leads"):
 
     class CustomFieldDateLeadAssignmentExtension(MixinExtension):
         """Evaluate Lead assignment-rule criteria on custom date fields by value."""
 
-        _inherit_mixin = "horilla_crm.leads.signals._eval_single_criterion"
+        _inherit_mixin = "finlo_crm.leads.signals._eval_single_criterion"
 
         def _eval_single_criterion(self, original, criteria, lead):
             try:

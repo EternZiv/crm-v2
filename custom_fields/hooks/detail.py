@@ -1,7 +1,7 @@
 """
-Shared helpers for Horilla's detail-field picker and bulk inline field edit.
+Shared helpers for Finlo's detail-field picker and bulk inline field edit.
 
-Horilla's selector and ``get_field`` paths only know about model columns.
+Finlo's selector and ``get_field`` paths only know about model columns.
 The functions here are consumed by extension registrations, not applied as
 monkey-patches themselves:
 
@@ -40,7 +40,7 @@ from custom_fields.utils import (
     safe_custom_field_label,
     save_custom_field_values,
 )
-from horilla.apps import apps
+from finlo.apps import apps
 
 
 def field_names_from_list(fields_list):
@@ -183,7 +183,7 @@ def append_custom_fields_to_defaults(model, default_header, default_details):
 
 
 def restore_custom_fields_in_order(model, original_list, kept_pairs, exclude_set=None):
-    """Re-insert ``cf_*`` rows that Horilla dropped via ``get_field``."""
+    """Re-insert ``cf_*`` rows that Finlo dropped via ``get_field``."""
     exclude_set = {str(name) for name in (exclude_set or set())}
     kept_by_name = {}
     for item in kept_pairs or []:

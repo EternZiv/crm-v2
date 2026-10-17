@@ -1,4 +1,4 @@
-"""Signals for the Horilla Calls Integration app."""
+"""Signals for the Finlo Calls Integration app."""
 
 # Standard library imports
 import logging
@@ -6,11 +6,11 @@ import logging
 # Third-party imports (Django)
 from django.dispatch import receiver
 
-from horilla.contrib.activity.models import Activity
-from horilla.contrib.core.models import HorillaContentType
+from finlo.contrib.activity.models import Activity
+from finlo.contrib.core.models import FinloContentType
 
-# First party imports (Horilla)
-from horilla.db.models.signals import post_save
+# First party imports (Finlo)
+from finlo.db.models.signals import post_save
 
 # Local imports
 from .models import CallLog
@@ -64,7 +64,7 @@ def track_call_in_history(sender, instance, created, **kwargs):
         if not related:
             return
 
-        content_type = HorillaContentType.objects.get_for_model(related.__class__)
+        content_type = FinloContentType.objects.get_for_model(related.__class__)
         activity_status = _STATUS_TO_ACTIVITY_STATUS.get(instance.status, "scheduled")
 
         if created:

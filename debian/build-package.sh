@@ -1,12 +1,12 @@
 #!/bin/bash
-# Build script for Horilla-CRM Debian package
+# Build script for Finlo-CRM Debian package
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-echo "Building Horilla-CRM Debian package..."
+echo "Building Finlo-CRM Debian package..."
 echo "Project directory: $PROJECT_DIR"
 
 cd "$PROJECT_DIR"
@@ -34,8 +34,8 @@ fi
 # Clean previous builds
 echo "Cleaning previous builds..."
 rm -rf debian/tmp*
-rm -rf debian/horilla-crm*
-rm -rf ../horilla-crm_*
+rm -rf debian/finlo-crm*
+rm -rf ../finlo-crm_*
 
 # Build the package
 echo "Building package..."
@@ -43,13 +43,13 @@ dpkg-buildpackage -us -uc -b
 
 echo "Package build completed!"
 echo "Generated files:"
-ls -la ../horilla-crm_*
+ls -la ../finlo-crm_*
 
 echo ""
 echo "To install the package:"
-echo "  sudo dpkg -i ../horilla-crm_*.deb"
+echo "  sudo dpkg -i ../finlo-crm_*.deb"
 echo "  sudo apt-get install -f  # If there are dependency issues"
 echo ""
 echo "To test the package:"
-echo "  sudo systemctl start horilla-crm"
-echo "  sudo systemctl status horilla-crm"
+echo "  sudo systemctl start finlo-crm"
+echo "  sudo systemctl status finlo-crm"

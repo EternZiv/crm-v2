@@ -1,5 +1,5 @@
 """
-Celery tasks for horilla_booking — booking reminder emails.
+Celery tasks for finlo_booking — booking reminder emails.
 """
 
 # Standard library imports
@@ -13,11 +13,11 @@ from celery import shared_task
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives, get_connection
 
-# First party imports (Horilla)
-from horilla.contrib.mail.models import HorillaMailConfiguration
-from horilla.urls import reverse_lazy
-from horilla.utils import timezone
-from horilla.utils.branding import load_branding
+# First party imports (Finlo)
+from finlo.contrib.mail.models import FinloMailConfiguration
+from finlo.urls import reverse_lazy
+from finlo.utils import timezone
+from finlo.utils.branding import load_branding
 
 
 def _format_for_booker(booking):
@@ -89,10 +89,10 @@ def send_booking_reminders():
 
 def _get_mail_config(company):
     return (
-        HorillaMailConfiguration.objects.filter(
+        FinloMailConfiguration.objects.filter(
             company=company, mail_channel="outgoing", is_primary=True
         ).first()
-        or HorillaMailConfiguration.objects.filter(
+        or FinloMailConfiguration.objects.filter(
             company=company, mail_channel="outgoing"
         ).first()
     )
@@ -100,7 +100,7 @@ def _get_mail_config(company):
 
 def _get_connection(mail_config):
     if mail_config:
-        return get_connection("horilla.contrib.mail.backends.HorillaDefaultMailBackend")
+        return get_connection("finlo.contrib.mail.backends.FinloDefaultMailBackend")
     return get_connection()
 
 

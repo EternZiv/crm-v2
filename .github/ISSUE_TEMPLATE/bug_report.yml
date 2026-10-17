@@ -1,5 +1,5 @@
 name: "Bug report - CRM"
-description: "Create an issue to report a bug or unexpected behavior in Horilla CRM."
+description: "Create an issue to report a bug or unexpected behavior in Finlo CRM."
 title: "[BUG] "
 labels: ["bug"]
 assignees: []

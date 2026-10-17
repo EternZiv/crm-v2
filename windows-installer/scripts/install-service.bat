@@ -1,7 +1,7 @@
 @echo off
-REM Install Horilla-CRM as Windows Service
+REM Install Finlo CRM as Windows Service
 
-echo Installing Horilla-CRM Windows Service...
+echo Installing Finlo CRM Windows Service...
 
 cd /d "%~dp0\.."
 
@@ -10,7 +10,6 @@ net session >nul 2>&1
 if errorlevel 1 (
     echo ERROR: This script must be run as Administrator
     echo Right-click and select "Run as administrator"
-    pause
     exit /b 1
 )
 
@@ -19,31 +18,25 @@ call venv\Scripts\activate.bat
 
 REM Install the service
 echo Installing service...
-python scripts\horilla_service.py install
+python scripts\finlo_service.py install
 
 if errorlevel 1 (
     echo ERROR: Failed to install service
-    pause
     exit /b 1
 )
 
-REM Set service to start automatically
-echo Configuring service for automatic startup...
-sc config HorillaCRM start= auto
-
-REM Start the service
-echo Starting service...
-net start HorillaCRM
-
+REM Keep the service stopped until the shared Supabase URL is configured.
+sc config FinloCRM start= demand
 if errorlevel 1 (
-    echo WARNING: Service installed but failed to start
-    echo You can start it manually from Services or by running:
-    echo   net start HorillaCRM
-) else (
-    echo Service installed and started successfully!
-    echo.
-    echo The service will now start automatically when Windows boots.
-    echo You can access Horilla-CRM at: http://127.0.0.1:8000
+    echo ERROR: Failed to configure service startup mode
+    exit /b 1
 )
 
-pause
+if /i "%~1"=="/install-only" (
+    echo Service installed and left stopped until the database is configured.
+    exit /b 0
+)
+
+echo Configure DATABASE_URL in:
+echo   %ProgramData%\Finlo-CRM\config\finlo-crm.conf
+echo Then start the service with: net start FinloCRM

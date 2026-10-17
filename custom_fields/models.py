@@ -5,11 +5,11 @@ from datetime import date, datetime
 
 from django.utils.dateparse import parse_date, parse_datetime
 
-from horilla.contrib.core.models import HorillaContentType, HorillaCoreModel
-from horilla.db import models
-from horilla.urls import reverse_lazy
-from horilla.utils import timezone
-from horilla.utils.translation import gettext_lazy as _
+from finlo.contrib.core.models import FinloContentType, FinloCoreModel
+from finlo.db import models
+from finlo.urls import reverse_lazy
+from finlo.utils import timezone
+from finlo.utils.translation import gettext_lazy as _
 
 
 def parse_choice_values(stored):
@@ -97,7 +97,7 @@ def to_datetime_value(val):
     return parsed
 
 
-class CustomFieldDefinition(HorillaCoreModel):
+class CustomFieldDefinition(FinloCoreModel):
     """
     Defines a user-created custom field attached to a specific model
     (currently Lead or Opportunity).
@@ -114,7 +114,7 @@ class CustomFieldDefinition(HorillaCoreModel):
     ]
 
     content_type = models.ForeignKey(
-        HorillaContentType,
+        FinloContentType,
         on_delete=models.CASCADE,
         verbose_name=_("Model"),
     )
@@ -156,7 +156,7 @@ class CustomFieldDefinition(HorillaCoreModel):
         return [c.strip() for c in self.choices.split(",") if c.strip()]
 
 
-class CustomFieldValue(HorillaCoreModel):
+class CustomFieldValue(FinloCoreModel):
     """
     Stores the value of a custom field for a specific object instance.
     """
@@ -168,7 +168,7 @@ class CustomFieldValue(HorillaCoreModel):
         verbose_name=_("Field Definition"),
     )
     content_type = models.ForeignKey(
-        HorillaContentType,
+        FinloContentType,
         on_delete=models.CASCADE,
         verbose_name=_("Model"),
     )
@@ -246,7 +246,7 @@ class CustomFieldValue(HorillaCoreModel):
             self.value_text = str(val) if val is not None else ""
 
 
-# Django and Horilla store these on auth.Permission.name. Groups & Permissions
+# Django and Finlo store these on auth.Permission.name. Groups & Permissions
 # gettext's perm.name for extra actions, and titles the row with verbose_name.
 PERMISSION_UI_NAMES = (
     _("Can add Custom Field"),

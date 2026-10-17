@@ -1,4 +1,4 @@
-"""SignalWire adapter for Horilla Calls Integration.
+"""SignalWire adapter for Finlo Calls Integration.
 
 SignalWire is Twilio-compatible: same REST format, same TwiML XML, same status values.
 The only difference is the API base URL (project-specific) and the credential names.

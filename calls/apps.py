@@ -1,11 +1,11 @@
-"""App configuration for the Horilla Calls Integration app."""
+"""App configuration for the Finlo Calls Integration app."""
 
-from horilla.apps import AppLauncher
-from horilla.utils.translation import gettext_lazy as _
+from finlo.apps import AppLauncher
+from finlo.utils.translation import gettext_lazy as _
 
 
 class CallsConfig(AppLauncher):
-    """App configuration for the Horilla Calls Integration app."""
+    """App configuration for the Finlo Calls Integration app."""
 
     default = True
     default_auto_field = "django.db.models.BigAutoField"
@@ -33,7 +33,7 @@ class CallsConfig(AppLauncher):
             {
                 "pattern": "calls/",
                 "view_or_include": "calls.api.urls",
-                "name": "horilla_calls_api",
-                "namespace": "horilla_calls",
+                "name": "finlo_calls_api",
+                "namespace": "finlo_calls",
             }
         ]

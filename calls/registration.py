@@ -1,6 +1,6 @@
-"""Feature registration for the Horilla Calls Integration app."""
+"""Feature registration for the Finlo Calls Integration app."""
 
-from horilla.registry.feature import register_model_for_feature
+from finlo.registry.feature import register_model_for_feature
 
 # Registry: any app can call register_callable_model() to make its objects
 # linkable to calls (phone number matching on inbound + validation on outbound).

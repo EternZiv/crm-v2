@@ -1,19 +1,19 @@
-"""Models for the Horilla Calls Integration app."""
+"""Models for the Finlo Calls Integration app."""
 
 # Third-party imports (Django)
 from django.conf import settings
 
-# First party imports (Horilla)
-from horilla.apps import apps
-from horilla.contrib.core.models import HorillaCoreModel, Role
-from horilla.contrib.mail.fields import EncryptedCharField
-from horilla.contrib.utils.methods import render_template
-from horilla.db import models
-from horilla.urls import reverse_lazy
-from horilla.utils.translation import gettext_lazy as _
+# First party imports (Finlo)
+from finlo.apps import apps
+from finlo.contrib.core.models import FinloCoreModel, Role
+from finlo.contrib.mail.fields import EncryptedCharField
+from finlo.contrib.utils.methods import render_template
+from finlo.db import models
+from finlo.urls import reverse_lazy
+from finlo.utils.translation import gettext_lazy as _
 
 
-class CallIntegrationSetting(HorillaCoreModel):
+class CallIntegrationSetting(FinloCoreModel):
     """
     Company-level toggle for the calls integration.
     One row per company — controls whether any call provider is available
@@ -88,7 +88,7 @@ class CallIntegrationSetting(HorillaCoreModel):
         Uses request-local cache then Django ``cache.get_or_set`` (per
         company) so menu conditions avoid a DB hit on every page render.
         """
-        from horilla.contrib.utils.company_settings_cache import (
+        from finlo.contrib.utils.company_settings_cache import (
             get_or_set_company_setting,
         )
 
@@ -117,7 +117,7 @@ class CallIntegrationSetting(HorillaCoreModel):
     @classmethod
     def calls_enabled(cls, request=None):
         """Menu condition — True when calls integration is enabled for the company."""
-        from horilla.contrib.utils.middlewares import _thread_local
+        from finlo.contrib.utils.middlewares import _thread_local
 
         if request is None:
             request = getattr(_thread_local, "request", None)
@@ -134,7 +134,7 @@ class CallIntegrationSetting(HorillaCoreModel):
     @classmethod
     def user_has_menu_access(cls, request=None):
         """Menu condition — True only when integration is enabled AND current user has access."""
-        from horilla.contrib.utils.middlewares import _thread_local
+        from finlo.contrib.utils.middlewares import _thread_local
 
         if request is None:
             request = getattr(_thread_local, "request", None)
@@ -153,7 +153,7 @@ class CallIntegrationSetting(HorillaCoreModel):
     @classmethod
     def get_for_company(cls, company):
         """Utility method to get or create the CallIntegrationSetting for a given company."""
-        from horilla.contrib.utils.company_settings_cache import (
+        from finlo.contrib.utils.company_settings_cache import (
             invalidate_company_setting,
         )
 
@@ -170,7 +170,7 @@ class CallIntegrationSetting(HorillaCoreModel):
 
     def save(self, *args, **kwargs):
         """Persist and drop the per-company Django cache entry."""
-        from horilla.contrib.utils.company_settings_cache import (
+        from finlo.contrib.utils.company_settings_cache import (
             invalidate_company_setting,
         )
 
@@ -179,7 +179,7 @@ class CallIntegrationSetting(HorillaCoreModel):
 
     def delete(self, *args, **kwargs):
         """Delete and drop the per-company Django cache entry."""
-        from horilla.contrib.utils.company_settings_cache import (
+        from finlo.contrib.utils.company_settings_cache import (
             invalidate_company_setting,
         )
 
@@ -188,7 +188,7 @@ class CallIntegrationSetting(HorillaCoreModel):
         invalidate_company_setting(self.CACHE_NAMESPACE, company_id)
 
 
-class CallProvider(HorillaCoreModel):
+class CallProvider(FinloCoreModel):
     """
     Registry of telephony provider configurations per company.
     Each row represents one configured provider (e.g. a Twilio account,
@@ -318,7 +318,7 @@ class CallProvider(HorillaCoreModel):
         )
 
 
-class AgentMapping(HorillaCoreModel):
+class AgentMapping(FinloCoreModel):
     """Maps a CRM user to their telephony agent credentials for a given provider."""
 
     provider = models.ForeignKey(
@@ -357,7 +357,7 @@ class AgentMapping(HorillaCoreModel):
         return f"{self.user} → {self.provider.name}"
 
 
-class CallLog(HorillaCoreModel):
+class CallLog(FinloCoreModel):
     """
     CRM-side record of every telephony call — outbound or inbound.
     Linked to a Lead or Contact via model name + object ID.
@@ -510,7 +510,7 @@ class CallLog(HorillaCoreModel):
             return None
         try:
             from calls.registration import _CALLABLE_MODEL_REGISTRY
-            from horilla.contrib.core.models import HorillaContentType
+            from finlo.contrib.core.models import FinloContentType
 
             for app_label, model_name, _phone_field in _CALLABLE_MODEL_REGISTRY:
                 if model_name == self.related_model_name:
@@ -519,7 +519,7 @@ class CallLog(HorillaCoreModel):
                     return manager.filter(pk=self.related_object_id).first()
 
             # Fallback: resolve via ContentType for any model not in the registry.
-            ct = HorillaContentType.objects.filter(
+            ct = FinloContentType.objects.filter(
                 model=self.related_model_name.lower()
             ).first()
             if ct:

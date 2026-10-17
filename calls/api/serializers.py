@@ -1,9 +1,9 @@
-"""DRF serializers for the Horilla Calls Integration app."""
+"""DRF serializers for the Finlo Calls Integration app."""
 
 from rest_framework import serializers
 
 from calls.models import AgentMapping, CallLog, CallProvider
-from horilla.api.mixins import CompanyScopedSerializerMixin
+from finlo.api.mixins import CompanyScopedSerializerMixin
 
 
 class CallProviderSerializer(CompanyScopedSerializerMixin, serializers.ModelSerializer):

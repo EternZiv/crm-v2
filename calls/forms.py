@@ -1,19 +1,19 @@
-"""Forms for the Horilla Calls Integration app."""
+"""Forms for the Finlo Calls Integration app."""
 
 # Third-party imports (Django)
 from django import forms
 
-# First party imports (Horilla)
-from horilla.auth.models import User
-from horilla.contrib.generics.forms import HorillaModelForm
-from horilla.contrib.generics.forms.generics import PasswordInputWithEye
-from horilla.urls import reverse_lazy
-from horilla.utils.translation import gettext_lazy as _
+# First party imports (Finlo)
+from finlo.auth.models import User
+from finlo.contrib.generics.forms import FinloModelForm
+from finlo.contrib.generics.forms.generics import PasswordInputWithEye
+from finlo.urls import reverse_lazy
+from finlo.utils.translation import gettext_lazy as _
 
 # Local imports
 from .models import AgentMapping, CallIntegrationSetting, CallLog, CallProvider
 
-# Keys injected by HorillaSingleFormView.get_form_kwargs() that plain forms.Form doesn't accept
+# Keys injected by FinloSingleFormView.get_form_kwargs() that plain forms.Form doesn't accept
 _SINGLE_FORM_VIEW_KWARGS = (
     "full_width_fields",
     "dynamic_create_fields",
@@ -32,14 +32,14 @@ _SINGLE_FORM_VIEW_KWARGS = (
 
 
 def _pop_single_form_view_kwargs(form_instance, kwargs):
-    """Remove all extra kwargs injected by HorillaSingleFormView.get_form_kwargs()."""
+    """Remove all extra kwargs injected by FinloSingleFormView.get_form_kwargs()."""
     for key in _SINGLE_FORM_VIEW_KWARGS:
         val = kwargs.pop(key, None)
         if val is not None:
             setattr(form_instance, key, val)
 
 
-class CallIntegrationSettingForm(HorillaModelForm):
+class CallIntegrationSettingForm(FinloModelForm):
     """Form to enable/configure the calls integration for a company."""
 
     class Meta:
@@ -60,7 +60,7 @@ class CallIntegrationSettingForm(HorillaModelForm):
     }
 
 
-class CallProviderForm(HorillaModelForm):
+class CallProviderForm(FinloModelForm):
     """Form for creating and editing call providers."""
 
     # Fields whose visibility depends on the selected provider type.
@@ -157,7 +157,7 @@ class CallProviderForm(HorillaModelForm):
         return instance
 
 
-class AgentMappingForm(HorillaModelForm):
+class AgentMappingForm(FinloModelForm):
     """Form for mapping CRM users to telephony agent credentials."""
 
     class Meta:
@@ -224,7 +224,7 @@ class CallAccessUsersForm(forms.Form):
         super().__init__(*args, **kwargs)
 
 
-class CallLogForm(HorillaModelForm):
+class CallLogForm(FinloModelForm):
     """Form for manually creating or editing a call log entry."""
 
     class Meta:

@@ -6,12 +6,12 @@ from datetime import timedelta
 
 from django import forms
 
-from horilla.contrib.core.models import HorillaContentType
-from horilla.contrib.generics.forms.form_class_mixin import WIDGET_INPUT_CSS_CLASS_NO_PR
-from horilla.contrib.utils.middlewares import get_current_request
-from horilla.utils import timezone
-from horilla.utils.html import strip_tags
-from horilla.utils.translation import gettext as _
+from finlo.contrib.core.models import FinloContentType
+from finlo.contrib.generics.forms.form_class_mixin import WIDGET_INPUT_CSS_CLASS_NO_PR
+from finlo.contrib.utils.middlewares import get_current_request
+from finlo.utils import timezone
+from finlo.utils.html import strip_tags
+from finlo.utils.translation import gettext as _
 
 from .models import (
     CustomFieldDefinition,
@@ -43,7 +43,7 @@ DATE_FIELD_TYPES = ("date", "datetime")
 RELATIVE_DATE_OPERATORS = ("today", "yesterday", "this_week", "this_month")
 
 # Wire formats of ``<input type="date">`` / ``<input type="datetime-local">``.
-# The Jalali picker (horilla_jalali) submits these same Gregorian formats.
+# The Jalali picker (finlo_jalali) submits these same Gregorian formats.
 DATE_INPUT_FORMAT = "%Y-%m-%d"
 DATETIME_INPUT_FORMAT = "%Y-%m-%dT%H:%M"
 
@@ -75,7 +75,7 @@ def assign_custom_field_attr(obj, key, value):
 
 def safe_custom_field_label(definition):
     """
-    Label safe for Horilla's Details-tab input ids (``{{ col.0 }}-details-tab``).
+    Label safe for Finlo's Details-tab input ids (``{{ col.0 }}-details-tab``).
 
     HTML in the field name is stripped so HTMX ``querySelector`` does not
     receive ``<``, quotes, or other selector-breaking characters.
@@ -98,7 +98,7 @@ def get_definition_by_form_name(model, field_name):
     pk = parse_custom_field_pk(field_name)
     if pk is None:
         return None
-    ct = HorillaContentType.objects.get_for_model(model)
+    ct = FinloContentType.objects.get_for_model(model)
     try:
         return CustomFieldDefinition.objects.get(pk=pk, content_type=ct, is_active=True)
     except CustomFieldDefinition.DoesNotExist:
@@ -114,7 +114,7 @@ def get_custom_field_definitions(model):
     per caller. Caching on the request (rather than a thread-local) avoids
     leaking stale results into a later request handled by the same worker.
     """
-    ct = HorillaContentType.objects.get_for_model(model)
+    ct = FinloContentType.objects.get_for_model(model)
     request = get_current_request()
     cache = (
         getattr(request, "_custom_field_definitions_cache", None) if request else None
@@ -233,7 +233,7 @@ def build_custom_form_fields(model):
 
 def load_custom_field_values(model_class, instance_pk):
     """Return a dict of {cf_<defn_pk>: value} for a saved instance."""
-    ct = HorillaContentType.objects.get_for_model(model_class)
+    ct = FinloContentType.objects.get_for_model(model_class)
     values = {}
     for cfv in CustomFieldValue.objects.filter(
         content_type=ct, object_id=instance_pk
@@ -258,7 +258,7 @@ def save_custom_field_values(model_class, instance_pk, cleaned_data, company=Non
     value differed from what was stored), so callers can tell a real change
     from a no-op resubmission.
     """
-    ct = HorillaContentType.objects.get_for_model(model_class)
+    ct = FinloContentType.objects.get_for_model(model_class)
     changed_keys = set()
     for key, value in cleaned_data.items():
         if not key.startswith(CUSTOM_FIELD_PREFIX):
@@ -321,11 +321,11 @@ def format_custom_field_date_display(definition, value):
     """
     Format a date/datetime value with the viewer's date format and calendar.
 
-    Goes through Horilla's composed ``DateTimeFormatter``, so the Jalali
+    Goes through Finlo's composed ``DateTimeFormatter``, so the Jalali
     extension (when installed and enabled for the user) shows Shamsi dates
     while the stored value stays Gregorian.
     """
-    from horilla.contrib.generics.templatetags.horilla_tags._shared import (
+    from finlo.contrib.generics.templatetags.finlo_tags._shared import (
         _get_request_user_company,
         format_datetime_value,
     )
@@ -341,7 +341,7 @@ def custom_field_input_value(definition, value):
     """
     Return ``value`` in the wire format of the field's HTML input.
 
-    Datetimes are shown in the active (user) timezone, like Horilla's own
+    Datetimes are shown in the active (user) timezone, like Finlo's own
     ``datetime-local`` inputs.
     """
     if definition.field_type == "date":
@@ -364,7 +364,7 @@ def relative_date_bounds(operator):
     """
     Return inclusive ``(start, end)`` dates for today/yesterday/this_week/this_month.
 
-    Same semantics as ``HorillaFilterSet._get_relative_date_bounds`` (week
+    Same semantics as ``FinloFilterSet._get_relative_date_bounds`` (week
     starts on Monday, "today" is the active timezone's local date), so custom
     fields filter exactly like model date fields.
     """

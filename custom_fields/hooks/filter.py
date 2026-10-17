@@ -1,14 +1,14 @@
 """
-Shared helpers so custom fields appear in Horilla's Filter Records panel
+Shared helpers so custom fields appear in Finlo's Filter Records panel
 and actually filter the queryset.
 
-Horilla's filter UI only knows about model columns. The functions here are
+Finlo's filter UI only knows about model columns. The functions here are
 consumed by two extension registrations, not applied as monkey-patches
 themselves:
 
 - ``add_custom_fields_to_field_dicts`` — used by
   ``CustomFieldFilterFieldsExtension`` in ``custom_fields/extensions/mixin.py``
-  (``HorillaListFilterFieldsMixin._get_model_fields`` is a bare view mixin,
+  (``FinloListFilterFieldsMixin._get_model_fields`` is a bare view mixin,
   never resolved by any per-request extension mechanism, so it is extended
   through ``MixinExtension``/``_inherit_mixin``).
 - ``custom_field_row_q`` — used by ``_FilterMethods._build_row_q`` in
@@ -34,8 +34,8 @@ from custom_fields.utils import (
     relative_date_bounds,
     safe_custom_field_label,
 )
-from horilla.contrib.core.models import HorillaContentType
-from horilla.db.models import Q
+from finlo.contrib.core.models import FinloContentType
+from finlo.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +51,10 @@ FILTER_TYPE_MAP = {
 
 
 def custom_field_filter_dicts(model, filterset_class=None):
-    """Return Horilla filter-field dicts for the model's custom fields."""
-    from horilla.contrib.generics.filters import HorillaFilterSet
+    """Return Finlo filter-field dicts for the model's custom fields."""
+    from finlo.contrib.generics.filters import FinloFilterSet
 
-    getter = HorillaFilterSet.get_operators_for_field
+    getter = FinloFilterSet.get_operators_for_field
     if filterset_class is not None:
         getter = getattr(filterset_class, "get_operators_for_field", getter)
 
@@ -79,7 +79,7 @@ def custom_field_filter_dicts(model, filterset_class=None):
 
 
 def add_custom_fields_to_field_dicts(fields, model, filterset_class=None):
-    """Append custom-field dicts onto a Horilla ``_get_model_fields`` list."""
+    """Append custom-field dicts onto a Finlo ``_get_model_fields`` list."""
     existing = {item.get("name") for item in fields}
     for extra in custom_field_filter_dicts(model, filterset_class):
         if extra["name"] not in existing:
@@ -132,7 +132,7 @@ def matching_object_ids(model, defn, operator, value, start_value, end_value):
 
     ``include`` True means ``Q(pk__in=ids)``; False means ``~Q(pk__in=ids)``.
     """
-    ct = HorillaContentType.objects.get_for_model(model)
+    ct = FinloContentType.objects.get_for_model(model)
     base = CustomFieldValue.objects.filter(content_type=ct, field_definition=defn)
     if defn.field_type in ("date", "datetime"):
         return _matching_date_object_ids(

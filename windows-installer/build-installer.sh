@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cross-platform build script for Horilla-CRM Windows Installer
+# Cross-platform build script for Finlo CRM Windows Installer
 # Can be run on macOS/Linux with NSIS tools
 
 set -e
@@ -7,7 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-echo "Building Horilla-CRM Windows Installer..."
+echo "Building Finlo CRM Windows Installer..."
 echo "========================================="
 
 cd "$SCRIPT_DIR"
@@ -37,15 +37,15 @@ fi
 # Check required files
 echo "Checking required files..."
 required_files=(
-    "horilla-crm-installer.nsi"
-    "scripts/horilla_service.py"
+    "finlo-crm-installer.nsi"
+    "scripts/finlo_service.py"
     "scripts/setup-environment.bat"
-    "scripts/horilla-crm-start.bat"
-    "scripts/horilla-crm-admin.bat"
-    "scripts/horilla-crm-stop.bat"
+    "scripts/finlo-crm-start.bat"
+    "scripts/finlo-crm-admin.bat"
+    "scripts/finlo-crm-stop.bat"
     "scripts/install-service.bat"
     "scripts/uninstall-service.bat"
-    "config/horilla-crm.conf"
+    "config/finlo-crm.conf"
     "config/logging.conf"
     "config/requirements-windows.txt"
 )
@@ -66,15 +66,15 @@ if [[ -f "../LICENSE" ]]; then
     cp "../LICENSE" "resources/LICENSE.txt"
 else
     echo "License file not found - creating placeholder"
-    echo "Horilla-CRM License" > "resources/LICENSE.txt"
+    echo "Finlo CRM License" > "resources/LICENSE.txt"
 fi
 
 # Create installation README
 cat > "resources/README.txt" << 'EOF'
-Horilla-CRM Windows Installation
+Finlo CRM Windows Installation
 ================================
 
-This installer will set up Horilla-CRM on your Windows system.
+This installer will set up Finlo CRM on your Windows system.
 
 System Requirements:
 - Windows 10 or later (64-bit)
@@ -91,23 +91,23 @@ Installation Process:
 After Installation:
 - Access via Start Menu shortcuts
 - Default URL: http://localhost:8000
-- Admin interface: Use horilla-crm-admin.bat
+- Admin interface: Use finlo-crm-admin.bat
 
-For support, visit: https://github.com/horilla-opensource/horilla-crm
+For support, visit: https://github.com/EternZiv/crm-v2
 EOF
 
 # Build the installer
 echo "Building installer with NSIS..."
-"$NSIS_CMD" horilla-crm-installer.nsi
+"$NSIS_CMD" finlo-crm-installer.nsi
 
 # Check if installer was created
-if [[ -f "Horilla-CRM-1.0.0-Setup.exe" ]]; then
+if [[ -f "Finlo-CRM-1.0.0-Setup.exe" ]]; then
     echo ""
     echo "SUCCESS: Installer built successfully!"
-    echo "File: Horilla-CRM-1.0.0-Setup.exe"
-    echo "Size: $(du -h "Horilla-CRM-1.0.0-Setup.exe" | cut -f1)"
+    echo "File: Finlo-CRM-1.0.0-Setup.exe"
+    echo "Size: $(du -h "Finlo-CRM-1.0.0-Setup.exe" | cut -f1)"
     echo ""
-    echo "You can now distribute this installer to install Horilla-CRM on Windows systems."
+    echo "You can now distribute this installer to install Finlo CRM on Windows systems."
     echo ""
     echo "Next steps:"
     echo "1. Test the installer on a Windows machine"

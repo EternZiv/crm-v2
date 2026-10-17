@@ -1,10 +1,10 @@
 """
-Shared helpers for Horilla's list-column picker and list-cell values.
+Shared helpers for Finlo's list-column picker and list-cell values.
 
-Horilla's Add Column to List modal only knows about model columns. The
+Finlo's Add Column to List modal only knows about model columns. The
 functions here are consumed by extension registrations, not applied as
 monkey-patches themselves — see ``custom_fields/extensions/list.py`` (for
-``HorillaListView.get_context_data``, registered through ``ListExtension``/
+``FinloListView.get_context_data``, registered through ``ListExtension``/
 ``_inherit_list`` targeting the shared base class — see that module's
 docstring for how base-class targeting works) and
 ``custom_fields/extensions/view.py`` (for ``ListColumnSelectFormView``,
@@ -28,8 +28,8 @@ from custom_fields.utils import (
     format_custom_field_display,
     get_custom_field_definitions,
 )
-from horilla.apps import apps
-from horilla.contrib.core.models import HorillaContentType, ListColumnVisibility
+from finlo.apps import apps
+from finlo.contrib.core.models import FinloContentType, ListColumnVisibility
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ def relabel_saved_list_column_visibility(view):
     if not app_label or not model_name:
         return
 
-    from horilla.contrib.generics.views.helpers.list_column import _get_path_context
+    from finlo.contrib.generics.views.helpers.list_column import _get_path_context
 
     path_context = _get_path_context(request)
     visibility = ListColumnVisibility.all_objects.filter(
@@ -119,7 +119,7 @@ def attach_custom_field_values_to_objects(model, objects, extras=None):
         for key in keys:
             assign_custom_field_attr(obj, key, "")
 
-    ct = HorillaContentType.objects.get_for_model(model)
+    ct = FinloContentType.objects.get_for_model(model)
     pks = [obj.pk for obj in items]
     definitions = list(get_custom_field_definitions(model))
     values = CustomFieldValue.objects.filter(
@@ -149,8 +149,8 @@ def _saved_list_column_names(view):
         return None
     if not getattr(view, "list_column_visibility", False):
         return None
-    from horilla.contrib.generics.views.helpers.list_column import _get_path_context
-    from horilla.urls import resolve as resolve_url
+    from finlo.contrib.generics.views.helpers.list_column import _get_path_context
+    from finlo.urls import resolve as resolve_url
 
     try:
         url_name = resolve_url(request.path_info).url_name
@@ -169,7 +169,7 @@ def _saved_list_column_names(view):
 
 
 def ensure_saved_custom_field_columns(view, context):
-    """Put selected ``cf_*`` columns back if Horilla omitted them from the table."""
+    """Put selected ``cf_*`` columns back if Finlo omitted them from the table."""
     model = getattr(view, "model", None)
     extras = custom_field_selector_items(model) if model is not None else []
     if not extras:

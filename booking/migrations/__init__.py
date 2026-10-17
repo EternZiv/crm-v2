@@ -1,3 +1,3 @@
 """
-Migration package for the horilla_booking app
+Migration package for the finlo_booking app
 """

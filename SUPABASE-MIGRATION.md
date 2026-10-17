@@ -1,17 +1,15 @@
 # Use Supabase PostgreSQL with Finlo CRM
 
-This procedure creates a **fresh Django schema** in Supabase. It deliberately
-does not copy records from the existing local SQLite database.
+**Current setup:** localhost is configured to use the existing Supabase
+PostgreSQL database. The local SQLite database was removed. This file's
+fresh-project bootstrap procedure below is historical guidance only; do not
+run its migrations or account-creation commands against the existing CRM
+database without a separately reviewed and approved operation.
 
 ## Current local database
 
-The local `db.sqlite3` is present (about 5.2 MB). A metadata-only inspection
-found 159 tables, 184 recorded migrations, 35 installed model apps, and 2,438
-total rows. There are two local user rows and other system/audit/permission
-rows; no rows were found in the main account, contact, lead, opportunity,
-campaign, or forecast tables. **None of these local rows are included in this
-fresh Supabase setup.** Keep `db.sqlite3` unchanged as a recovery/reference
-copy. Do not run `dumpdata` or `loaddata`.
+There is no local SQLite database. Application runtime requires Supabase
+PostgreSQL; it will fail to start rather than silently create a local database.
 
 ## Configure credentials privately
 
@@ -23,8 +21,9 @@ copy. Do not run `dumpdata` or `loaddata`.
    `sslmode=require`; Django settings enforce this for PostgreSQL connections.
    URL-encode special characters in the database password. Never paste the URL
    or password in chat, screenshots, logs, source files, or Git.
-4. Keep `DATABASE_URL` unset/blank until the intended project is selected. The
-   app uses local SQLite when no URL is set.
+4. Do not start the application until `DATABASE_URL` points to the intended
+   Supabase project. The app requires PostgreSQL and will not fall back to
+   SQLite.
 
 Example shape only (not a real credential):
 
@@ -55,7 +54,7 @@ The proposed schema operation, after identity and empty-schema checks, is:
 ```
 
 This applies the migration plan for all configured Django apps, including
-auth, sessions, content types, Horilla core, CRM modules, and shared platform
+auth, sessions, content types, Finlo core, CRM modules, and shared platform
 apps. It creates tables/indexes/default migration data in the selected schema.
 It does not load the SQLite database's users or business records. Do **not**
 run the command until the exact target project, empty-schema preflight, and
@@ -65,7 +64,7 @@ After that migration succeeds and is confirmed, create a new initial CRM
 administrator with:
 
 ```powershell
-.\.venv\Scripts\python.exe manage.py create_horilla_user
+.\.venv\Scripts\python.exe manage.py create_finlo_user
 ```
 
 This command writes a new user to Supabase; run it only after separately
@@ -91,6 +90,5 @@ database.
 - Django's permissions remain enforced by the server. Supabase Auth and RLS
   do not automatically implement Django users/roles; no policy is disabled or
   modified as part of this procedure.
-- Keep the local SQLite file as-is until you have verified the new service.
-  For backups/restores, use Supabase's database backup facilities and confirm
+- For backups/restores, use Supabase's database backup facilities and confirm
   the selected plan's recovery guarantees.

@@ -47,7 +47,7 @@ def save_with_custom_fields(form, original_save, commit=True):
     """
     Persist extra ``cf_*`` form fields after the model instance is saved.
 
-    Horilla multi-step and single-step views both call ``save(commit=False)``
+    Finlo multi-step and single-step views both call ``save(commit=False)``
     then ``instance.save()`` then ``form.save_m2m()``. Hooking ``save_m2m``
     is the reliable place to write custom field values without wrapping
     the view's ``form_valid``.
@@ -74,12 +74,12 @@ def save_with_custom_fields(form, original_save, commit=True):
 
 def apply_multi_step_custom_fields(form, model):
     """
-    Build and attach ``cf_*`` fields onto a HorillaMultiStepForm instance's
+    Build and attach ``cf_*`` fields onto a FinloMultiStepForm instance's
     last step. Called from ``setup_form_extension_fields()``, which the
     composed ``FormExtension`` ``__init__`` runs *after* the real
-    ``HorillaMultiStepForm.__init__`` has already finished.
+    ``FinloMultiStepForm.__init__`` has already finished.
 
-    That ordering matters: ``HorillaMultiStepForm.__init__`` auto-assigns
+    That ordering matters: ``FinloMultiStepForm.__init__`` auto-assigns
     any field on ``self.fields`` not already listed in ``step_fields`` to
     the last step — but only fields that resolve via
     ``model._meta.get_field()`` (real DB columns); it silently skips names
@@ -142,20 +142,20 @@ def apply_multi_step_custom_fields(form, model):
 
 def clean_multi_step_custom_fields(form, original_clean):
     """
-    HorillaMultiStepForm.clean() calls ``model._meta.get_field`` for every
+    FinloMultiStepForm.clean() calls ``model._meta.get_field`` for every
     current-step name and catches ``models.FieldDoesNotExist``, which does
-    not exist on ``horilla.db.models``. Extra ``cf_*`` fields would then
+    not exist on ``finlo.db.models``. Extra ``cf_*`` fields would then
     raise ``AttributeError``. It also drops errors for any field name not
     listed in ``step_fields[current_step]`` — which ``cf_*`` names never are
     (which custom fields exist is per-request/per-company dynamic, so their
     names cannot be baked into the static, class-level ``step_fields`` the
     extension framework composes once at registration time).
 
-    Strip custom fields from ``step_fields`` before Horilla's ``clean``
+    Strip custom fields from ``step_fields`` before Finlo's ``clean``
     (so the AttributeError above can't happen), then restore ``cf_*``
     errors ``_clean_fields`` already collected for fields actually present
     on this form instance right now (``form.fields``, not ``step_fields``)
-    on the current step. Horilla sources stay unchanged.
+    on the current step. Finlo sources stay unchanged.
     """
     original_step_fields = form.step_fields
     current_step_cf_names = {
@@ -185,9 +185,9 @@ def clean_multi_step_custom_fields(form, original_clean):
 
 def apply_single_form_custom_fields(form, model):
     """
-    Build and attach ``cf_*`` fields onto a HorillaModelForm instance,
+    Build and attach ``cf_*`` fields onto a FinloModelForm instance,
     populating existing values when editing. Called from
-    HorillaModelForm.__init__ (after the base __init__ has run) for any
+    FinloModelForm.__init__ (after the base __init__ has run) for any
     model registered for custom fields.
     """
     from django import forms as django_forms
@@ -222,8 +222,8 @@ def _detail_visibility_for(request, obj):
         return None
     if not getattr(obj, "_meta", None):
         return None
-    from horilla.contrib.core.models import DetailFieldVisibility
-    from horilla.urls import resolve
+    from finlo.contrib.core.models import DetailFieldVisibility
+    from finlo.urls import resolve
 
     url_name = request.GET.get("detail_url_name") or ""
     if not url_name:
@@ -313,9 +313,9 @@ def apply_custom_fields_to_detail_context(context, obj, request=None, view=None)
     values = load_custom_field_values(obj.__class__, obj.pk)
     visibility = _detail_visibility_for(request, obj)
 
-    from horilla.contrib.generics.views.detail_tabs import HorillaDetailSectionView
+    from finlo.contrib.generics.views.detail_tabs import FinloDetailSectionView
 
-    is_details_section = view is not None and isinstance(view, HorillaDetailSectionView)
+    is_details_section = view is not None and isinstance(view, FinloDetailSectionView)
     if is_details_section:
         ordered_names = _visibility_field_names(visibility, "details_fields")
     else:

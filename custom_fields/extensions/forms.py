@@ -1,22 +1,22 @@
 """
 Inject custom fields into forms through FormExtension (_inherit_form).
 
-Horilla composes ``FormExtension`` subclasses onto concrete forms after every
-app has loaded. This module discovers ``HorillaMultiStepForm``/
-``HorillaModelForm`` subclasses whose ``Meta.model`` opted in to custom
+Finlo composes ``FormExtension`` subclasses onto concrete forms after every
+app has loaded. This module discovers ``FinloMultiStepForm``/
+``FinloModelForm`` subclasses whose ``Meta.model`` opted in to custom
 fields (via ``register_model_for_feature(..., features=["custom_fields_models"])``
 in the model's own app ``registration.py``) and registers one extension per
 form. No model, form, or view class is ever imported by name here.
 
-This mirrors ``horilla.contrib.field_requirements.extensions``'s discovery
-pattern: it registers a pre-compose hook (``horilla.extension._pre_compose_hooks``)
+This mirrors ``finlo.contrib.field_requirements.extensions``'s discovery
+pattern: it registers a pre-compose hook (``finlo.extension._pre_compose_hooks``)
 that runs at the start of every ``apply_form_extensions()`` call (the same
 compose step views already trigger) rather than running once during
 ``ready()``, since CRM apps opt in during their own ``ready()`` which may
-run after this app's. The hook is an ordinary registration — no Horilla
+run after this app's. The hook is an ordinary registration — no Finlo
 module attribute is reassigned.
 
-``clean``/``save`` use plain ``super()`` (per ``docs/horilla/extension/forms/inherit.md``
+``clean``/``save`` use plain ``super()`` (per ``docs/finlo/extension/forms/inherit.md``
 "Method merge" — "``clean`` / ``save`` — If overridden, must call
 ``super()``"). This only works because the mixin classes below
 (``_CustomFieldsMultiStepFormMixin``, ``_CustomFieldsSingleFormMixin``) are
@@ -46,12 +46,12 @@ from custom_fields.integration import (
     save_with_custom_fields,
 )
 
-# First party imports (Horilla)
-from horilla.contrib.generics.forms.multi_step import HorillaMultiStepForm
-from horilla.contrib.generics.forms.single_step import HorillaModelForm
-from horilla.extension.forms import FormExtension
-from horilla.extension.forms.registry import FORM_EXTENSION_REGISTRY
-from horilla.registry.feature import FEATURE_REGISTRY
+# First party imports (Finlo)
+from finlo.contrib.generics.forms.multi_step import FinloMultiStepForm
+from finlo.contrib.generics.forms.single_step import FinloModelForm
+from finlo.extension.forms import FormExtension
+from finlo.extension.forms.registry import FORM_EXTENSION_REGISTRY
+from finlo.registry.feature import FEATURE_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ def register_discovered_form_extensions():
 
 
 def iter_configurable_model_forms():
-    """Yield HorillaMultiStepForm/HorillaModelForm subclasses whose Meta.model opted in."""
+    """Yield FinloMultiStepForm/FinloModelForm subclasses whose Meta.model opted in."""
     configurable = _configurable_models()
     if not configurable:
         return
@@ -102,7 +102,7 @@ def _form_model(form_class):
 
 
 def _iter_app_model_forms(app_config):
-    """Yield HorillaMultiStepForm/HorillaModelForm subclasses defined in ``{app}.forms`` modules."""
+    """Yield FinloMultiStepForm/FinloModelForm subclasses defined in ``{app}.forms`` modules."""
     for module in _iter_forms_modules(app_config):
         for form_class in _iter_module_model_forms(module):
             yield form_class
@@ -135,17 +135,17 @@ def _iter_forms_modules(app_config):
 
 
 def _iter_module_model_forms(module):
-    """Yield HorillaMultiStepForm/HorillaModelForm subclasses defined in ``module``."""
+    """Yield FinloMultiStepForm/FinloModelForm subclasses defined in ``module``."""
     for _name, obj in inspect.getmembers(module, inspect.isclass):
         if obj.__module__ != module.__name__:
             continue
         if "." in getattr(obj, "__qualname__", ""):
             continue
-        if getattr(obj, "__horilla_composed__", False):
+        if getattr(obj, "__finlo_composed__", False):
             continue
-        if not issubclass(obj, (HorillaMultiStepForm, HorillaModelForm)):
+        if not issubclass(obj, (FinloMultiStepForm, FinloModelForm)):
             continue
-        if obj in (HorillaMultiStepForm, HorillaModelForm):
+        if obj in (FinloMultiStepForm, FinloModelForm):
             continue
         yield obj
 
@@ -177,9 +177,9 @@ class _MultiStepFormMethods(FormExtension):
     created subclass namespace instead of subclassing this template.
 
     Real ``super()`` here is safe despite that: the framework's own
-    ``_spec_to_mixin()`` (``horilla/extension/forms/compose.py``) rebinds
+    ``_spec_to_mixin()`` (``finlo/extension/forms/compose.py``) rebinds
     each captured method's ``__class__`` closure cell to the actual mixin it
-    ends up composed into (see ``horilla.extension._super_rebind`), so
+    ends up composed into (see ``finlo.extension._super_rebind`), so
     ``super().clean()`` / ``super().save()`` correctly resolve to the next
     extension or the target form regardless of which subclass this function
     object is attached to.
@@ -231,7 +231,7 @@ def _register_form_extension(form_class):
 
     template = (
         _MultiStepFormMethods
-        if issubclass(form_class, HorillaMultiStepForm)
+        if issubclass(form_class, FinloMultiStepForm)
         else _SingleFormMethods
     )
     namespace = {
@@ -251,12 +251,12 @@ def _register_form_extension(form_class):
 
 
 def _install_discovery_hook():
-    """Register discovery to run at the start of Horilla's form-extension compose step."""
+    """Register discovery to run at the start of Finlo's form-extension compose step."""
     global _DISCOVERY_HOOK_INSTALLED
     if _DISCOVERY_HOOK_INSTALLED:
         return
 
-    from horilla.extension._pre_compose_hooks import register_pre_compose_hook
+    from finlo.extension._pre_compose_hooks import register_pre_compose_hook
 
     register_pre_compose_hook("forms", register_discovered_form_extensions)
     _DISCOVERY_HOOK_INSTALLED = True

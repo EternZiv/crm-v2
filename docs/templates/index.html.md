@@ -15,7 +15,7 @@ Related files:
 |------|------|
 | `templates/components/header.html` | Top navigation bar |
 | `templates/components/sidebar.html` | Left icon sidebar |
-| `templates/components/horilla_modals.html` | Shared modal containers |
+| `templates/components/finlo_modals.html` | Shared modal containers |
 | `templates/components/empty_state.html` | Shared empty-state image + message partial — see [components/empty_state.md](components/empty_state.md) |
 | `templates/messages.html` | Django messages toast area |
 | `templates/components/modelcontent_layout.html` | Standard inner layout (sidebar + `#mainContent`) |
@@ -49,7 +49,7 @@ Page templates should **not** duplicate this shell. They should `{% extends "ind
     <div class="ml-[4.8rem] h-screen">
       #header          → components/header.html
       {% block content %}
-      horilla_modals   → components/horilla_modals.html
+      finlo_modals   → components/finlo_modals.html
     </div>
     #sidebar           → components/sidebar.html
   #reloadMessagesButton (hidden HTMX trigger)
@@ -70,7 +70,7 @@ The main content area lives inside `{% block content %}`. Most CRM list/detail p
 At the top of `index.html`:
 
 ```django
-{% load static i18n horilla_tags %}
+{% load static i18n finlo_tags %}
 ```
 
 | Tag / load | Usage in this template |
@@ -92,7 +92,7 @@ Child templates can override these blocks:
 | `content` | Body, inside main wrapper | **Primary page body** (required for most pages) |
 | `extra_js` | Before `body_end` slot | Page-specific scripts after globals |
 
-There is no `title` block; the document title uses the branding context variable `{{ TITLE }}` (from `horilla.context_processors.branding`).
+There is no `title` block; the document title uses the branding context variable `{{ TITLE }}` (from `finlo.context_processors.branding`).
 
 ### Extending for page content
 
@@ -132,16 +132,16 @@ These are always rendered by `index.html`:
 |---------|----------------|
 | `components/header.html` | `#header` |
 | `components/sidebar.html` | `#sidebar` |
-| `components/horilla_modals.html` | Shared modal targets for HTMX |
+| `components/finlo_modals.html` | Shared modal targets for HTMX |
 | `messages.html` | Inside `#reloadMessages` |
 
-When building HTMX partials, target existing containers (e.g. `#mainContent`, modal ids from `horilla_modals.html`) instead of re-including the header or sidebar.
+When building HTMX partials, target existing containers (e.g. `#mainContent`, modal ids from `finlo_modals.html`) instead of re-including the header or sidebar.
 
 ---
 
 ## Global context variables
 
-Available in every template that extends `index.html` (via Django context processors). See [context_processors.md](../horilla/context_processors.md) for full detail.
+Available in every template that extends `index.html` (via Django context processors). See [context_processors.md](../finlo/context_processors.md) for full detail.
 
 | Variable | Source | Used for |
 |----------|--------|----------|
@@ -174,7 +174,7 @@ Child templates should use Tailwind `dark:` variants and existing CSS (`assets/c
 
 ## Asset registry: HTML injection slots
 
-Apps register HTML fragments with `horilla.registry.asset_registry.register_html`. `index.html` renders them in four slots:
+Apps register HTML fragments with `finlo.registry.asset_registry.register_html`. `index.html` renders them in four slots:
 
 | Slot | Position in `index.html` | Typical content |
 |------|--------------------------|-----------------|
@@ -183,14 +183,14 @@ Apps register HTML fragments with `horilla.registry.asset_registry.register_html
 | `body_start` | Start of `<body>` | Analytics, early body init |
 | `body_end` | End of `<body>` | Deferred bindings, feature scripts |
 
-**Allowed slots** are defined in `horilla/registry/asset_registry.py` (`INJECT_ALLOWED_SLOTS`).
+**Allowed slots** are defined in `finlo/registry/asset_registry.py` (`INJECT_ALLOWED_SLOTS`).
 
 ### Register from an app
 
 Call from a module loaded at startup (e.g. `registration.py`):
 
 ```python
-from horilla.registry.asset_registry import register_html
+from finlo.registry.asset_registry import register_html
 
 register_html(
     "my_app/inject_html/custom_head.html",
@@ -200,7 +200,7 @@ register_html(
 )
 ```
 
-**Real example** (`horilla.contrib.theme.registration`):
+**Real example** (`finlo.contrib.theme.registration`):
 
 ```python
 register_html("inject_html/tailwind_dynamic_config.html", slot="head_end", priority=100)
@@ -247,7 +247,7 @@ Loaded globally from `index.html` (paths under `static/assets/`):
 | Styling | Tailwind (runtime + config), Flowbite, Font Awesome, `style.css`, `dark.css`, Select2, Summernote, animate |
 | Interaction | HTMX (+ download extension), Hyperscript, jQuery, Select2, SortableJS, SweetAlert2 |
 | Charts / export | Chart.js, ECharts, jsPDF |
-| App globals | `global.js`, `action_tooltip.js`, `horilla_charts.js`, `calendar.js`, `full_calendar.js` |
+| App globals | `global.js`, `action_tooltip.js`, `finlo_charts.js`, `calendar.js`, `full_calendar.js` |
 | i18n | `{% url 'javascript-catalog' %}` |
 
 Page-specific assets belong in `{% block extra_css %}` / `{% block extra_js %}`, or in the asset registry—not by patching `index.html`.
@@ -264,10 +264,10 @@ document.body.addEventListener("htmx:configRequest", (event) => {
 });
 ```
 
-Server-side HTMX helpers (`RefreshResponse`, `RedirectResponse`) live in **`horilla.web`** (`horilla/web/response.py`). Import them from the package entry point when possible:
+Server-side HTMX helpers (`RefreshResponse`, `RedirectResponse`) live in **`finlo.web`** (`finlo/web/response.py`). Import them from the package entry point when possible:
 
 ```python
-from horilla.web import RedirectResponse, RefreshResponse
+from finlo.web import RedirectResponse, RefreshResponse
 ```
 
 Use those instead of hand-rolling `HX-Refresh` / `HX-Redirect` headers in views when possible.
@@ -314,7 +314,7 @@ Trigger `#reloadMessagesButton` from JS after actions that set messages and need
 ## Related documentation
 
 - [Modelcontent layout migration guide](components/modelcontent_layout.html.md)
-- [AppLauncher / apps configuration](../horilla/apps/apps.md)
-- [Asset registry](../horilla/contrib/core/Registry/asset_registry.md) (if present) or `horilla/registry/asset_registry.py`
-- [Context processors](../horilla/context_processors.md)
-- [Asset template tags](../horilla/contrib/generics/templatetags/horilla_tags/asset_tags.md)
+- [AppLauncher / apps configuration](../finlo/apps/apps.md)
+- [Asset registry](../finlo/contrib/core/Registry/asset_registry.md) (if present) or `finlo/registry/asset_registry.py`
+- [Context processors](../finlo/context_processors.md)
+- [Asset template tags](../finlo/contrib/generics/templatetags/finlo_tags/asset_tags.md)

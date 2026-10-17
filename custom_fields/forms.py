@@ -4,13 +4,13 @@
 from django import forms
 from django.utils.safestring import mark_safe
 
-from horilla.contrib.core.models import HorillaContentType
-from horilla.contrib.generics.forms import HorillaModelForm
+from finlo.contrib.core.models import FinloContentType
+from finlo.contrib.generics.forms import FinloModelForm
 
-# First party imports (Horilla)
-from horilla.core.exceptions import ValidationError
-from horilla.utils.html import strip_tags
-from horilla.utils.translation import gettext_lazy as _
+# First party imports (Finlo)
+from finlo.core.exceptions import ValidationError
+from finlo.utils.html import strip_tags
+from finlo.utils.translation import gettext_lazy as _
 
 from .models import CustomFieldDefinition
 
@@ -46,12 +46,12 @@ def get_supported_custom_field_models():
     """
     Return the (app_label, model_name) pairs registered for custom fields.
 
-    Backed by the same registry duplicate-checking and other Horilla
+    Backed by the same registry duplicate-checking and other Finlo
     features use — any app opts a model in with
     ``register_model_for_feature(..., features=["custom_fields_models"])``
     from its own ``registration.py``. No model is hardcoded here.
     """
-    from horilla.registry.feature import FEATURE_REGISTRY
+    from finlo.registry.feature import FEATURE_REGISTRY
 
     return [
         f"{model._meta.app_label}.{model._meta.model_name}"
@@ -67,7 +67,7 @@ class FieldTypeSelect(forms.Select):
         return mark_safe(str(html) + CHOICES_TOGGLE_SCRIPT)
 
 
-class CustomFieldDefinitionForm(HorillaModelForm):
+class CustomFieldDefinitionForm(FinloModelForm):
     """Form for creating / editing a custom field definition."""
 
     class Meta:
@@ -88,7 +88,7 @@ class CustomFieldDefinitionForm(HorillaModelForm):
         supported_pairs = [
             pair.split(".", 1) for pair in get_supported_custom_field_models()
         ]
-        supported_cts = HorillaContentType.objects.filter(
+        supported_cts = FinloContentType.objects.filter(
             app_label__in=[pair[0] for pair in supported_pairs],
             model__in=[pair[1] for pair in supported_pairs],
         )

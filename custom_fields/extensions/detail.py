@@ -2,19 +2,19 @@
 Inject custom fields into detail views through DetailExtension (_inherit_detail)
 and DetailSectionExtension (_inherit_detail_section).
 
-Discovers ``HorillaDetailView``/``HorillaDetailSectionView`` subclasses whose
+Discovers ``FinloDetailView``/``FinloDetailSectionView`` subclasses whose
 ``model`` opted in to custom fields (via
 ``register_model_for_feature(..., features=["custom_fields_models"])`` in the
 model's own app ``registration.py``), using the same ``_view_registry`` every
-other model-keyed detail lookup in Horilla uses, and registers one extension
+other model-keyed detail lookup in Finlo uses, and registers one extension
 per view. No model or view class is ever imported by name here.
 
-Mirrors ``horilla.contrib.field_requirements.extensions``'s discovery
-pattern: it registers pre-compose hooks (``horilla.extension._pre_compose_hooks``)
+Mirrors ``finlo.contrib.field_requirements.extensions``'s discovery
+pattern: it registers pre-compose hooks (``finlo.extension._pre_compose_hooks``)
 for both ``apply_detail_extensions``/``apply_detail_section_extensions`` so
 newly opted-in models (registered by a CRM app's own ``registration.py``,
 possibly after this app's ``ready()``) are picked up without relying on
-import order — no Horilla module attribute is reassigned.
+import order — no Finlo module attribute is reassigned.
 """
 
 # Standard library imports
@@ -22,15 +22,15 @@ import logging
 
 from custom_fields.hooks.detail import restore_custom_fields_in_order
 from custom_fields.integration import apply_custom_fields_to_detail_context
-from horilla.contrib.generics.views.detail_tabs import HorillaDetailSectionView
+from finlo.contrib.generics.views.detail_tabs import FinloDetailSectionView
 
-# First party imports (Horilla)
-from horilla.contrib.generics.views.details import HorillaDetailView
-from horilla.extension.detail import DetailExtension
-from horilla.extension.detail.registry import DETAIL_EXTENSION_REGISTRY
-from horilla.extension.detail_section import DetailSectionExtension
-from horilla.extension.detail_section.registry import DETAIL_SECTION_EXTENSION_REGISTRY
-from horilla.registry.feature import FEATURE_REGISTRY
+# First party imports (Finlo)
+from finlo.contrib.generics.views.details import FinloDetailView
+from finlo.extension.detail import DetailExtension
+from finlo.extension.detail.registry import DETAIL_EXTENSION_REGISTRY
+from finlo.extension.detail_section import DetailSectionExtension
+from finlo.extension.detail_section.registry import DETAIL_SECTION_EXTENSION_REGISTRY
+from finlo.registry.feature import FEATURE_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ def register_discovered_detail_extensions():
     """
     registered = 0
     for model in _configurable_models():
-        view_class = HorillaDetailView._view_registry.get(model)
+        view_class = FinloDetailView._view_registry.get(model)
         if view_class is None:
             continue
         if _register_detail_extension(view_class):
@@ -67,7 +67,7 @@ def register_discovered_detail_section_extensions():
     """
     registered = 0
     for model in _configurable_models():
-        view_class = HorillaDetailSectionView._view_registry.get(model)
+        view_class = FinloDetailSectionView._view_registry.get(model)
         if view_class is None:
             continue
         if _register_detail_section_extension(view_class):
@@ -99,7 +99,7 @@ def _already_registered(registry, view_path):
 
 class _DetailMethods(DetailExtension):
     """
-    Template for the methods a ``DetailExtension`` needs on ``HorillaDetailView``.
+    Template for the methods a ``DetailExtension`` needs on ``FinloDetailView``.
 
     Never itself registered (no ``_inherit_detail`` here) and never used as a
     base class — ``register_detail_extension_class`` only captures methods
@@ -109,9 +109,9 @@ class _DetailMethods(DetailExtension):
     created subclass namespace instead of subclassing this template.
 
     Real ``super()`` here is safe despite that: ``compose_detail_view_class``
-    (``horilla/extension/detail/compose.py``) rebinds each captured method's
+    (``finlo/extension/detail/compose.py``) rebinds each captured method's
     ``__class__`` closure cell to the actual mixin it ends up composed into
-    (see ``horilla.extension._super_rebind``), so ``super().get_context_data()``
+    (see ``finlo.extension._super_rebind``), so ``super().get_context_data()``
     correctly resolves to the next extension or the target view regardless
     of which subclass this function object is attached to.
     """
@@ -129,7 +129,7 @@ class _DetailMethods(DetailExtension):
 
     def _normalize_field_list(self, field_list, exclude_set):
         """
-        ``HorillaDetailView._normalize_field_list`` drops any name that is
+        ``FinloDetailView._normalize_field_list`` drops any name that is
         not a real Django model field (``instance._meta.get_field(field_name)``
         raises ``FieldDoesNotExist`` for ``cf_*`` names) — used by both
         ``get_header_fields()`` (feeds ``context["header_fields"]``, read by
@@ -139,7 +139,7 @@ class _DetailMethods(DetailExtension):
         custom-field merge only rebuilds ``context["body"]``, so a saved
         custom field would otherwise silently disappear from the header's
         own field-list normalization. Re-inserting it here keeps that in
-        sync without touching Horilla's own ``details.py``.
+        sync without touching Finlo's own ``details.py``.
         """
         kept = super()._normalize_field_list(field_list, exclude_set)
         model = getattr(self, "model", None)
@@ -204,12 +204,12 @@ def _register_detail_section_extension(view_class):
 
 
 def _install_discovery_hook():
-    """Register discovery to run at the start of Horilla's detail/detail-section compose steps."""
+    """Register discovery to run at the start of Finlo's detail/detail-section compose steps."""
     global _DISCOVERY_HOOK_INSTALLED
     if _DISCOVERY_HOOK_INSTALLED:
         return
 
-    from horilla.extension._pre_compose_hooks import register_pre_compose_hook
+    from finlo.extension._pre_compose_hooks import register_pre_compose_hook
 
     register_pre_compose_hook("detail", register_discovered_detail_extensions)
     register_pre_compose_hook(

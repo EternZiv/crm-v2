@@ -11,7 +11,7 @@
  * position is fixed to that side and clamped to the viewport.
  */
 (function () {
-    var TOOLTIP_ID = "horilla-action-tooltip";
+    var TOOLTIP_ID = "finlo-action-tooltip";
     var GAP = 6;
     var currentTrigger = null;
 

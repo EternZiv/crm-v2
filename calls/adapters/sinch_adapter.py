@@ -1,4 +1,4 @@
-"""Sinch adapter for Horilla Calls Integration."""
+"""Sinch adapter for Finlo Calls Integration."""
 
 import logging
 

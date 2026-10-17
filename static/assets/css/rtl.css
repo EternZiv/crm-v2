@@ -1,5 +1,5 @@
 /**
- * Horilla RTL layout overrides.
+ * Finlo RTL layout overrides.
  * Loaded when html[dir="rtl"] is set for bidirectional languages (fa, ar, he, ur).
  */
 
@@ -452,13 +452,13 @@ html[dir="rtl"] .probar--rtl li:last-child div,
 }
 
 /* Dashboard reorder — charts/links must not steal drag events from the handle */
-.horilla-dashboard-sortable.is-edit-sortable [hx-get],
-.horilla-dashboard-sortable.is-edit-sortable .chart-container,
-.horilla-dashboard-sortable.is-edit-sortable canvas {
+.finlo-dashboard-sortable.is-edit-sortable [hx-get],
+.finlo-dashboard-sortable.is-edit-sortable .chart-container,
+.finlo-dashboard-sortable.is-edit-sortable canvas {
   pointer-events: none !important;
 }
 
-.horilla-dashboard-sortable.is-edit-sortable .edit-drag-handle {
+.finlo-dashboard-sortable.is-edit-sortable .edit-drag-handle {
   pointer-events: auto !important;
 }
 
@@ -466,8 +466,8 @@ html[dir="rtl"] .probar--rtl li:last-child div,
  * During RTL reorder the grid is switched to dir=ltr (Sortable hit-testing).
  * Keep each card's contents RTL so KPI icons/text do not flip to LTR.
  */
-html[dir="rtl"] .horilla-dashboard-sortable.is-edit-sortable>[data-component-id],
-html[dir="rtl"] .horilla-dashboard-sortable.is-edit-sortable>[data-id] {
+html[dir="rtl"] .finlo-dashboard-sortable.is-edit-sortable>[data-component-id],
+html[dir="rtl"] .finlo-dashboard-sortable.is-edit-sortable>[data-id] {
   direction: rtl;
   unicode-bidi: isolate;
 }

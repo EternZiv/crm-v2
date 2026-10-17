@@ -1,8 +1,8 @@
 """
-Signals for the horilla_booking app.
+Signals for the finlo_booking app.
 
 booking_submitted — fired by PublicBookingView after a Booking is saved.
-Receivers in horilla_crm.leads handle Lead/Contact/Activity creation.
+Receivers in finlo_crm.leads handle Lead/Contact/Activity creation.
 
 Signal kwargs:
     booker_name     (str)     — full name entered by visitor

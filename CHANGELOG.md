@@ -7,18 +7,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 This file starts at **1.13.8**, the first release maintained in this format. Releases
 before it are documented on the
-[releases page](https://github.com/horilla/horilla-crm/releases) and are not reproduced
+[releases page](https://github.com/finlo/finlo-crm/releases) and are not reproduced
 here — they predate this convention and back-filling them would misrepresent how they
 were recorded at the time.
 
 Each released version corresponds to a git tag of the same name (bare semver, no `v`
-prefix) and to the Docker tag `horilla/horilla-crm:<version>`. `horilla/__version__.py`
+prefix) and to the Docker tag `finlo/finlo-crm:<version>`. `finlo/__version__.py`
 is the single source of truth for the **whole CRM product** version (not only the
-`horilla/` package directory); the release workflow refuses to publish an image whose
+`finlo/` package directory); the release workflow refuses to publish an image whose
 tag disagrees with it. See [docs/versioning.md](docs/versioning.md).
 
 Finlo CRM also versions its applications independently — each app carries its own
-`__version__.py`, surfaced together by `horilla/utils/version.py`. Those app versions
+`__version__.py`, surfaced together by `finlo/utils/version.py`. Those app versions
 move on their own cadence and are not tracked in this file.
 
 ## [Unreleased]
@@ -98,7 +98,7 @@ date and open a fresh Unreleased above it.
 ### Upgrading
 
 ```bash
-docker pull horilla/horilla-crm:1.15.3
+docker pull finlo/finlo-crm:1.15.3
 ```
 
 This release adds database migrations for Calendar, Mail, Contacts, Leads and
@@ -119,7 +119,7 @@ with every calendar activity type selected.
   `filter_panel_option`.
 - Calendar: **Color by Type / Status** sidebar toggle; **Open Related Record**
   on activity event popups.
-- Core: Holidays tab search in Company Information; Horilla navbar on Import
+- Core: Holidays tab search in Company Information; Finlo navbar on Import
   Data; Docker `wait_for_db` (reads host/port from Django settings); second-
   company demo fixtures.
 - Settings nav descriptions for Cadence, Workflow Rules, Review and Approval
@@ -163,7 +163,7 @@ with every calendar activity type selected.
 ### Upgrading
 
 ```bash
-docker pull horilla/horilla-crm:1.15.2
+docker pull finlo/finlo-crm:1.15.2
 ```
 
 ## [1.15.1] — 2026-09-25
@@ -203,7 +203,7 @@ docker pull horilla/horilla-crm:1.15.2
 ### Upgrading
 
 ```bash
-docker pull horilla/horilla-crm:1.15.1
+docker pull finlo/finlo-crm:1.15.1
 ```
 
 ## [1.15.0] — 2026-09-18
@@ -233,7 +233,7 @@ docker pull horilla/horilla-crm:1.15.1
 ### Upgrading
 
 ```bash
-docker pull horilla/horilla-crm:1.15.0
+docker pull finlo/finlo-crm:1.15.0
 ```
 
 ## [1.14.0] — 2026-09-11
@@ -253,7 +253,7 @@ released, tagged, published version with no entry contradicts that.
 
 ### Fixed
 
-- **Outlook integration could not send mail** ([#37](https://github.com/horilla/horilla-crm/issues/37)).
+- **Outlook integration could not send mail** ([#37](https://github.com/finlo/finlo-crm/issues/37)).
 - Outlook token refresh could race across worker processes and invalidate the token.
 - Calendar events and save-preference endpoints returned 500.
 - Saving a workflow action or time trigger with an invalid rule raised `NoReverseMatch`.
@@ -268,7 +268,7 @@ released, tagged, published version with no entry contradicts that.
 ### Upgrading
 
 ```bash
-docker pull horilla/horilla-crm:1.14.0
+docker pull finlo/finlo-crm:1.14.0
 ```
 
 ## [1.13.8] — 2026-09-05
@@ -296,13 +296,13 @@ docker pull horilla/horilla-crm:1.14.0
 ### Upgrading
 
 ```bash
-docker pull horilla/horilla-crm:1.13.8
+docker pull finlo/finlo-crm:1.13.8
 ```
 
-[Unreleased]: https://github.com/horilla/horilla-crm/compare/1.15.3...HEAD
-[1.15.3]: https://github.com/horilla/horilla-crm/releases/tag/1.15.3
-[1.15.2]: https://github.com/horilla/horilla-crm/releases/tag/1.15.2
-[1.15.1]: https://github.com/horilla/horilla-crm/releases/tag/1.15.1
-[1.15.0]: https://github.com/horilla/horilla-crm/releases/tag/1.15.0
-[1.14.0]: https://github.com/horilla/horilla-crm/releases/tag/1.14.0
-[1.13.8]: https://github.com/horilla/horilla-crm/releases/tag/1.13.8
+[Unreleased]: https://github.com/finlo/finlo-crm/compare/1.15.3...HEAD
+[1.15.3]: https://github.com/finlo/finlo-crm/releases/tag/1.15.3
+[1.15.2]: https://github.com/finlo/finlo-crm/releases/tag/1.15.2
+[1.15.1]: https://github.com/finlo/finlo-crm/releases/tag/1.15.1
+[1.15.0]: https://github.com/finlo/finlo-crm/releases/tag/1.15.0
+[1.14.0]: https://github.com/finlo/finlo-crm/releases/tag/1.14.0
+[1.13.8]: https://github.com/finlo/finlo-crm/releases/tag/1.13.8

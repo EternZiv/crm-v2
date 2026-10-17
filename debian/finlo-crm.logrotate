@@ -1,0 +1,13 @@
+# Logrotate configuration for Finlo-CRM
+/var/log/finlo-crm/*.log {
+    daily
+    missingok
+    rotate 52
+    compress
+    delaycompress
+    notifempty
+    create 644 finlo-crm finlo-crm
+    postrotate
+        systemctl reload finlo-crm > /dev/null 2>&1 || true
+    endscript
+}

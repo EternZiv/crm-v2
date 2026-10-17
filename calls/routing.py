@@ -1,6 +1,6 @@
-"""WebSocket URL routing for the Horilla Calls Integration app."""
+"""WebSocket URL routing for the Finlo Calls Integration app."""
 
-from horilla.urls import re_path
+from finlo.urls import re_path
 
 from . import consumers
 

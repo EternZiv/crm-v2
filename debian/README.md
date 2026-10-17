@@ -1,23 +1,23 @@
-# Horilla-CRM Debian Package
+# Finlo CRM Debian Package
 
-This directory contains the Debian packaging configuration for Horilla-CRM.
+This directory contains the Debian packaging configuration for Finlo CRM.
 
 ## Package Information
 
-- **Package Name**: horilla-crm
+- **Package Name**: finlo-crm
 - **Version**: 1.0.0-1
 - **Architecture**: all
 - **License**: LGPL-2.1+
-- **Maintainer**: Horilla CRM Team <support@horilla.com>
+- **Maintainer**: Finlo CRM Team
 
 ## Installation Locations
 
-- **Application**: `/opt/horilla-crm/`
-- **Configuration**: `/etc/horilla-crm/`
-- **Data**: `/var/lib/horilla-crm/`
-- **Logs**: `/var/log/horilla-crm/`
-- **Service**: `systemd` (horilla-crm.service)
-- **User**: `horilla-crm` (system user)
+- **Application**: `/opt/finlo-crm/`
+- **Configuration**: `/etc/finlo-crm/`
+- **Data**: `/var/lib/finlo-crm/`
+- **Logs**: `/var/log/finlo-crm/`
+- **Service**: `systemd` (finlo-crm.service)
+- **User**: `finlo-crm` (system user)
 
 ## Building the Package
 
@@ -44,7 +44,7 @@ dpkg-buildpackage -us -uc -b
 
 ```bash
 # Install the package
-sudo dpkg -i ../horilla-crm_*.deb
+sudo dpkg -i ../finlo-crm_*.deb
 
 # Fix any dependency issues
 sudo apt-get install -f
@@ -54,7 +54,7 @@ sudo apt-get install -f
 
 1. **Edit configuration file**:
    ```bash
-   sudo nano /etc/horilla-crm/horilla-crm.conf
+   sudo nano /etc/finlo-crm/finlo-crm.conf
    ```
 
 2. **Key settings to update**:
@@ -63,41 +63,33 @@ sudo apt-get install -f
    - `ALLOWED_HOSTS`: Add your domain/IP
    - `DATABASE_URL`: Configure your database connection
 
-3. **Database setup** (if using PostgreSQL):
-   ```bash
-   # Create database and user
-   sudo -u postgres psql
-   CREATE DATABASE horilla_crm;
-   CREATE USER horilla_user WITH PASSWORD 'your_password';
-   GRANT ALL PRIVILEGES ON DATABASE horilla_crm TO horilla_user;
-   \\q
-
-   # Update configuration
-   echo "DATABASE_URL=postgres://horilla_user:your_password@localhost/horilla_crm" >> /etc/horilla-crm/horilla-crm.conf
-   ```
+3. **Database setup**:
+   Configure `DATABASE_URL` in `/etc/finlo-crm/finlo-crm.conf` with the
+   Supabase PostgreSQL connection URL from Project Settings > Database. Require
+   TLS with `sslmode=require`; do not configure a local database.
 
 4. **Create superuser**:
    ```bash
-   sudo -u horilla-crm horilla-crm-manage createsuperuser
+   sudo -u finlo-crm finlo-crm-manage createsuperuser
    ```
 
 ## Service Management
 
 ```bash
 # Start the service
-sudo systemctl start horilla-crm
+sudo systemctl start finlo-crm
 
 # Enable automatic startup
-sudo systemctl enable horilla-crm
+sudo systemctl enable finlo-crm
 
 # Check status
-sudo systemctl status horilla-crm
+sudo systemctl status finlo-crm
 
 # View logs
-sudo journalctl -u horilla-crm -f
+sudo journalctl -u finlo-crm -f
 
 # Restart service
-sudo systemctl restart horilla-crm
+sudo systemctl restart finlo-crm
 ```
 
 ## Management Commands
@@ -106,13 +98,13 @@ The package provides a wrapper script for Django management commands:
 
 ```bash
 # General syntax
-sudo -u horilla-crm horilla-crm-manage <command>
+sudo -u finlo-crm finlo-crm-manage <command>
 
 # Examples
-sudo -u horilla-crm horilla-crm-manage migrate
-sudo -u horilla-crm horilla-crm-manage collectstatic
-sudo -u horilla-crm horilla-crm-manage createsuperuser
-sudo -u horilla-crm horilla-crm-manage shell
+sudo -u finlo-crm finlo-crm-manage migrate
+sudo -u finlo-crm finlo-crm-manage collectstatic
+sudo -u finlo-crm finlo-crm-manage createsuperuser
+sudo -u finlo-crm finlo-crm-manage shell
 ```
 
 ## Web Server Configuration
@@ -133,13 +125,13 @@ server {
     }
 
     location /static/ {
-        alias /opt/horilla-crm/staticfiles/;
+        alias /opt/finlo-crm/staticfiles/;
         expires 1y;
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
 
     location /media/ {
-        alias /opt/horilla-crm/media/;
+        alias /opt/finlo-crm/media/;
         expires 7d;
         add_header Cache-Control "public, max-age=604800";
     }
@@ -157,8 +149,8 @@ server {
 - `postinst`: Post-installation script
 - `prerm`: Pre-removal script
 - `postrm`: Post-removal script
-- `horilla-crm.service`: Systemd service file
-- `horilla-crm.logrotate`: Log rotation configuration
+- `finlo-crm.service`: Systemd service file
+- `finlo-crm.logrotate`: Log rotation configuration
 - `build-package.sh`: Build automation script
 
 ## Troubleshooting
@@ -166,41 +158,41 @@ server {
 ### Service won't start
 ```bash
 # Check service status
-sudo systemctl status horilla-crm
+sudo systemctl status finlo-crm
 
 # Check logs
-sudo journalctl -u horilla-crm -n 50
+sudo journalctl -u finlo-crm -n 50
 
 # Check configuration
-sudo -u horilla-crm horilla-crm-manage check
+sudo -u finlo-crm finlo-crm-manage check
 ```
 
 ### Database issues
 ```bash
 # Run migrations
-sudo -u horilla-crm horilla-crm-manage migrate
+sudo -u finlo-crm finlo-crm-manage migrate
 
 # Check database connection
-sudo -u horilla-crm horilla-crm-manage dbshell
+sudo -u finlo-crm finlo-crm-manage dbshell
 ```
 
 ### Permission issues
 ```bash
 # Fix ownership
-sudo chown -R horilla-crm:horilla-crm /opt/horilla-crm
-sudo chown -R horilla-crm:horilla-crm /var/lib/horilla-crm
-sudo chown -R horilla-crm:horilla-crm /var/log/horilla-crm
+sudo chown -R finlo-crm:finlo-crm /opt/finlo-crm
+sudo chown -R finlo-crm:finlo-crm /var/lib/finlo-crm
+sudo chown -R finlo-crm:finlo-crm /var/log/finlo-crm
 ```
 
 ## Uninstallation
 
 ```bash
 # Remove package (keep data)
-sudo apt-get remove horilla-crm
+sudo apt-get remove finlo-crm
 
 # Complete removal (including data)
-sudo apt-get purge horilla-crm
-sudo rm -rf /var/lib/horilla-crm /var/log/horilla-crm
+sudo apt-get purge finlo-crm
+sudo rm -rf /var/lib/finlo-crm /var/log/finlo-crm
 ```
 
 ## Development
@@ -214,6 +206,6 @@ To modify the package:
 
 ## Support
 
-- GitHub: https://github.com/horilla-opensource/horilla-crm
+- GitHub: https://github.com/EternZiv/crm-v2
 - Documentation: Available in the application
 - Issues: Use GitHub issue tracker

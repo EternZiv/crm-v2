@@ -1,14 +1,14 @@
 """
-Utility functions for horilla_booking — slot availability calculation.
+Utility functions for finlo_booking — slot availability calculation.
 Slots are derived from the BookingPage's linked BusinessHour, not BookingAvailability.
 """
 
 # Standard library imports
 from datetime import date, datetime, time, timedelta
 
-# First party imports (Horilla)
-from horilla.utils import timezone
-from horilla.utils.choices import SHORT_TO_DAY_PREFIX, WEEK_ORDER
+# First party imports (Finlo)
+from finlo.utils import timezone
+from finlo.utils.choices import SHORT_TO_DAY_PREFIX, WEEK_ORDER
 
 
 def _get_page_timezone(page):
@@ -125,7 +125,7 @@ def _get_unavailability_for_users(users, target_date: date, tz) -> list:
     all given users that overlap target_date.
     """
     try:
-        from horilla.contrib.calendar.models import UserAvailability
+        from finlo.contrib.calendar.models import UserAvailability
 
         day_start = timezone.make_aware(datetime.combine(target_date, time(0, 0)), tz)
         day_end = timezone.make_aware(

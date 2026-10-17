@@ -8,23 +8,23 @@ from functools import cached_property
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from horilla.contrib.core.models import HorillaContentType
+from finlo.contrib.core.models import FinloContentType
 
-# First party imports (Horilla)
-from horilla.contrib.generics.views import HorillaListView, HorillaNavView, HorillaView
-from horilla.contrib.generics.views.delete import HorillaSingleDeleteView
-from horilla.contrib.generics.views.details import check_record_access
-from horilla.shortcuts import get_object_or_404, render
-from horilla.urls import reverse, reverse_lazy
-from horilla.utils import timezone
-from horilla.utils.decorators import (
+# First party imports (Finlo)
+from finlo.contrib.generics.views import FinloListView, FinloNavView, FinloView
+from finlo.contrib.generics.views.delete import FinloSingleDeleteView
+from finlo.contrib.generics.views.details import check_record_access
+from finlo.shortcuts import get_object_or_404, render
+from finlo.urls import reverse, reverse_lazy
+from finlo.utils import timezone
+from finlo.utils.decorators import (
     htmx_required,
     method_decorator,
     permission_required_or_denied,
 )
-from horilla.utils.translation import gettext_lazy as _
-from horilla.views.generic import View
-from horilla.web import (
+from finlo.utils.translation import gettext_lazy as _
+from finlo.views.generic import View
+from finlo.web import (
     Http404,
     HttpResponse,
     HxTriggerResponse,
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required_or_denied("calls.view_calllog"), name="dispatch")
-class CallLogNavView(LoginRequiredMixin, HorillaNavView):
+class CallLogNavView(LoginRequiredMixin, FinloNavView):
     """
     Navigation bar for the Call Logs main page.
     Provides search, filter, and layout switcher.
@@ -57,7 +57,7 @@ class CallLogNavView(LoginRequiredMixin, HorillaNavView):
 
 
 @method_decorator(permission_required_or_denied("calls.view_calllog"), name="dispatch")
-class CallLogView(LoginRequiredMixin, HorillaView):
+class CallLogView(LoginRequiredMixin, FinloView):
     """
     Main Call Logs page — renders the nav bar + list layout.
     This is the entry point users see when clicking Call Logs in the menu.
@@ -69,7 +69,7 @@ class CallLogView(LoginRequiredMixin, HorillaView):
 
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(permission_required_or_denied("calls.view_calllog"), name="dispatch")
-class CallLogListView(LoginRequiredMixin, HorillaListView):
+class CallLogListView(LoginRequiredMixin, FinloListView):
     """HTMX list of call logs."""
 
     model = CallLog
@@ -93,7 +93,7 @@ class CallLogListView(LoginRequiredMixin, HorillaListView):
     permission_required_or_denied("calls.delete_calllog", modal=True),
     name="dispatch",
 )
-class CallLogDeleteView(LoginRequiredMixin, HorillaSingleDeleteView):
+class CallLogDeleteView(LoginRequiredMixin, FinloSingleDeleteView):
     """Delete a call log."""
 
     model = CallLog
@@ -245,7 +245,7 @@ class ClickToCallView(LoginRequiredMixin, View):
         except (TypeError, ValueError):
             return None
         try:
-            model_class = HorillaContentType.objects.get(
+            model_class = FinloContentType.objects.get(
                 model=model_name.lower()
             ).model_class()
             manager = getattr(model_class, "all_objects", model_class.objects)
@@ -385,9 +385,9 @@ class CancelCallView(LoginRequiredMixin, View):
 
 
 @method_decorator(htmx_required, name="dispatch")
-class ObjectCallLogView(LoginRequiredMixin, HorillaListView):
+class ObjectCallLogView(LoginRequiredMixin, FinloListView):
     """
-    HorillaListView listing real CallLog records for a any record.
+    FinloListView listing real CallLog records for a any record.
     Used in the Call History sub-tab of the activity tab via HTMX.
 
     Gated on the related record's own view permission (e.g. leads.view_lead
@@ -418,7 +418,7 @@ class ObjectCallLogView(LoginRequiredMixin, HorillaListView):
         if not model_name or not str(object_id).isdigit():
             raise Http404("Missing or invalid model_name/object_id.")
 
-        content_type = get_object_or_404(HorillaContentType, model=model_name.lower())
+        content_type = get_object_or_404(FinloContentType, model=model_name.lower())
         related_model = content_type.model_class()
         related_object = get_object_or_404(related_model, pk=object_id)
 

@@ -166,7 +166,7 @@
 })();
 
 // Internationalization messages
-const horillaMessages = {
+const finloMessages = {
     confirm: gettext("Confirm"),
     close: gettext("Close"),
     cancel: gettext("Cancel"),
@@ -266,8 +266,8 @@ function openDetailModal() { ModalManager.open("detailModal", "detailModalBox");
 function closeDetailModal() { ModalManager.close("detailModal", "detailModalBox"); }
 function openModal() { ModalManager.open("dbmodal", "modalBox"); }
 function closeModal() { ModalManager.close("dbmodal", "modalBox"); }
-function openhorillaModal() { ModalManager.open("horillaModal", "horillaModalBox"); }
-function closehorillaModal() { ModalManager.close("horillaModal", "horillaModalBox"); }
+function openfinloModal() { ModalManager.open("finloModal", "finloModalBox"); }
+function closefinloModal() { ModalManager.close("finloModal", "finloModalBox"); }
 function openFilterModal() { ModalManager.open("filtermodal", "filtermodalBox"); }
 function closeFilterModal() { ModalManager.close("filtermodal", "filtermodalBox"); }
 function openDeleteModal() { ModalManager.open("deletemodal", "deleteBox"); }
@@ -419,9 +419,8 @@ const SidebarManager = {
         return "home";
     },
 
-    getActiveSection() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const sectionFromUrl = urlParams.get("section");
+    getActiveSection(path = window.location.href) {
+        const sectionFromUrl = new URL(path, window.location.href).searchParams.get("section");
         if (sectionFromUrl) return sectionFromUrl;
 
         const $link = this.getSubsectionLinkMatchingUrl();
@@ -464,10 +463,7 @@ const SidebarManager = {
 
     activateFirstSubsectionItem(sectionId) {
         const $subsectionLinks = $("ul a.sidebar-link").filter(`[data-section="${sectionId}"]`);
-        if (!$subsectionLinks.length) {
-            const $allLinks = $("ul a.sidebar-link");
-            if (!$allLinks.length) return;
-        }
+        if (!$subsectionLinks.length) return;
 
         let $activeLink = null;
         const sidebarClicked = localStorage.getItem("sidebarClicked") === "true";
@@ -492,9 +488,7 @@ const SidebarManager = {
             $activeLink = activeSubItemId ? $subsectionLinks.filter(`#${activeSubItemId}`) : $subsectionLinks.first();
 
             if (!$activeLink.length) {
-                $("#hiddenReloadSidebar").click();
-                console.warn("No sub-sidebar link found, triggering reload.");
-                return;
+                $activeLink = $subsectionLinks.first();
             }
         }
 
@@ -526,7 +520,22 @@ const SidebarManager = {
     }
 };
 
+let pendingSectionNavigation = null;
+let latestSectionNavigationId = 0;
+const sectionNavigationRequests = new WeakMap();
+
+window.addEventListener("finlo:cachedNavigation", function () {
+    latestSectionNavigationId += 1;
+    if (pendingSectionNavigation?.xhr?.readyState !== 4) {
+        pendingSectionNavigation?.xhr?.abort();
+    }
+    pendingSectionNavigation = null;
+});
+
 // Sidebar collapse/expand
+let initializedSidebarMainContent = null;
+let initialSidebarTransitionSuppressed = false;
+
 function initSidebar() {
     const sideMenu = document.getElementById("sideMenu");
     const toggleBtn = document.getElementById("toggleSideMenu");
@@ -535,6 +544,8 @@ function initSidebar() {
     const kanbanView = document.getElementById("kanbanview");
 
     if (!sideMenu || !toggleBtn || !arrowIcon || !mainContent) return;
+    if (initializedSidebarMainContent === mainContent) return;
+    initializedSidebarMainContent = mainContent;
 
     const isRtl = document.documentElement.dir === "rtl";
     const inlineStartProp = isRtl ? "right" : "left";
@@ -549,9 +560,13 @@ function initSidebar() {
     // Remove the pre-paint CSS override so JS classes take over without flash
     document.documentElement.removeAttribute("data-sidebar-collapsed");
 
-    // Suppress transition briefly so the initial state applies instantly
-    sideMenu.style.transition = "none";
-    requestAnimationFrame(() => { sideMenu.style.transition = ""; });
+    if (!initialSidebarTransitionSuppressed) {
+        sideMenu.style.transition = "none";
+        requestAnimationFrame(() => {
+            sideMenu.style.transition = "";
+        });
+        initialSidebarTransitionSuppressed = true;
+    }
 
     const STORAGE_KEY = "sidebarCollapsed";
     let isCollapsed = false;
@@ -1012,8 +1027,8 @@ function hxConfirm(element, messageText, hint) {
         showCancelButton: true,
         confirmButtonColor: "#008000",
         cancelButtonColor: "#d33",
-        confirmButtonText: horillaMessages.confirm,
-        cancelButtonText: horillaMessages.cancel,
+        confirmButtonText: finloMessages.confirm,
+        cancelButtonText: finloMessages.cancel,
         reverseButtons: true,
         showClass: {
             popup: `animate__animated animate__fadeInUp animate__faster`
@@ -1040,8 +1055,8 @@ function hxConfirmForm(element, messageText) {
         showCancelButton: true,
         confirmButtonColor: "#008000",
         cancelButtonColor: "#d33",
-        confirmButtonText: horillaMessages.confirm,
-        cancelButtonText: horillaMessages.cancel,
+        confirmButtonText: finloMessages.confirm,
+        cancelButtonText: finloMessages.cancel,
         reverseButtons: true,
         showClass: {
             popup: `animate__animated animate__fadeInUp animate__faster`
@@ -1121,8 +1136,8 @@ function isElementChecked(element) {
             showCancelButton: true,
             confirmButtonColor: "#008000",
             cancelButtonColor: "#d33",
-            confirmButtonText: horillaMessages.confirm,
-            cancelButtonText: horillaMessages.cancel,
+            confirmButtonText: finloMessages.confirm,
+            cancelButtonText: finloMessages.cancel,
             reverseButtons: true,
             showClass: {
                 popup: `animate__animated animate__fadeInUp animate__faster`
@@ -1765,24 +1780,80 @@ $(document).ready(function () {
         });
     });
 
-    const $navLinks = $("nav a.nav-link");
+    document.addEventListener(
+        "click",
+        function (event) {
+            const clickedElement =
+                event.target instanceof Element
+                    ? event.target
+                    : event.target?.parentElement;
+            const link = clickedElement?.closest("nav a.nav-link");
+            if (
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey ||
+                !link ||
+                link.target ||
+                link.getAttribute("hx-boost")?.toLowerCase() !== "true"
+            ) {
+                return;
+            }
 
-    $("nav").on("click", "a.nav-link", function () {
-        const $clickedLink = $(this);
-        const clickedSection = $clickedLink.attr("id");
-        const currentActiveSection = SidebarManager.getActiveSection();
+            const clickedSection = link.id;
+            const currentActiveSection = SidebarManager.getActiveSection();
+            if (!clickedSection) return;
 
-        if (currentActiveSection) {
-            localStorage.setItem("lastActiveSection", currentActiveSection);
+            if (currentActiveSection) {
+                localStorage.setItem("lastActiveSection", currentActiveSection);
+            }
+
+            const isClickingSameSection =
+                currentActiveSection === clickedSection;
+            latestSectionNavigationId += 1;
+            pendingSectionNavigation = {
+                id: latestSectionNavigationId,
+                sectionId: clickedSection,
+                sameSection: isClickingSameSection,
+                link,
+                xhr: null,
+                swapped: false,
+            };
+        },
+        true,
+    );
+
+    document.body.addEventListener("htmx:beforeRequest", function (event) {
+        if (
+            pendingSectionNavigation &&
+            event.detail?.elt === pendingSectionNavigation.link
+        ) {
+            pendingSectionNavigation.xhr = event.detail.xhr;
+            sectionNavigationRequests.set(
+                event.detail.xhr,
+                pendingSectionNavigation.id,
+            );
         }
+    });
 
-        const isClickingSameSection = currentActiveSection === clickedSection;
+    document.body.addEventListener("htmx:beforeSwap", function (event) {
+        const requestId = sectionNavigationRequests.get(event.detail?.xhr);
+        if (
+            requestId !== undefined &&
+            requestId !== latestSectionNavigationId
+        ) {
+            event.detail.shouldSwap = false;
+        }
+    });
 
-        SidebarManager.setActiveNavLink($clickedLink, clickedSection);
-
-        if (isClickingSameSection) {
-            localStorage.setItem("sidebarClicked", "false");
-            localStorage.setItem("lastActiveSection", "temp_reset");
+    document.body.addEventListener("htmx:afterRequest", function (event) {
+        if (
+            pendingSectionNavigation &&
+            event.detail?.elt === pendingSectionNavigation.link &&
+            (event.detail.failed || !pendingSectionNavigation.swapped)
+        ) {
+            pendingSectionNavigation = null;
         }
     });
 
@@ -1808,29 +1879,6 @@ $(document).ready(function () {
         }
     });
 
-    const hiddenReloadSidebar = document.getElementById("hiddenReloadSidebar");
-
-    if (hiddenReloadSidebar) {
-        hiddenReloadSidebar.addEventListener("click", function () {
-            const appLabel = this.getAttribute("data-app-label");
-            const section = SidebarManager.getSectionFromAppLabel(appLabel);
-
-            if (!section) {
-                console.warn("No section found for app label:", appLabel);
-                return;
-            }
-
-            const reloadUrl = `${window.location.pathname}?section=${section}`;
-
-            htmx.ajax("GET", reloadUrl)
-                .then(() => {
-                    SidebarManager.activateFirstSubsectionItem(section);
-                })
-                .catch((err) => {
-                    console.error("Failed to reload sub-sidebar for section:", section, err);
-                });
-        });
-    }
 });
 
 // Window load event
@@ -1923,11 +1971,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // HTMX Events
 document.addEventListener("DOMContentLoaded", initSidebar);
-document.body.addEventListener("htmx:afterSwap", initSidebar);
-document.body.addEventListener("htmx:afterOnLoad", initSidebar);
-// outerHTML swaps can fire afterSwap before the new node replaces the old one in the DOM,
-// so initSidebar's collapse/expand correction misses it; afterSettle fires once the swap is final.
-document.body.addEventListener("htmx:afterSettle", initSidebar);
+document.body.addEventListener("htmx:afterSettle", function (event) {
+    if (event.detail?.target?.id === "mainContent") {
+        initSidebar();
+    }
+});
 
 /* ==========================================================================
    HTMX network failure → full-page connection error (ERR_CONNECTION_REFUSED)
@@ -1949,9 +1997,9 @@ document.body.addEventListener("htmx:afterSettle", initSidebar);
         var retry = esc(gettext("Retry"));
         var errLabel = esc(gettext("Error code:"));
 
-        if (!document.getElementById("horilla-network-error-styles")) {
+        if (!document.getElementById("finlo-network-error-styles")) {
             var s = document.createElement("style");
-            s.id = "horilla-network-error-styles";
+            s.id = "finlo-network-error-styles";
             s.textContent = "@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}@keyframes pulse-glow{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.8;transform:scale(1.05)}}";
             document.head.appendChild(s);
         }
@@ -2004,17 +2052,37 @@ htmx.onLoad(function(content) {
     initFlowbite();
 });
 
-document.body.addEventListener("htmx:afterSwap", function () {
-    const currentSection = SidebarManager.getActiveSection();
-    const $navLinks = $("nav a.nav-link");
-    const $sectionLink = $navLinks.filter(`#${currentSection}`);
+document.addEventListener("htmx:historyRestore", function (event) {
+    latestSectionNavigationId += 1;
+    pendingSectionNavigation = null;
+    const currentSection = SidebarManager.getActiveSection(event.detail?.path);
+    const $sectionLink = $("nav a.nav-link").filter(
+        `#${CSS.escape(currentSection)}`,
+    );
     if ($sectionLink.length) {
         SidebarManager.setActiveNavLink($sectionLink, currentSection);
     }
+    localStorage.setItem("lastActiveSection", currentSection);
+});
+
+document.body.addEventListener("htmx:afterSwap", function (event) {
+    const target = event.detail?.target;
+    const completedSectionNavigation =
+        target?.id === "mainContent" &&
+        pendingSectionNavigation?.xhr === event.detail.xhr
+            ? pendingSectionNavigation
+            : null;
+    if (completedSectionNavigation) {
+        completedSectionNavigation.swapped = true;
+        if (completedSectionNavigation.sameSection) {
+            localStorage.setItem("sidebarClicked", "false");
+            localStorage.setItem("lastActiveSection", "temp_reset");
+        }
+    }
 
     // Settings Content Script Reload
-    if (event.detail && event.detail.target && event.detail.target.id === 'settings-content') {
-        const scripts = event.detail.target.querySelectorAll('script');
+    if (target?.id === "settings-content") {
+        const scripts = target.querySelectorAll("script");
         scripts.forEach(script => {
             const newScript = document.createElement('script');
             newScript.textContent = script.textContent;
@@ -2025,15 +2093,28 @@ document.body.addEventListener("htmx:afterSwap", function () {
 });
 
 document.body.addEventListener("htmx:afterSettle", function (event) {
-    const currentSection = SidebarManager.getActiveSection();
-    const $navLinks = $("nav a.nav-link");
-    const $sectionLink = $navLinks.filter(`#${currentSection}`);
-    if ($sectionLink.length) {
-        SidebarManager.setActiveNavLink($sectionLink, currentSection);
+    const target = event.detail?.target;
+    if (target?.id === "mainContent") {
+        const settledSectionNavigation =
+            pendingSectionNavigation?.swapped &&
+            pendingSectionNavigation.xhr === event.detail.xhr
+                ? pendingSectionNavigation
+                : null;
+        const currentSection =
+            settledSectionNavigation?.sectionId ||
+            SidebarManager.getActiveSection();
+        const $navLinks = $("nav a.nav-link");
+        const $sectionLink = $navLinks.filter(`#${currentSection}`);
+        if ($sectionLink.length) {
+            SidebarManager.setActiveNavLink($sectionLink, currentSection);
+        }
+        SidebarManager.activateFirstSubsectionItem(currentSection);
+        if (settledSectionNavigation) {
+            pendingSectionNavigation = null;
+        }
     }
-    SidebarManager.activateFirstSubsectionItem(currentSection);
 
-    if (event.detail && (event.detail.target.id === "mainSession" || event.detail.target.querySelector("#filterpanel"))) {
+    if (target && (target.id === "mainSession" || target.querySelector("#filterpanel"))) {
         applyFilterPanelVisibilityPreference();
         initFilterPanelDrag();
         initFilterPanelResize();
@@ -2041,16 +2122,16 @@ document.body.addEventListener("htmx:afterSettle", function (event) {
     }
 
     // Reinitialize Select2 after HTMX content loads
-    var target = $(event.target);
+    var $settledTarget = $(event.target);
 
-    target.find(".js-example-basic-single").each(function() {
+    $settledTarget.find(".js-example-basic-single").each(function() {
         if ($(this).hasClass("select2-hidden-accessible")) {
             $(this).select2("destroy");
             $(this).removeData('select2-initialized');
         }
     });
 
-    target.find(".js-example-basic-single:not(.select2-hidden-accessible)").select2({
+    $settledTarget.find(".js-example-basic-single:not(.select2-hidden-accessible)").select2({
         templateResult: formatOption,
         templateSelection: formatOption,
         width: "100%"
@@ -2532,7 +2613,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!evt.detail || !evt.detail.target) return;
         var targetId = evt.detail.target.id;
 
-        if (targetId === 'horillaModalBox') {
+        if (targetId === 'finloModalBox') {
             _selected = {};
             var el = evt.detail.target.querySelector('[data-field-id]');
             if (el) {
@@ -2660,7 +2741,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Confirm: write selections back to originating Select2 field
     window.userPickerConfirm = function () {
-        var box = document.getElementById('horillaModalBox');
+        var box = document.getElementById('finloModalBox');
         var el  = box && box.querySelector('[data-field-id]');
         if (!el) return;
         var $sel = $('#' + el.dataset.fieldId);
@@ -2670,7 +2751,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 $sel.append(new Option(_selected[id].text, id, false, false));
         });
         $sel.val(Object.keys(_selected)).trigger('change');
-        closehorillaModal();
+        closefinloModal();
     };
 
 }());
@@ -3268,10 +3349,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /**
      * Sortable options for dashboard grid reorder.
-     * In RTL, pair with prepareHorillaDashboardSortableContainer() so Sortable
+     * In RTL, pair with prepareFinloDashboardSortableContainer() so Sortable
      * uses LTR hit-testing without flipping the on-screen layout.
      */
-    window.getHorillaDashboardSortableOptions = function (overrides) {
+    window.getFinloDashboardSortableOptions = function (overrides) {
         var opts = {
             handle: ".edit-drag-handle",
             animation: 150,
@@ -3288,35 +3369,35 @@ document.addEventListener('DOMContentLoaded', function () {
         return opts;
     };
 
-    window.prepareHorillaDashboardSortableContainer = function (container) {
+    window.prepareFinloDashboardSortableContainer = function (container) {
         if (!container) {
             return;
         }
-        container.classList.add("horilla-dashboard-sortable");
+        container.classList.add("finlo-dashboard-sortable");
         if (!isRtlDocument()) {
             container.classList.add("is-edit-sortable");
             return;
         }
         var ids = getDirectSortableItems(container).map(getSortableItemId);
-        container.dataset.horillaSortableOriginal = JSON.stringify(ids);
-        container.dataset.horillaSortableRtlPrepared = "1";
+        container.dataset.finloSortableOriginal = JSON.stringify(ids);
+        container.dataset.finloSortableRtlPrepared = "1";
         mirrorRtlGridRowsForLtrEdit(container);
         container.setAttribute("dir", "ltr");
         container.classList.add("is-edit-sortable");
     };
 
-    window.resetHorillaDashboardSortableContainer = function (container, restoreOriginal) {
+    window.resetFinloDashboardSortableContainer = function (container, restoreOriginal) {
         if (!container) {
             return;
         }
         if (restoreOriginal === undefined) {
             restoreOriginal = true;
         }
-        if (container.dataset.horillaSortableRtlPrepared) {
+        if (container.dataset.finloSortableRtlPrepared) {
             if (restoreOriginal) {
                 restoreDirectSortableOrder(
                     container,
-                    JSON.parse(container.dataset.horillaSortableOriginal || "[]")
+                    JSON.parse(container.dataset.finloSortableOriginal || "[]")
                 );
             } else {
                 restoreDirectSortableOrder(
@@ -3325,19 +3406,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
             }
             container.removeAttribute("dir");
-            delete container.dataset.horillaSortableOriginal;
-            delete container.dataset.horillaSortableRtlPrepared;
+            delete container.dataset.finloSortableOriginal;
+            delete container.dataset.finloSortableRtlPrepared;
         }
         container.classList.remove(
-            "horilla-dashboard-sortable",
+            "finlo-dashboard-sortable",
             "is-edit-sortable",
-            "horilla-dashboard-sortable--rtl-edit"
+            "finlo-dashboard-sortable--rtl-edit"
         );
     };
 
     /** Map edit-mode layout back to normal RTL dashboard order for save. */
-    window.collectHorillaDashboardSortableOrder = function (container, sortableInstance) {
-        if (container && container.dataset.horillaSortableRtlPrepared) {
+    window.collectFinloDashboardSortableOrder = function (container, sortableInstance) {
+        if (container && container.dataset.finloSortableRtlPrepared) {
             return collectRtlDashboardStorageOrder(container);
         }
         if (sortableInstance && typeof sortableInstance.toArray === "function") {

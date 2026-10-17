@@ -1,4 +1,4 @@
-function horillaMultiSort(event, anchor) {
+function finloMultiSort(event, anchor) {
   event.preventDefault();
 
   const field = anchor.dataset.sortField;

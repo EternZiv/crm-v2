@@ -1,0 +1,66 @@
+"""App configuration for the opportunities module."""
+
+# First party imports (Finlo)
+from finlo.apps import AppLauncher
+from finlo.utils.translation import gettext_lazy as _
+
+
+class OpportunitiesConfig(AppLauncher):
+    """Opportunities App Configuration"""
+
+    default = True
+
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "finlo_crm.opportunities"
+    verbose_name = _("Opportunities")
+
+    url_prefix = "crm/opportunities/"
+    url_module = "finlo_crm.opportunities.urls"
+    url_namespace = "opportunities"
+
+    auto_import_modules = [
+        "registration",
+        "signals",
+        "menu",
+        "dashboard",
+    ]
+
+    demo_data = [
+        {
+            "files": [
+                (8, "load_data/opportunity_stage.json"),
+                (9, "load_data/opportunity.json"),
+            ],
+            "order": 3,
+        },
+        {
+            "files": [
+                (21, "load_data/workflow_rule.json"),
+                (24, "load_data/approval_rule.json"),
+                (25, "load_data/review_process.json"),
+                (27, "load_data/big_deal_alert.json"),
+            ],
+            "order": 7,
+            "configurable": False,
+        },
+    ]
+
+    report_files = [
+        "report_data/reports.json",
+    ]
+
+    def get_api_paths(self):
+        """
+        Return API path configurations for this app.
+
+        Returns:
+            list: List of dictionaries containing path configuration
+        """
+        return [
+            {
+                "pattern": "crm/opportunities/",
+                "view_or_include": "finlo_crm.opportunities.api.urls",
+                "name": "finlo_crm_opportunities_api",
+                "namespace": "finlo_crm_opportunities",
+            }
+        ]

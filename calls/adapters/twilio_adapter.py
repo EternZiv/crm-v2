@@ -1,4 +1,4 @@
-"""Twilio adapter for Horilla Calls Integration."""
+"""Twilio adapter for Finlo Calls Integration."""
 
 import hashlib
 import hmac

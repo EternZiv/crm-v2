@@ -1,6 +1,6 @@
 """Version and metadata for the calls app."""
 
-from horilla.utils.translation import gettext_lazy as _
+from finlo.utils.translation import gettext_lazy as _
 
 __version__ = "1.11.11"
 __module_name__ = _("Calls Integration")
@@ -32,7 +32,7 @@ __1_11_8__ = _(
 )
 
 __1_11_7__ = _(
-    "Prefer Horilla import shims for apps, signals, and timezone. Close cross-tenant "
+    "Prefer Finlo import shims for apps, signals, and timezone. Close cross-tenant "
     "and privilege-escalation gaps in the Calls API."
 )
 

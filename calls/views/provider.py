@@ -12,21 +12,21 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.decorators.csrf import csrf_exempt
 
-# First party imports (Horilla)
-from horilla.apps import apps
-from horilla.contrib.generics.views import HorillaListView, HorillaSingleFormView
-from horilla.contrib.generics.views.delete import HorillaSingleDeleteView
-from horilla.shortcuts import render
-from horilla.urls import reverse_lazy
-from horilla.utils import timezone
-from horilla.utils.decorators import (
+# First party imports (Finlo)
+from finlo.apps import apps
+from finlo.contrib.generics.views import FinloListView, FinloSingleFormView
+from finlo.contrib.generics.views.delete import FinloSingleDeleteView
+from finlo.shortcuts import render
+from finlo.urls import reverse_lazy
+from finlo.utils import timezone
+from finlo.utils.decorators import (
     htmx_required,
     method_decorator,
     permission_required_or_denied,
 )
-from horilla.utils.translation import gettext_lazy as _
-from horilla.views.generic import View
-from horilla.web import HttpResponse, JsonResponse, ScriptResponse
+from finlo.utils.translation import gettext_lazy as _
+from finlo.views.generic import View
+from finlo.web import HttpResponse, JsonResponse, ScriptResponse
 
 # Local imports
 from ..adapters.factory import get_adapter
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 @method_decorator(
     permission_required_or_denied("calls.view_callprovider"), name="dispatch"
 )
-class CallProviderListView(LoginRequiredMixin, HorillaListView):
+class CallProviderListView(LoginRequiredMixin, FinloListView):
     """Generic list of call providers embedded in the integration settings panel."""
 
     model = CallProvider
@@ -99,7 +99,7 @@ class CallProviderListView(LoginRequiredMixin, HorillaListView):
     ),
     name="dispatch",
 )  # noqa: E501
-class CallProviderFormView(LoginRequiredMixin, HorillaSingleFormView):
+class CallProviderFormView(LoginRequiredMixin, FinloSingleFormView):
     """Create / update a call provider (opens in modal)."""
 
     model = CallProvider
@@ -162,7 +162,7 @@ class CallProviderFieldsView(LoginRequiredMixin, View):
     permission_required_or_denied("calls.delete_callprovider", modal=True),
     name="dispatch",
 )
-class CallProviderDeleteView(LoginRequiredMixin, HorillaSingleDeleteView):
+class CallProviderDeleteView(LoginRequiredMixin, FinloSingleDeleteView):
     """Delete a call provider and re-render the provider list."""
 
     model = CallProvider

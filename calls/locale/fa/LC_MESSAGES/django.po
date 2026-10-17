@@ -589,7 +589,7 @@ msgstr "لغو"
 msgid "Call Now"
 msgstr "تماس فوری"
 
-msgid "Connect a calling provider to make and log calls from Horilla."
+msgid "Connect a calling provider to make and log calls from Finlo."
 msgstr ""
 "یک ارائه‌دهنده تماس را برای برقراری و ثبت تماس‌ها از هورایلا متصل کنید."
 

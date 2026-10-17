@@ -8,7 +8,7 @@ def _decrypt(value: str) -> str:
     if not value:
         return value
     try:
-        from horilla.contrib.mail.encryption_utils import decrypt_password
+        from finlo.contrib.mail.encryption_utils import decrypt_password
 
         return decrypt_password(value)
     except Exception:
