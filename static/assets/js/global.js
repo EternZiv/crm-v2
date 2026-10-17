@@ -1787,7 +1787,9 @@ $(document).ready(function () {
                 event.target instanceof Element
                     ? event.target
                     : event.target?.parentElement;
-            const link = clickedElement?.closest("nav a.nav-link");
+            const link = clickedElement?.closest(
+                "nav a.nav-link, #subSidebar a.sidebar-link",
+            );
             if (
                 event.button !== 0 ||
                 event.metaKey ||
@@ -1801,7 +1803,10 @@ $(document).ready(function () {
                 return;
             }
 
-            const clickedSection = link.id;
+            const isMainSectionLink = link.matches("nav a.nav-link");
+            const clickedSection = isMainSectionLink
+                ? link.id
+                : link.dataset.section || SidebarManager.getActiveSection();
             const currentActiveSection = SidebarManager.getActiveSection();
             if (!clickedSection) return;
 
@@ -1810,7 +1815,7 @@ $(document).ready(function () {
             }
 
             const isClickingSameSection =
-                currentActiveSection === clickedSection;
+                isMainSectionLink && currentActiveSection === clickedSection;
             latestSectionNavigationId += 1;
             pendingSectionNavigation = {
                 id: latestSectionNavigationId,
