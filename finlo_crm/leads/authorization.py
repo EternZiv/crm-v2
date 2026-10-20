@@ -51,4 +51,6 @@ def assign_lead_to_bdo(lead, actor, bdo):
         locked_lead.save(update_fields=["sub_owner"])
         if locked_lead.lead_owner_id != owner_id:
             raise ValidationError(_("Lead ownership must remain with its creator."))
+        lead.sub_owner = assignment.user
+        lead.sub_owner_id = assignment.user.pk
         return locked_lead

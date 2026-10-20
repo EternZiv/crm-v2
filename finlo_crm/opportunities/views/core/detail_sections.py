@@ -457,10 +457,11 @@ class SelectClosedStageView(LoginRequiredMixin, View):
         """Render the closed stage selection modal."""
         opportunity = get_object_or_404(Opportunity, pk=kwargs.get("pk"))
 
-        # Get closed won and closed lost stages for the company
+        # Get closed won, lost, and delayed stages for the company
         company = opportunity.company if hasattr(opportunity, "company") else None
         closed_won_stage = None
         closed_lost_stage = None
+        delayed_stage = None
         current_stage = (
             opportunity.stage
             if hasattr(opportunity, "stage") and opportunity.stage
@@ -475,11 +476,15 @@ class SelectClosedStageView(LoginRequiredMixin, View):
             closed_lost_stage = OpportunityStage.objects.filter(
                 company=company, stage_type="lost"
             ).first()
+            delayed_stage = OpportunityStage.objects.filter(
+                company=company, stage_type="delayed"
+            ).first()
 
         context = {
             "opportunity": opportunity,
             "closed_won_stage": closed_won_stage,
             "closed_lost_stage": closed_lost_stage,
+            "delayed_stage": delayed_stage,
             "current_stage": current_stage,
             "current_stage_id": current_stage_id,
         }
@@ -491,7 +496,7 @@ class SelectClosedStageView(LoginRequiredMixin, View):
         )
 
     def post(self, request, *args, **kwargs):
-        """Handle the selection of closed won or closed lost."""
+        """Handle the selection of won, lost, or delayed stages."""
         opportunity = get_object_or_404(Opportunity, pk=kwargs.get("pk"))
         stage_id = request.POST.get("stage_id")
 
@@ -501,16 +506,53 @@ class SelectClosedStageView(LoginRequiredMixin, View):
 
         try:
             stage = OpportunityStage.objects.get(pk=stage_id)
-            # Verify it's a closed stage
-            if stage.stage_type not in ["won", "lost"]:
+            if stage.stage_type not in ["won", "lost", "delayed"]:
                 messages.error(request, _("Invalid stage selected"))
                 return ScriptResponse(msgs=True, reload=True, status=400)
 
-            # Update the opportunity stage
             opportunity.stage = stage
+
+            if stage.stage_type == "won":
+                actual_close_date = request.POST.get("actual_close_date")
+                opportunity.actual_close_date = (
+                    actual_close_date if actual_close_date else timezone.now().date()
+                )
+                final_deal_value = request.POST.get("final_deal_value")
+                if final_deal_value:
+                    opportunity.final_deal_value = final_deal_value
+                elif opportunity.amount:
+                    opportunity.final_deal_value = opportunity.amount
+                if request.POST.get("closing_notes"):
+                    opportunity.closing_notes = request.POST.get("closing_notes")
+
+            elif stage.stage_type == "lost":
+                if request.POST.get("lost_reason"):
+                    opportunity.lost_reason = request.POST.get("lost_reason")
+                actual_close_date = request.POST.get("actual_close_date")
+                opportunity.actual_close_date = (
+                    actual_close_date if actual_close_date else timezone.now().date()
+                )
+
+            elif stage.stage_type == "delayed":
+                if request.POST.get("delay_reason"):
+                    opportunity.delay_reason = request.POST.get("delay_reason")
+                if request.POST.get("next_follow_up_date"):
+                    opportunity.next_follow_up_date = request.POST.get("next_follow_up_date")
+
+            opportunity.full_clean()
             opportunity.save()
 
+            messages.success(
+                request,
+                _("Opportunity stage updated to %(stage)s.") % {"stage": stage.name},
+            )
             return ScriptResponse(reload=True, close=True)
         except OpportunityStage.DoesNotExist:
             messages.error(request, _("Stage not found"))
             return ScriptResponse(msgs=True, reload=True, status=404)
+        except ValidationError as e:
+            msg = e.message if hasattr(e, "message") else str(e)
+            if hasattr(e, "message_dict"):
+                msg = "; ".join([f"{k}: {', '.join(v)}" for k, v in e.message_dict.items()])
+            messages.error(request, msg)
+            return ScriptResponse(msgs=True, reload=True, status=400)

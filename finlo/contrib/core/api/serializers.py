@@ -9,6 +9,10 @@ from rest_framework import serializers
 # First party imports (Finlo)
 from finlo.api.mixins import CompanyScopedSerializerMixin
 from finlo.contrib.core.authorization import get_company_scope
+from finlo.contrib.core.sales_authorization import (
+    SALES_ROLE_KEYS,
+    can_assign_employee_role,
+)
 from finlo.auth.models import User
 from finlo.core.exceptions import ValidationError
 
@@ -132,11 +136,17 @@ class FinloUserSerializer(serializers.ModelSerializer):
         actor = getattr(request, "user", None)
         if actor and not actor.is_superuser:
             scope = get_company_scope(actor, request)
-            if scope.company_id is None:
+            company_id = scope.company_id
+            if scope.all_companies:
+                company = validated_data.get("company") or getattr(
+                    request, "active_company", None
+                )
+                company_id = getattr(company, "pk", None)
+            if company_id is None:
                 raise serializers.ValidationError(
                     {"company": "Your account is not assigned to a company."}
                 )
-            validated_data["company_id"] = scope.company_id
+            validated_data["company_id"] = company_id
 
         password = validated_data.get("password")
         if password:
@@ -158,12 +168,23 @@ class FinloUserSerializer(serializers.ModelSerializer):
             )
         else:
             scope = get_company_scope(actor, request)
-            if self.instance is None:
+            if scope.all_companies:
+                target_company = attrs.get("company") or getattr(
+                    self.instance, "company", None
+                )
+                if target_company is None:
+                    target_company = getattr(request, "active_company", None)
+                target_company_id = getattr(target_company, "pk", None)
+            elif self.instance is None:
                 target_company_id = scope.company_id
+                target_company = attrs.get("company")
             else:
                 target_company_id = self.instance.company_id
+                target_company = attrs.get("company", self.instance.company)
 
-            if target_company_id is None or target_company_id != scope.company_id:
+            if target_company_id is None or (
+                not scope.all_companies and target_company_id != scope.company_id
+            ):
                 raise serializers.ValidationError(
                     {"company": "You cannot manage users outside your active company."}
                 )
@@ -176,9 +197,11 @@ class FinloUserSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"company": "You cannot assign a user to another company."}
                     )
-            target_company = attrs.get("company")
+            target_company = attrs.get("company", target_company)
             if target_company is None:
                 target_company = getattr(self.instance, "company", None)
+            if target_company is None:
+                target_company = getattr(request, "active_company", None)
             if target_company is None:
                 target_company = Company.objects.filter(
                     pk=target_company_id
@@ -190,7 +213,14 @@ class FinloUserSerializer(serializers.ModelSerializer):
 
             requested_role = attrs.get("role")
             current_role = getattr(self.instance, "role", None)
-            if requested_role is not None and requested_role != current_role:
+            if self.instance is None and getattr(
+                getattr(actor, "role", None), "system_key", None
+            ) in SALES_ROLE_KEYS:
+                if not can_assign_employee_role(actor, requested_role):
+                    raise serializers.ValidationError(
+                        {"role": "You may not assign this employee role."}
+                    )
+            elif requested_role is not None and requested_role != current_role:
                 if not actor.has_perm("core.change_role"):
                     raise serializers.ValidationError(
                         {"role": "You do not have permission to assign roles."}

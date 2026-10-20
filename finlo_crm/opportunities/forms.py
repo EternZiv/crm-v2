@@ -18,12 +18,17 @@ from finlo.urls import reverse_lazy
 from finlo.utils.translation import gettext_lazy as _
 
 # Local imports
+from finlo_crm.leads.models import Lead
 from finlo_crm.opportunities.models import (
     DefaultOpportunityMember,
     Opportunity,
     OpportunityStage,
     OpportunityTeam,
     OpportunityTeamMember,
+)
+from finlo_crm.opportunities.authorization import (
+    get_qualified_assigned_leads,
+    is_valid_bdo_opportunity_source,
 )
 
 logger = logging.getLogger(__name__)
@@ -78,7 +83,72 @@ def render_probability_input(value=None):
     return widget.render(name="probability", value=value)
 
 
-class OpportunityFormClass(OwnerQuerysetMixin, FinloMultiStepForm):
+class OpportunitySourceLeadFormMixin:
+    """Bind BDO-created opportunities to an assigned, qualified source lead."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.setdefault(
+            "source_lead_id",
+            forms.ModelChoiceField(
+                queryset=Lead.objects.none(),
+                required=False,
+                widget=forms.HiddenInput(),
+            ),
+        )
+        request = getattr(self, "request", None)
+        user = getattr(request, "user", None)
+        role_key = getattr(getattr(user, "role", None), "system_key", None)
+        instance = getattr(self, "instance", None)
+
+        if request is None or user is None or not user.is_authenticated:
+            return
+
+        source_field = self.fields["source_lead_id"]
+        if role_key == "BDO":
+            source_field.queryset = get_qualified_assigned_leads(user, request)
+            source_field.required = not bool(getattr(instance, "pk", None))
+            if getattr(instance, "pk", None):
+                source_field.disabled = True
+                source_field.initial = instance.source_lead_id
+            owner_field = self.fields.get("owner")
+            if owner_field is not None and not getattr(instance, "pk", None):
+                owner_field.disabled = True
+                owner_field.initial = user
+        else:
+            company = getattr(request, "active_company", None) or user.company
+            if company is not None:
+                source_field.queryset = Lead.objects.filter(company_id=company.pk)
+            if getattr(instance, "pk", None):
+                source_field.disabled = True
+                source_field.initial = instance.source_lead_id
+
+    def clean(self):
+        cleaned_data = super().clean()
+        request = getattr(self, "request", None)
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return cleaned_data
+
+        source_lead = cleaned_data.get("source_lead_id")
+        role_key = getattr(getattr(user, "role", None), "system_key", None)
+        if role_key == "BDO" and not is_valid_bdo_opportunity_source(
+            user, source_lead, request
+        ):
+            self.add_error(
+                "source_lead_id",
+                _("Select a qualified lead currently assigned to you."),
+            )
+        if self.instance is not None and not self.instance.pk:
+            self.instance.source_lead = source_lead
+            if role_key == "BDO":
+                self.instance.owner = user
+        return cleaned_data
+
+
+class OpportunityFormClass(
+    OpportunitySourceLeadFormMixin, OwnerQuerysetMixin, FinloMultiStepForm
+):
     """Multi-step form for creating/editing Opportunity instances.
     Inherits from FinloMultiStepForm to preserve all existing behavior.
     """
@@ -108,12 +178,14 @@ class OpportunityFormClass(OwnerQuerysetMixin, FinloMultiStepForm):
             "close_date",
             "stage",
             "probability",
+            "contact",
             "account",
             "lead_source",
             "opportunity_type",
             "primary_campaign_source",
             "next_step",
             "owner",
+            "source_lead_id",
         ],
         2: [
             "order_number",
@@ -130,7 +202,9 @@ class OpportunityFormClass(OwnerQuerysetMixin, FinloMultiStepForm):
         _wire_stage_probability_refresh(self)
 
 
-class OpportunitySingleForm(OwnerQuerysetMixin, FinloModelForm):
+class OpportunitySingleForm(
+    OpportunitySourceLeadFormMixin, OwnerQuerysetMixin, FinloModelForm
+):
     """
     Custom form for opportunity to add HTMX attributes
     Inherits from FinloModelForm to preserve all existing behavior.
@@ -143,6 +217,7 @@ class OpportunitySingleForm(OwnerQuerysetMixin, FinloModelForm):
         "close_date",
         "stage",
         "probability",
+        "contact",
         "account",
         "lead_source",
         "opportunity_type",
@@ -154,6 +229,7 @@ class OpportunitySingleForm(OwnerQuerysetMixin, FinloModelForm):
         "tracking_number",
         "main_competitors",
         "description",
+        "source_lead_id",
     ]
 
     class Meta:

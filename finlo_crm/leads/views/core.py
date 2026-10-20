@@ -4,7 +4,12 @@
 from urllib.parse import urlencode
 
 # Third-party imports (Django)
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views import View
+
+from finlo.shortcuts import get_object_or_404, render
+from finlo.web import ScriptResponse
 
 from finlo.contrib.core.utils import field_readonly_hidden_if
 from finlo.contrib.generics.mixins import RecentlyViewedMixin
@@ -21,6 +26,7 @@ from finlo.contrib.generics.views import (
 )
 from finlo.contrib.generics.views.timeline import FinloTimelineView
 from finlo.contrib.utils.middlewares import get_current_request
+from finlo.contrib.core.sales_authorization import has_effective_permission
 
 # First party imports (Finlo)
 from finlo.db.models import Avg, Count, Max, Min, Sum
@@ -58,7 +64,24 @@ def _convert_action_hidden_if(_obj):
         "opportunities.add_opportunity",
         "opportunities.add_own_opportunity",
     )
-    return not any(user.has_perm(perm) for perm in creatable_perms)
+    return not any(has_effective_permission(user, perm) for perm in creatable_perms)
+
+
+def _bdo_opportunity_action_hidden(lead):
+    """Show the source-bound opportunity action only to its assigned BDO."""
+    request = get_current_request()
+    if (
+        request is None
+        or not request.user.is_authenticated
+        or getattr(getattr(request.user, "role", None), "system_key", None) != "BDO"
+    ):
+        return True
+
+    from finlo_crm.opportunities.authorization import (
+        is_valid_bdo_opportunity_source,
+    )
+
+    return not is_valid_bdo_opportunity_source(request.user, lead, request)
 
 
 class LeadView(LoginRequiredMixin, FinloView):
@@ -244,6 +267,21 @@ class LeadListView(LoginRequiredMixin, FinloListView):
                         """,
         },
         {
+            "action": _("Qualify"),
+            "src": "assets/icons/a1.svg",
+            "img_class": "w-4 h-4",
+            "permission": "leads.change_lead",
+            "own_permission": "leads.change_own_lead",
+            "owner_field": "sub_owner",
+            "hidden_if": lambda obj: getattr(obj, "is_qualified", lambda: False)() or getattr(obj, "is_convert", False),
+            "attrs": """
+                        hx-get="{get_qualify_url}"
+                        hx-target="#modalBox"
+                        hx-swap="innerHTML"
+                        onclick="openModal()"
+                        """,
+        },
+        {
             **lead_permission,
             "action": "Convert",
             "src": "assets/icons/a3.svg",
@@ -254,6 +292,21 @@ class LeadListView(LoginRequiredMixin, FinloListView):
                         hx-target="#contentModalBox"
                         hx-swap="innerHTML"
                         onclick="openContentModal()"
+                        """,
+        },
+        {
+            "action": _("Create Opportunity"),
+            "src": "assets/icons/a3.svg",
+            "img_class": "w-4 h-4",
+            "permission": "leads.view_lead",
+            "own_permission": "leads.view_own_lead",
+            "owner_field": "sub_owner",
+            "hidden_if": _bdo_opportunity_action_hidden,
+            "attrs": """
+                        hx-get="{get_create_opportunity_url}"
+                        hx-target="#modalBox"
+                        hx-swap="innerHTML"
+                        onclick="openModal()"
                         """,
         },
         {
@@ -922,3 +975,44 @@ class LeadDetailView(RecentlyViewedMixin, LoginRequiredMixin, FinloDetailView):
             context["pipeline_field"] = self.pipeline_field
             context["actions"] = self.actions
         return context
+
+
+@method_decorator(htmx_required, name="dispatch")
+class QualifyLeadView(LoginRequiredMixin, View):
+    """View to qualify a lead and record qualification details."""
+
+    def get(self, request, pk):
+        lead = get_object_or_404(Lead, pk=pk)
+        from finlo.contrib.generics.views.details import check_record_change_access
+
+        if not check_record_change_access(request.user, lead):
+            return render(request, "403.html")
+        context = {"lead": lead}
+        return render(request, "lead_qualify_modal.html", context)
+
+    def post(self, request, pk):
+        lead = get_object_or_404(Lead, pk=pk)
+        from finlo.contrib.generics.views.details import check_record_change_access
+
+        if not check_record_change_access(request.user, lead):
+            messages.error(request, _("You are not authorized to qualify this lead."))
+            return ScriptResponse(msgs=True, reload=True, status=403)
+
+        customer_interest = request.POST.get("customer_interest", "").strip()
+        requirements = request.POST.get("requirements", "").strip()
+
+        try:
+            lead.qualify(
+                actor=request.user,
+                customer_interest=customer_interest,
+                requirements=requirements,
+            )
+            messages.success(
+                request,
+                _("Lead %(title)s has been qualified successfully.")
+                % {"title": lead.title},
+            )
+            return ScriptResponse(reload=True, close=True)
+        except Exception as exc:
+            messages.error(request, str(exc))
+            return ScriptResponse(msgs=True, reload=False, status=400)

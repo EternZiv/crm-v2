@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 
 from finlo.contrib.core.utils import get_allowed_user_ids
+from finlo.contrib.core.sales_authorization import has_effective_permission
 
 # First party imports (Finlo)
 from finlo.db import transaction
@@ -72,14 +73,14 @@ class LeadConversionView(LoginRequiredMixin, FormView):
         context = super().get_context_data(**kwargs)
         context["lead"] = self.lead
         context["account_action"] = self.request.GET.get(
-            "account_action", self.get_initial().get("account_action", "create_new")
+            "account_action", "none"
         )
         context["contact_action"] = self.request.GET.get(
-            "contact_action", self.get_initial().get("contact_action", "create_new")
+            "contact_action", "create_new"
         )
         context["opportunity_action"] = self.request.GET.get(
             "opportunity_action",
-            self.get_initial().get("opportunity_action", "create_new"),
+            "create_new",
         )
         context["selected_account_id"] = self.request.GET.get("existing_account")
         return context
@@ -94,9 +95,9 @@ class LeadConversionView(LoginRequiredMixin, FormView):
                 messages.error(request, _("Lead not found or no longer exists."))
                 return ScriptResponse(reload=True, close=True)
 
-            if not request.user.has_perm("leads.convert_lead") and not (
+            if not has_effective_permission(request.user, "leads.convert_lead") and not (
                 lead.lead_owner == request.user
-                and request.user.has_perm("leads.convert_own_lead")
+                and has_effective_permission(request.user, "leads.convert_own_lead")
             ):
                 return render(request, "403.html")
 
@@ -123,10 +124,10 @@ class LeadConversionView(LoginRequiredMixin, FormView):
     def _has_perm(self, perm, own_perm, owner):
         """Return True if the user holds `perm`, or `own_perm` scoped to `owner`."""
         user = self.request.user
-        if user.has_perm(perm):
+        if has_effective_permission(user, perm):
             return True
         if owner is not None and owner.pk in get_allowed_user_ids(user):
-            return user.has_perm(own_perm)
+            return has_effective_permission(user, own_perm)
         return False
 
     def _check_conversion_permissions(self, form):
@@ -143,12 +144,13 @@ class LeadConversionView(LoginRequiredMixin, FormView):
         ):
             errors.append(_("convert this lead"))
 
-        if form.cleaned_data["account_action"] == "create_new":
+        account_action = form.cleaned_data.get("account_action") or "none"
+        if account_action == "create_new":
             if not self._has_perm(
                 "accounts.add_account", "accounts.add_own_account", owner
             ):
                 errors.append(_("create an account"))
-        else:
+        elif account_action == "select_existing":
             existing_account = form.cleaned_data.get("existing_account")
             account_owner = getattr(existing_account, "account_owner", None)
             if not self._has_perm(
@@ -186,6 +188,22 @@ class LeadConversionView(LoginRequiredMixin, FormView):
             ):
                 errors.append(_("link the selected opportunity"))
 
+        # BDO role restriction
+        role_key = getattr(
+            getattr(self.request.user, "role", None), "system_key", None
+        )
+        if role_key == "BDO":
+            from finlo_crm.opportunities.authorization import (
+                is_valid_bdo_opportunity_source,
+            )
+
+            if not is_valid_bdo_opportunity_source(
+                self.request.user, self.lead, self.request
+            ):
+                errors.append(
+                    _("create an opportunity (BDO must be assigned to this qualified lead)")
+                )
+
         return errors
 
     def form_valid(self, form):
@@ -200,32 +218,47 @@ class LeadConversionView(LoginRequiredMixin, FormView):
             return self.form_invalid(form)
 
         with transaction.atomic():
+            lead = Lead.objects.select_for_update().get(pk=self.lead.pk)
+            if lead.is_convert:
+                messages.error(self.request, _("This lead has already been converted."))
+                return ScriptResponse(reload=True, close=True)
+
             try:
-                lead_status = LeadStatus.objects.filter(is_final=True).first()
-                company = getattr(self.request, "active_company", None)
+                lead_status = LeadStatus.objects.filter(
+                    company=lead.company, is_final=True
+                ).first()
+                if not lead_status:
+                    lead_status = (
+                        LeadStatus.objects.filter(company=lead.company)
+                        .order_by("-order")
+                        .first()
+                    )
+                company = (
+                    getattr(self.request, "active_company", None) or lead.company
+                )
                 account = self._process_account(form, company)
                 contact = self._process_contact(form, account, company)
-                opportunity = self._process_opportunity(form, account, contact, company)
+                opportunity = self._process_opportunity(
+                    form, account, contact, company
+                )
 
-                # Update only the Lead's conversion status. This view already
-                # created the Account/Contact/Opportunity above, so tell the
-                # is_convert signal (leads/signals.py handle_lead_conversion)
-                # not to run the same conversion a second time.
-                self.lead.is_convert = True
-                self.lead.updated_at = timezone.now()
-                self.lead.lead_status = lead_status
-                self.lead._skip_conversion_signal = True
-                self.lead.save()
+                # Update only the Lead's conversion status.
+                lead.is_convert = True
+                lead.updated_at = timezone.now()
+                if lead_status:
+                    lead.lead_status = lead_status
+                lead._skip_conversion_signal = True
+                lead.save()
 
                 messages.success(
                     self.request,
-                    f'Lead "{self.lead.title}" has been successfully converted!',
+                    f'Lead "{lead.title}" has been successfully converted!',
                 )
                 self.conversion_data = {
                     "account": account,
                     "contact": contact,
                     "opportunity": opportunity,
-                    "lead": self.lead,
+                    "lead": lead,
                 }
             except Exception as e:
                 messages.error(self.request, f"Error converting lead: {str(e)}")
@@ -247,7 +280,8 @@ class LeadConversionView(LoginRequiredMixin, FormView):
         return render(self.request, "lead_convert_success_modal.html", context)
 
     def _process_account(self, form, company):
-        if form.cleaned_data["account_action"] == "create_new":
+        action = form.cleaned_data.get("account_action")
+        if action == "create_new":
             return Account.objects.create(
                 name=form.cleaned_data["account_name"],
                 account_owner=form.cleaned_data.get("owner"),
@@ -259,40 +293,52 @@ class LeadConversionView(LoginRequiredMixin, FormView):
                 account_source=self.lead.lead_source,
                 company=company,
             )
-        return form.cleaned_data["existing_account"]
+        elif action == "select_existing":
+            return form.cleaned_data.get("existing_account")
+        return None
 
     def _process_contact(self, form, account, company):
+        owner = form.cleaned_data.get("owner") or self.lead.lead_owner
         if form.cleaned_data["contact_action"] == "create_new":
             contact = Contact.objects.create(
                 first_name=form.cleaned_data["first_name"],
                 last_name=form.cleaned_data["last_name"],
                 email=self.lead.email,
                 contact_number=self.lead.contact_number,
-                contact_owner=form.cleaned_data.get("owner"),
+                contact_owner=owner,
                 company=company,
             )
-            ContactAccountRelationship.objects.get_or_create(
-                contact=contact, account=account, company=company
-            )
+            if account:
+                ContactAccountRelationship.objects.get_or_create(
+                    contact=contact, account=account, company=company
+                )
             return contact
         contact = form.cleaned_data["existing_contact"]
-        relationship, created = ContactAccountRelationship.objects.get_or_create(
-            contact=contact, defaults={"account": account}, company=company
-        )
-        if not created and relationship.account != account:
-            relationship.account = account
-            relationship.save()
+        if account:
+            relationship, created = ContactAccountRelationship.objects.get_or_create(
+                contact=contact, defaults={"account": account}, company=company
+            )
+            if not created and relationship.account != account:
+                relationship.account = account
+                relationship.save()
         return contact
 
     def _process_opportunity(self, form, account, contact, company):
+        owner = form.cleaned_data.get("owner") or self.lead.lead_owner
         if form.cleaned_data["opportunity_action"] == "create_new":
-            first_stage = OpportunityStage.objects.filter(order=1).first()
+            first_stage = (
+                OpportunityStage.objects.filter(company=company)
+                .order_by("order")
+                .first()
+            )
             campaign_member = self.lead.lead_campaign_members.first()
             closed_date = timezone.now().date() + relativedelta(months=1)
             opportunity = Opportunity.objects.create(
                 name=form.cleaned_data["opportunity_name"],
                 account=account,
-                owner=self.lead.lead_owner,
+                contact=contact,
+                source_lead=self.lead,
+                owner=owner,
                 stage=first_stage,
                 primary_campaign_source=(
                     campaign_member.campaign if campaign_member else None
@@ -308,8 +354,12 @@ class LeadConversionView(LoginRequiredMixin, FormView):
             )
             return opportunity
         opportunity = form.cleaned_data["existing_opportunity"]
-        if opportunity.account != account:
+        if account and opportunity.account != account:
             opportunity.account = account
+        if contact and not opportunity.contact:
+            opportunity.contact = contact
+        if not opportunity.source_lead:
+            opportunity.source_lead = self.lead
         role, created = OpportunityContactRole.objects.get_or_create(
             opportunity=opportunity,
             contact=contact,
@@ -325,7 +375,7 @@ class LeadConversionView(LoginRequiredMixin, FormView):
     def get_initial(self):
         """Provide default create-new options for conversion sections."""
         return {
-            "account_action": "create_new",
+            "account_action": "none",
             "contact_action": "create_new",
             "opportunity_action": "create_new",
         }

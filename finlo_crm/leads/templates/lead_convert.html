@@ -32,6 +32,22 @@
                         hidden
                         type="radio"
                         name="account_action"
+                        value="none"
+                        {% if account_action == 'none' %}
+                            checked
+                        {% endif %}
+                        hx-get="{% url 'leads:convert_lead' pk=lead.pk %}?account_action=none"
+                        hx-target="#account-field"
+                        hx-swap="innerHTML"
+                    >
+                    <span class="custom-radio"></span>
+                    <span>{% trans 'None / Skip' %}</span>
+                </label>
+                <label class="flex items-center gap-2">
+                    <input
+                        hidden
+                        type="radio"
+                        name="account_action"
                         value="create_new"
                         {% if account_action == 'create_new' %}
                             checked

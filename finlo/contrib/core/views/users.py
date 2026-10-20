@@ -25,6 +25,7 @@ from finlo.contrib.generics.views import (
     resolves_within_settings_shell,
 )
 from finlo.contrib.core.authorization import scope_queryset_to_company
+from finlo.contrib.core.sales_authorization import has_effective_permission
 from finlo.shortcuts import render
 from finlo.urls import reverse, reverse_lazy
 from finlo.utils.decorators import (
@@ -433,11 +434,14 @@ class UserFormView(
             if int(pk) == user.pk:
                 return user.has_perm("core.can_change_profile")
 
-            return user.has_perm(
+            return has_effective_permission(
+                user,
                 f"{User._meta.app_label}.change_{User._meta.model_name}"
             )
 
-        return user.has_perm(f"{User._meta.app_label}.add_{User._meta.model_name}")
+        return has_effective_permission(
+            user, f"{User._meta.app_label}.add_{User._meta.model_name}"
+        )
 
 
 @method_decorator(htmx_required, name="dispatch")
@@ -610,11 +614,14 @@ class UserFormViewSingle(
             if int(pk) == user.pk:
                 return user.has_perm("core.can_change_profile")
 
-            return user.has_perm(
+            return has_effective_permission(
+                user,
                 f"{User._meta.app_label}.change_{User._meta.model_name}"
             )
 
-        return user.has_perm(f"{User._meta.app_label}.add_{User._meta.model_name}")
+        return has_effective_permission(
+            user, f"{User._meta.app_label}.add_{User._meta.model_name}"
+        )
 
 
 @method_decorator(htmx_required, name="dispatch")

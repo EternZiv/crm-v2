@@ -67,6 +67,11 @@ urlpatterns = [
         name="convert_lead",
     ),
     path(
+        "qualify-lead/<int:pk>/",
+        views.QualifyLeadView.as_view(),
+        name="qualify_lead",
+    ),
+    path(
         "lead-change-owner/<int:pk>/",
         views.LeadChangeOwnerForm.as_view(),
         name="lead_change_owner",
