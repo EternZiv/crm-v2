@@ -113,11 +113,22 @@ class OpportunityMultiStepFormView(LoginRequiredMixin, FinloMultiStepFormView):
     }
 
     def get_initial(self):
-        """Get initial form data with account ID if provided."""
+        """Get initial account and source lead IDs when supplied."""
         initial = super().get_initial()
         account_id = self.request.GET.get("id")
         initial["account"] = account_id
+        initial["source_lead_id"] = self.request.GET.get("lead_id")
         return initial
+
+    def has_permission(self):
+        """Let BDOs reach form validation only for the lead-bound create flow."""
+        if (
+            not self.kwargs.get("pk")
+            and getattr(getattr(self.request.user, "role", None), "system_key", None)
+            == "BDO"
+        ):
+            return True
+        return super().has_permission()
 
 
 @method_decorator(htmx_required, name="dispatch")
@@ -168,11 +179,22 @@ class OpportunitySingleFormView(LoginRequiredMixin, FinloSingleFormView):
         return reverse_lazy("opportunities:opportunity_single_create")
 
     def get_initial(self):
-        """Get initial form data with account ID from query parameters."""
+        """Get initial account and source lead IDs from query parameters."""
         initial = super().get_initial()
         account_id = self.request.GET.get("id")
         initial["account"] = account_id
+        initial["source_lead_id"] = self.request.GET.get("lead_id")
         return initial
+
+    def has_permission(self):
+        """Let BDOs reach form validation only for the lead-bound create flow."""
+        if (
+            not self.kwargs.get("pk")
+            and getattr(getattr(self.request.user, "role", None), "system_key", None)
+            == "BDO"
+        ):
+            return True
+        return super().has_permission()
 
 
 @method_decorator(htmx_required, name="dispatch")

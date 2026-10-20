@@ -16,6 +16,12 @@ from finlo.contrib.generics.forms import (
     FinloMultiStepForm,
     PasswordInputWithEye,
 )
+from finlo.contrib.core.authorization import get_company_scope
+from finlo.contrib.core.sales_authorization import (
+    SALES_ROLE_KEYS,
+    allowed_employee_role_keys,
+    can_assign_employee_role,
+)
 
 # First-party imports (Finlo)
 from finlo.core.exceptions import ValidationError
@@ -29,7 +35,36 @@ from ..models import Company, Department, MultipleCurrency, Role
 logger = logging.getLogger(__name__)
 
 
-class UserFormClass(FinloMultiStepForm):
+class SalesEmployeeRoleFormMixin:
+    """Limit sales managers to creating employees in their permitted roles."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = getattr(self, "request", None)
+        actor = getattr(request, "user", None)
+        role_key = getattr(getattr(actor, "role", None), "system_key", None)
+        role_field = self.fields.get("role")
+        if role_field is None or role_key not in SALES_ROLE_KEYS:
+            return
+
+        allowed_keys = allowed_employee_role_keys(actor)
+        roles = role_field.queryset.filter(system_key__in=allowed_keys)
+        scope = get_company_scope(actor, request)
+        if not scope.all_companies:
+            roles = roles.filter(company_id=scope.company_id)
+        role_field.queryset = roles
+
+    def clean_role(self):
+        role = self.cleaned_data.get("role")
+        request = getattr(self, "request", None)
+        actor = getattr(request, "user", None)
+        role_key = getattr(getattr(actor, "role", None), "system_key", None)
+        if role_key in SALES_ROLE_KEYS and not can_assign_employee_role(actor, role):
+            raise ValidationError(_("You may not assign this employee role."))
+        return role
+
+
+class UserFormClass(SalesEmployeeRoleFormMixin, FinloMultiStepForm):
     """Form class for User model with password fields."""
 
     class Meta:
@@ -44,6 +79,8 @@ class UserFormClass(FinloMultiStepForm):
             "is_superuser",
             "username",
             "is_staff",
+            "groups",
+            "user_permissions",
             "number_format",
         ]
         keep_on_form = ["is_active"]
@@ -119,7 +156,7 @@ class UserFormClass(FinloMultiStepForm):
             )
 
 
-class UserFormSingle(FinloModelForm):
+class UserFormSingle(SalesEmployeeRoleFormMixin, FinloModelForm):
     """Form class for User model."""
 
     field_order = [

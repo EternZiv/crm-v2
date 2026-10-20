@@ -170,18 +170,30 @@ def lead_kpi_cards(generator, model_info):
     Display style (integer vs decimals vs text) is inferred from each ``value``;
     set ``type`` only if you need to override formatting.
     """
+    from finlo.db.models import Q
+
     model_class = model_info["model"]
     qs = generator.get_queryset(model_class)
     section_info = get_section_info_for_model(model_class)
-    open_qs = qs.filter(is_convert=False) if hasattr(model_class, "is_convert") else qs
-    open_count = open_qs.count()
+    total_count = qs.count()
+    qualified_count = qs.filter(
+        Q(lead_status__name__iexact="qualified") | Q(qualified_at__isnull=False)
+    ).count()
 
     return [
         {
             "title": _("Total Leads"),
-            "value": open_count,
+            "value": total_count,
             "icon": "fa-layer-group",
             "color": "blue",
+            "url": section_info["url"],
+            "section": section_info["section"],
+        },
+        {
+            "title": _("Qualified Leads"),
+            "value": qualified_count,
+            "icon": "fa-user-check",
+            "color": "green",
             "url": section_info["url"],
             "section": section_info["section"],
         },

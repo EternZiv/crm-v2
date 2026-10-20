@@ -6,6 +6,8 @@ API mixins for implementing advanced features like search, filtering, bulk updat
 from functools import reduce
 from operator import or_
 
+from django.core.exceptions import FieldDoesNotExist
+
 # Third-party imports (other)
 from rest_framework import serializers, status
 from rest_framework.decorators import action
@@ -100,13 +102,55 @@ class CompanyScopedSerializerMixin:
         if (
             user is None
             or not user.is_authenticated
-            or user.is_superuser
+        ):
+            return attrs
+
+        scope = get_company_scope(user, request)
+        instance = getattr(self, "instance", None)
+        model = instance.__class__ if instance is not None else self.Meta.model
+        target_company = attrs.get("company")
+        if target_company is None and instance is not None:
+            target_company = instance.company
+        if target_company is None:
+            target_company = getattr(request, "active_company", None)
+        if target_company is None:
+            target_company = getattr(user, "company", None)
+        target_company_id = getattr(target_company, "pk", scope.company_id)
+
+        for field_name, value in attrs.items():
+            try:
+                model_field = model._meta.get_field(field_name)
+            except FieldDoesNotExist:
+                continue
+            if not model_field.is_relation or value is None:
+                continue
+
+            related_model = model_field.related_model
+            try:
+                related_model._meta.get_field("company")
+            except FieldDoesNotExist:
+                continue
+
+            related_objects = value if model_field.many_to_many else (value,)
+            if target_company_id is None or any(
+                getattr(related, "company_id", None) != target_company_id
+                for related in related_objects
+            ):
+                raise serializers.ValidationError(
+                    {
+                        field_name: (
+                            "Related records must belong to the target company."
+                        )
+                    }
+                )
+
+        if (
+            user.is_superuser
             or getattr(getattr(user, "role", None), "system_key", None)
             == "SUPER_ADMIN"
         ):
             return attrs
 
-        scope = get_company_scope(user, request)
         if scope.company_id is None:
             raise serializers.ValidationError(
                 {"company": "Your account is not assigned to a company."}
@@ -122,7 +166,6 @@ class CompanyScopedSerializerMixin:
                     {"company": "You cannot assign records to another company."}
                 )
 
-        instance = getattr(self, "instance", None)
         if instance is not None and instance.company_id != scope.company_id:
             raise serializers.ValidationError(
                 {"company": "You cannot modify records outside your active company."}
@@ -162,6 +205,7 @@ class CompanyScopedSerializerMixin:
             raise serializers.ValidationError(
                 {"company": "Your active company could not be found."}
             )
+
         attrs["company"] = company
         return attrs
 

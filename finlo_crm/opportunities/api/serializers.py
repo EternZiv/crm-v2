@@ -9,6 +9,8 @@ from rest_framework import serializers
 from finlo.api.mixins import CompanyScopedSerializerMixin
 from finlo.contrib.core.api.serializers import FinloUserSerializer
 from finlo.contrib.generics.views.details import check_record_change_access
+from finlo_crm.leads.models import Lead
+from finlo_crm.opportunities.authorization import is_valid_bdo_opportunity_source
 
 # Local imports
 from finlo_crm.opportunities.models import (
@@ -37,12 +39,56 @@ class OpportunitySerializer(CompanyScopedSerializerMixin, serializers.ModelSeria
 
     owner_details = FinloUserSerializer(source="owner", read_only=True)
     stage_details = OpportunityStageSerializer(source="stage", read_only=True)
+    source_lead_id = serializers.PrimaryKeyRelatedField(
+        source="source_lead",
+        queryset=Lead.objects.all(),
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
 
     class Meta:
         """Meta options for OpportunitySerializer."""
 
         model = Opportunity
         fields = "__all__"
+        read_only_fields = ["source_lead"]
+
+    def get_fields(self):
+        fields = super().get_fields()
+        fields["owner"].required = False
+        return fields
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        role_key = getattr(getattr(user, "role", None), "system_key", None)
+
+        if self.instance is not None and "source_lead" in attrs:
+            if attrs["source_lead"] != self.instance.source_lead:
+                raise serializers.ValidationError(
+                    {"source_lead_id": "The source lead cannot be changed."}
+                )
+
+        if self.instance is None and role_key == "BDO":
+            source_lead = attrs.get("source_lead")
+            if not is_valid_bdo_opportunity_source(user, source_lead, request):
+                raise serializers.ValidationError(
+                    {
+                        "source_lead_id": (
+                            "Select a qualified lead currently assigned to you."
+                        )
+                    }
+                )
+            requested_owner = attrs.get("owner")
+            if requested_owner is not None and requested_owner.pk != user.pk:
+                raise serializers.ValidationError(
+                    {"owner": "A BDO must own the opportunity they create."}
+                )
+            attrs["owner"] = user
+
+        return attrs
 
 
 class OpportunityTeamSerializer(

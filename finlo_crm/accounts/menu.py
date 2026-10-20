@@ -71,4 +71,4 @@ class AccountsSubSection:
     attrs = MAIN_CONTENT_HX_ATTRS
 
     # Access control
-    perm = ["accounts.view_account", "accounts.view_own_account"]
+    perm = ["accounts.view_account"]

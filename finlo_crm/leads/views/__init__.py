@@ -12,6 +12,7 @@ from finlo_crm.leads.views.core import (
     LeadKanbanView,
     LeadSplitView,
     LeadTimelineView,
+    QualifyLeadView,
 )
 from finlo_crm.leads.views.lead_stage import (
     LeadsStageView,

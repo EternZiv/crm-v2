@@ -206,13 +206,18 @@ class LeadConversionForm(forms.Form):
 
     # Account fields
     account_action = forms.ChoiceField(
-        choices=[("create_new", "Create New"), ("select_existing", "Select Existing")],
+        choices=[
+            ("none", _("None / Skip Account")),
+            ("create_new", _("Create New")),
+            ("select_existing", _("Select Existing")),
+        ],
         widget=forms.RadioSelect(
             attrs={
                 "class": "border border-[#cbcbcb] w-3 h-3 text-[#e54f38] bg-white focus:ring-[#e54f38] cursor-pointer"
             }
         ),
-        initial="create_new",
+        initial="none",
+        required=False,
     )
     account_name = forms.CharField(
         max_length=255,

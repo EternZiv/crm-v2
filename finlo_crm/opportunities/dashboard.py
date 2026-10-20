@@ -198,13 +198,159 @@ def opportunity_table_func(generator, model_info):
     )
 
 
+def opportunity_kpi_cards(generator, model_info):
+    """
+    Generate sales pipeline KPIs for opportunities:
+    - Active Opportunities
+    - Proposal Sent
+    - In Negotiation
+    - Won
+    - Lost
+    - Delayed
+    - Total Won Value
+    - Pipeline Value
+    - Upcoming Follow-ups
+    - Overdue Follow-ups
+    """
+    from decimal import Decimal
+    from finlo.db.models import Q, Sum
+    from finlo.utils import timezone
+
+    model_class = model_info["model"]
+    qs = generator.get_queryset(model_class)
+    section_info = get_section_info_for_model(model_class)
+    today = timezone.now().date()
+
+    active_qs = qs.exclude(stage__stage_type__in=["won", "lost"])
+    active_count = active_qs.count()
+
+    proposal_count = qs.filter(
+        Q(stage__name__icontains="Proposal") | Q(stage__stage_type="proposal")
+    ).count()
+
+    negotiation_count = qs.filter(
+        Q(stage__name__icontains="Negotiation") | Q(stage__stage_type="negotiation")
+    ).count()
+
+    won_qs = qs.filter(Q(stage__stage_type="won") | Q(stage__name__icontains="Won"))
+    won_count = won_qs.count()
+
+    lost_qs = qs.filter(Q(stage__stage_type="lost") | Q(stage__name__icontains="Lost"))
+    lost_count = lost_qs.count()
+
+    delayed_qs = qs.filter(
+        Q(stage__stage_type="delayed") | Q(stage__name__icontains="Delayed")
+    )
+    delayed_count = delayed_qs.count()
+
+    won_val = won_qs.aggregate(total=Sum("final_deal_value"))["total"]
+    if won_val is None:
+        won_val = won_qs.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+
+    pipeline_val = active_qs.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+
+    upcoming_followups = qs.filter(
+        next_follow_up_date__gte=today
+    ).count()
+
+    overdue_followups = qs.filter(
+        next_follow_up_date__lt=today
+    ).exclude(stage__stage_type__in=["won", "lost"]).count()
+
+    return [
+        {
+            "title": _("Active Opportunities"),
+            "value": active_count,
+            "icon": "fa-briefcase",
+            "color": "blue",
+            "url": section_info["url"],
+            "section": section_info["section"],
+        },
+        {
+            "title": _("Proposal Sent"),
+            "value": proposal_count,
+            "icon": "fa-file-invoice-dollar",
+            "color": "indigo",
+            "url": section_info["url"],
+            "section": section_info["section"],
+        },
+        {
+            "title": _("In Negotiation"),
+            "value": negotiation_count,
+            "icon": "fa-comments-dollar",
+            "color": "orange",
+            "url": section_info["url"],
+            "section": section_info["section"],
+        },
+        {
+            "title": _("Won"),
+            "value": won_count,
+            "icon": "fa-trophy",
+            "color": "green",
+            "url": section_info["url"],
+            "section": section_info["section"],
+        },
+        {
+            "title": _("Lost"),
+            "value": lost_count,
+            "icon": "fa-circle-xmark",
+            "color": "red",
+            "url": section_info["url"],
+            "section": section_info["section"],
+        },
+        {
+            "title": _("Delayed"),
+            "value": delayed_count,
+            "icon": "fa-clock",
+            "color": "amber",
+            "url": section_info["url"],
+            "section": section_info["section"],
+        },
+        {
+            "title": _("Total Won Value"),
+            "value": float(won_val),
+            "type": "currency",
+            "icon": "fa-money-bill-wave",
+            "color": "emerald",
+            "url": section_info["url"],
+            "section": section_info["section"],
+        },
+        {
+            "title": _("Pipeline Value"),
+            "value": float(pipeline_val),
+            "type": "currency",
+            "icon": "fa-chart-line",
+            "color": "cyan",
+            "url": section_info["url"],
+            "section": section_info["section"],
+        },
+        {
+            "title": _("Upcoming Follow-ups"),
+            "value": upcoming_followups,
+            "icon": "fa-calendar-check",
+            "color": "teal",
+            "url": section_info["url"],
+            "section": section_info["section"],
+        },
+        {
+            "title": _("Overdue Follow-ups"),
+            "value": overdue_followups,
+            "icon": "fa-calendar-xmark",
+            "color": "rose",
+            "url": section_info["url"],
+            "section": section_info["section"],
+        },
+    ]
+
+
 DefaultDashboardGenerator.extra_models.append(
     {
         "model": Opportunity,
         "name": _("Opportunities"),
         "icon": "fa-handshake",
         "color": "purple",
-        "include_kpi": True,
+        "include_kpi": False,
+        "kpi_func": opportunity_kpi_cards,
         "chart_func": create_opportunity_charts,
         "table_func": opportunity_table_func,
         "table_fields_func": opportuntiy_table_fields,

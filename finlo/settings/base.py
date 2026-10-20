@@ -302,7 +302,10 @@ else:
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 # -----------------------------------------------------------------------------
 _ISOLATED_SECURITY_TEST_SETTINGS = (
-    os.environ.get("DJANGO_SETTINGS_MODULE") == "finlo.settings.security_test"
+    os.environ.get("DJANGO_SETTINGS_MODULE") in {
+        "finlo.settings.security_test",
+        "finlo.settings.local_uat",
+    }
 )
 _RUNNING_TESTS = (
     any(argument == "test" for argument in sys.argv[1:])
@@ -317,10 +320,12 @@ if _RUNNING_TESTS and not _ISOLATED_SECURITY_TEST_SETTINGS:
 USE_POSTGRES = env.bool("USE_POSTGRES", default=True)
 _database_url = env("DATABASE_URL", default=None)
 if _ISOLATED_SECURITY_TEST_SETTINGS:
+    _is_local_uat = os.environ.get("DJANGO_SETTINGS_MODULE") == "finlo.settings.local_uat"
+    _uat_db_path = str(Path(BASE_DIR) / "uat_disposable.sqlite3") if _is_local_uat else ":memory:"
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": ":memory:",
+            "NAME": _uat_db_path,
             "TEST": {"NAME": ":memory:"},
         }
     }

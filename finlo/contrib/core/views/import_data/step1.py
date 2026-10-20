@@ -24,7 +24,7 @@ from finlo.utils.translation import gettext_lazy as _
 from finlo.views.generic import View
 
 # Local imports
-from .base import IMPORT_EXCLUDED_FIELDS, ImportDataView
+from .base import IMPORT_EXCLUDED_FIELDS, ImportDataView, has_model_import_permission
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +67,17 @@ class ImportStep1View(View):
 
             # Verify user has add permission for the submitted module
             submitted_app_label = self.get_app_label_for_model(module)
-            if not submitted_app_label or not request.user.has_perm(
-                f"{submitted_app_label}.add_{module.lower()}"
+            submitted_model = next(
+                (
+                    model
+                    for model in import_models
+                    if model.__name__ == module
+                    and model._meta.app_label == submitted_app_label
+                ),
+                None,
+            )
+            if not submitted_model or not has_model_import_permission(
+                request.user, submitted_model
             ):
                 permitted_modules = self._get_permitted_modules(request)
                 return render(
@@ -96,8 +105,9 @@ class ImportStep1View(View):
                     ),
                     None,
                 )
-                add_perm = f"{restricted_app_label}.add_{restricted_model_name.lower()}"
-                if not registered_single or not request.user.has_perm(add_perm):
+                if not registered_single or not has_model_import_permission(
+                    request.user, registered_single
+                ):
                     return render(
                         request,
                         "import/import_data.html",
@@ -515,8 +525,7 @@ class ImportStep1View(View):
         permitted = []
         try:
             for model in FEATURE_REGISTRY.get("import_models", []):
-                add_perm = f"{model._meta.app_label}.add_{model._meta.model_name}"
-                if request.user.has_perm(add_perm):
+                if has_model_import_permission(request.user, model):
                     permitted.append(
                         {
                             "name": model.__name__,

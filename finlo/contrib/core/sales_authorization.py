@@ -18,6 +18,11 @@ SALES_ROLE_KEYS = {
 _SALES_MODULES = {"accounts", "contacts", "leads", "opportunities", "activity"}
 _READ_ONLY_MODULES = {"dashboard", "reports"}
 _HIERARCHY_MODELS = {"salesregion", "salesteam", "salesassignment"}
+_EMPLOYEE_ROLE_CREATION = {
+    "SUPER_ADMIN": {"SUPER_ADMIN", "HEAD_OF_SALES", "RSM", "SSM", "ASM", "BDO"},
+    "HEAD_OF_SALES": {"RSM", "SSM", "ASM", "BDO"},
+    "RSM": {"SSM", "ASM", "BDO"},
+}
 
 
 def _role_key(user):
@@ -54,8 +59,15 @@ def sales_role_permission_decision(user, permission):
         model_name = model_name[4:]
 
     if app_label == "core":
-        if model_name in _HIERARCHY_MODELS or model_name == "finlouser":
+        if model_name in _HIERARCHY_MODELS:
             return action == "view"
+        if model_name == "finlouser":
+            if action == "view":
+                return True
+            return action == "add" and role_key in {
+                "HEAD_OF_SALES",
+                "RSM",
+            }
         return False
 
     if app_label in _READ_ONLY_MODULES:
@@ -67,7 +79,13 @@ def sales_role_permission_decision(user, permission):
     if action == "view":
         return True
     if action == "add":
-        return app_label in {"leads", "activity"}
+        if app_label == "leads":
+            return role_key != "BDO"
+        if app_label == "contacts":
+            return True
+        if app_label == "opportunities":
+            return role_key != "BDO"
+        return app_label == "activity"
     if action == "change":
         return role_key in {"RSM", "SSM", "ASM", "BDO"}
     return False
@@ -81,6 +99,29 @@ def has_effective_permission(user, permission):
     if decision is False:
         return False
     return user.has_perm(permission)
+
+
+def allowed_employee_role_keys(actor):
+    """Return the canonical sales roles this actor may assign to new employees."""
+    role_key = _role_key(actor)
+    if getattr(actor, "is_superuser", False):
+        return set(_EMPLOYEE_ROLE_CREATION["SUPER_ADMIN"])
+    return set(_EMPLOYEE_ROLE_CREATION.get(role_key, ()))
+
+
+def can_assign_employee_role(actor, role):
+    """Check employee-role assignment and company boundaries for a sales actor."""
+    if (
+        not actor
+        or not getattr(actor, "is_authenticated", False)
+        or role is None
+        or role.system_key not in allowed_employee_role_keys(actor)
+    ):
+        return False
+
+    if getattr(actor, "is_superuser", False) or _role_key(actor) == "SUPER_ADMIN":
+        return role.company_id is not None
+    return role.company_id is not None and role.company_id == actor.company_id
 
 
 def get_sales_scope_user_ids(user):

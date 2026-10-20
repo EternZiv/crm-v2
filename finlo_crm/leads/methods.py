@@ -25,31 +25,22 @@ def convert_lead(
     first_name=None,
     last_name=None,
     opportunity_name=None,
+    create_account=False,
 ):
     """
-    Convert a Lead into an Account, a Contact, and an Opportunity, linked via
-    ContactAccountRelationship and OpportunityContactRole - the same "create
-    new" path LeadConversionView.form_valid() runs for the manual Convert
-    button, extracted here so other callers (e.g. the WhatsApp bot's
-    is_convert signal) can reuse it instead of duplicating the logic.
+    Convert a Lead into a Contact and an Opportunity (and optionally an Account),
+    linked via source_lead, contact, and OpportunityContactRole.
 
-    Always creates new Account/Contact/Opportunity records (the "select
-    existing" paths are form-driven UI choices with no equivalent input in a
-    non-form caller). Any name argument left blank falls back to a value
-    derived from the lead itself. Runs atomically so a failure partway
-    through (e.g. no OpportunityStage configured) doesn't leave an orphaned
-    Account/Contact behind.
-
+    Runs atomically with select_for_update to prevent duplicate conversion.
     Returns (account, contact, opportunity).
     """
-    account_name = (
-        account_name
-        or lead.lead_company
-        or f"{lead.first_name} {lead.last_name}".strip()
-    )
     first_name = first_name or lead.first_name
     last_name = last_name or lead.last_name
-    opportunity_name = opportunity_name or f"{account_name} Opportunity"
+    contact_display = f"{first_name or ''} {last_name or ''}".strip()
+    opportunity_name = (
+        opportunity_name
+        or (f"{contact_display} Opportunity" if contact_display else f"{lead.title} Opportunity")
+    )
 
     first_stage = (
         OpportunityStage.objects.filter(company=company).order_by("order").first()
@@ -59,36 +50,52 @@ def convert_lead(
             "Cannot convert lead: no Opportunity Stage is configured for this company."
         )
 
+    LeadModel = lead.__class__
     with transaction.atomic():
-        account = Account.objects.create(
-            name=account_name,
-            contact_number=lead.contact_number,
-            annual_revenue=lead.annual_revenue,
-            industry=lead.industry,
-            number_of_employees=lead.no_of_employees,
-            fax=lead.fax,
-            account_source=lead.lead_source,
-            company=company,
-        )
+        locked_lead = LeadModel.objects.select_for_update().get(pk=lead.pk)
+        if locked_lead.is_convert:
+            raise ValidationError("This lead has already been converted.")
+
+        account = None
+        if create_account or account_name:
+            acc_name = (
+                account_name
+                or locked_lead.lead_company
+                or contact_display
+                or locked_lead.title
+            )
+            account = Account.objects.create(
+                name=acc_name,
+                contact_number=locked_lead.contact_number,
+                annual_revenue=locked_lead.annual_revenue,
+                industry=locked_lead.industry,
+                number_of_employees=locked_lead.no_of_employees,
+                fax=locked_lead.fax,
+                account_source=locked_lead.lead_source,
+                company=company,
+            )
 
         contact = Contact.objects.create(
             first_name=first_name,
             last_name=last_name,
-            email=lead.email,
-            contact_number=lead.contact_number,
-            contact_owner=lead.lead_owner,
+            email=locked_lead.email,
+            contact_number=locked_lead.contact_number,
+            contact_owner=locked_lead.lead_owner,
             company=company,
         )
-        ContactAccountRelationship.objects.get_or_create(
-            contact=contact, account=account, company=company
-        )
+        if account:
+            ContactAccountRelationship.objects.get_or_create(
+                contact=contact, account=account, company=company
+            )
 
-        campaign_member = lead.lead_campaign_members.first()
+        campaign_member = locked_lead.lead_campaign_members.first()
         closed_date = timezone.now().date() + relativedelta(months=1)
         opportunity = Opportunity.objects.create(
             name=opportunity_name,
             account=account,
-            owner=lead.lead_owner,
+            contact=contact,
+            source_lead=locked_lead,
+            owner=locked_lead.lead_owner,
             stage=first_stage,
             primary_campaign_source=(
                 campaign_member.campaign if campaign_member else None
@@ -102,6 +109,11 @@ def convert_lead(
             defaults={"is_primary": True},
             company=company,
         )
+
+        locked_lead.is_convert = True
+        locked_lead.updated_at = timezone.now()
+        locked_lead._skip_conversion_signal = True
+        locked_lead.save()
 
     return account, contact, opportunity
 

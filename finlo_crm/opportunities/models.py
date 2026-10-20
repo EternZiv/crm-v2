@@ -2,6 +2,8 @@
 Opportunities module models.
 """
 
+from decimal import Decimal
+
 # Third-party imports (Django)
 from django.core.validators import EmailValidator, MaxValueValidator, MinValueValidator
 from django.dispatch import receiver
@@ -21,6 +23,7 @@ from finlo.db import models, transaction
 from finlo.db.models.signals import post_delete, pre_save
 from finlo.registry.permission_registry import permission_exempt_model
 from finlo.urls import reverse_lazy
+from finlo.utils import timezone
 from finlo.utils.translation import gettext_lazy as _
 
 # Local imports
@@ -57,6 +60,15 @@ DEFAULT_OPPORTUNITY_INIT_STAGES = (
     {"name": _("Closed Won"), "order": 10, "probability": 100, "is_final": True},
 )
 
+FINLONEXA_OPPORTUNITY_INIT_STAGES = (
+    {"name": _("Opportunity"), "order": 1, "probability": 20, "is_final": False, "stage_type": "open"},
+    {"name": _("Proposal Sent"), "order": 2, "probability": 50, "is_final": False, "stage_type": "open"},
+    {"name": _("In Negotiation"), "order": 3, "probability": 80, "is_final": False, "stage_type": "open"},
+    {"name": _("Won"), "order": 4, "probability": 100, "is_final": False, "stage_type": "won"},
+    {"name": _("Lost"), "order": 5, "probability": 0, "is_final": False, "stage_type": "lost"},
+    {"name": _("Delayed"), "order": 6, "probability": 0, "is_final": False, "stage_type": "delayed"},
+)
+
 
 class OpportunityStage(FinloCoreModel):
     """Opportunity Stage model for flexible stage management"""
@@ -65,6 +77,7 @@ class OpportunityStage(FinloCoreModel):
         ("open", _("Open")),
         ("won", _("Closed Won")),
         ("lost", _("Closed Lost")),
+        ("delayed", _("Delayed")),
     ]
 
     name = models.CharField(max_length=100, verbose_name=_("Stage Name"))
@@ -115,6 +128,11 @@ class OpportunityStage(FinloCoreModel):
     def is_lost(self):
         """Helper property to check if this is a lost stage"""
         return self.stage_type == "lost"
+
+    @property
+    def is_delayed(self):
+        """Helper property to check if this is a delayed stage"""
+        return self.stage_type == "delayed"
 
     @property
     def is_closed(self):
@@ -435,9 +453,57 @@ class Opportunity(FinloCoreModel):
         verbose_name=_("Account"),
         related_name="opportunity_account",
     )
+    contact = models.ForeignKey(
+        Contact,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="opportunities",
+        verbose_name=_("Contact"),
+    )
+    source_lead = models.ForeignKey(
+        "leads.Lead",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        editable=False,
+        related_name="opportunities",
+        verbose_name=_("Source Lead"),
+    )
+    proposal_date = models.DateField(
+        null=True, blank=True, verbose_name=_("Proposal Date")
+    )
+    proposal_notes = models.TextField(
+        blank=True, default="", verbose_name=_("Proposal Notes")
+    )
+    negotiation_notes = models.TextField(
+        blank=True, default="", verbose_name=_("Negotiation Notes")
+    )
+    actual_close_date = models.DateField(
+        null=True, blank=True, verbose_name=_("Actual Close Date")
+    )
+    final_deal_value = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name=_("Final Deal Value"),
+    )
+    closing_notes = models.TextField(
+        blank=True, default="", verbose_name=_("Closing Notes")
+    )
+    delay_reason = models.TextField(
+        blank=True, default="", verbose_name=_("Delay Reason")
+    )
+    next_follow_up_date = models.DateField(
+        null=True, blank=True, verbose_name=_("Next Follow-up Date")
+    )
+    lost_reason = models.TextField(
+        blank=True, default="", verbose_name=_("Lost Reason")
+    )
 
     OWNER_FIELDS = ["owner"]
-    CURRENCY_FIELDS = ["amount", "expected_revenue"]
+    CURRENCY_FIELDS = ["amount", "expected_revenue", "final_deal_value"]
 
     # opportunity_access levels that grant each action, via OpportunityTeamMember.
     TEAM_ACCESS_LEVELS_FOR_ACTION = {
@@ -452,6 +518,135 @@ class Opportunity(FinloCoreModel):
         verbose_name = _("Opportunity")
         verbose_name_plural = _("Opportunities")
         ordering = ["-created_at"]
+
+    def clean(self):
+        """Keep the originating lead, stage, and contact within the opportunity's company."""
+        super().clean()
+        if self.stage_id and self.company_id:
+            if self.stage.company_id != self.company_id:
+                raise ValidationError(
+                    {"stage": _("The stage must belong to this company.")}
+                )
+
+        if self.contact_id and self.company_id:
+            if self.contact.company_id != self.company_id:
+                raise ValidationError(
+                    {"contact": _("The contact must belong to this company.")}
+                )
+
+        if self.source_lead_id and self.company_id:
+            if self.source_lead.company_id != self.company_id:
+                raise ValidationError(
+                    {"source_lead": _("The source lead must belong to this company.")}
+                )
+            if (
+                getattr(getattr(self.owner, "role", None), "system_key", None)
+                == "BDO"
+            ):
+                if self.source_lead.sub_owner_id != self.owner_id:
+                    raise ValidationError(
+                        {
+                            "source_lead": _(
+                                "A BDO may create an opportunity only from a lead assigned to them."
+                            )
+                        }
+                    )
+                is_qual = getattr(self.source_lead, "is_qualified", None)
+                lead_is_qual = is_qual() if callable(is_qual) else (
+                    bool(self.source_lead.qualified_at)
+                    or getattr(self.source_lead.lead_status, "name", "").strip().lower()
+                    == "qualified"
+                )
+                if not lead_is_qual:
+                    raise ValidationError(
+                        {
+                            "source_lead": _(
+                                "A BDO may create an opportunity only from an assigned qualified lead."
+                            )
+                        }
+                    )
+
+        if self.pk and self.stage_id:
+            prev = (
+                Opportunity.all_objects.filter(pk=self.pk)
+                .select_related("stage")
+                .first()
+            )
+            if prev and prev.stage_id != self.stage_id and prev.stage:
+                prev_name = (prev.stage.name or "").strip().lower()
+                prev_type = (prev.stage.stage_type or "").strip().lower()
+                new_name = (self.stage.name or "").strip().lower()
+                new_type = (self.stage.stage_type or "").strip().lower()
+
+                if prev_type == "won" or prev_name in {"won", "closed won"}:
+                    raise ValidationError(
+                        {"stage": _("Won opportunities cannot transition to another stage.")}
+                    )
+                if prev_type == "lost" or prev_name in {"lost", "closed lost"}:
+                    raise ValidationError(
+                        {"stage": _("Lost opportunities cannot transition to another stage.")}
+                    )
+                if prev_type == "delayed" or prev_name == "delayed":
+                    allowed_delayed = {
+                        "proposal sent",
+                        "in negotiation",
+                        "lost",
+                        "closed lost",
+                    }
+                    if new_name not in allowed_delayed and new_type != "lost":
+                        raise ValidationError(
+                            {
+                                "stage": _(
+                                    "Delayed opportunities can only return to Proposal Sent or In Negotiation."
+                                )
+                            }
+                        )
+
+        if self.stage:
+            stage_name = (self.stage.name or "").strip().lower()
+            stage_type = (self.stage.stage_type or "").strip().lower()
+
+            if stage_type == "won" or stage_name in {"won", "closed won"}:
+                won_errors = {}
+                if not self.actual_close_date:
+                    won_errors["actual_close_date"] = _(
+                        "Actual close date is required when marking an opportunity as Won."
+                    )
+                if self.final_deal_value is None:
+                    won_errors["final_deal_value"] = _(
+                        "Final deal value is required when marking an opportunity as Won."
+                    )
+                if won_errors:
+                    raise ValidationError(won_errors)
+
+            elif stage_type == "lost" or stage_name in {"lost", "closed lost"}:
+                lost_errors = {}
+                if not self.lost_reason or not str(self.lost_reason).strip():
+                    lost_errors["lost_reason"] = _(
+                        "Lost reason is required when marking an opportunity as Lost."
+                    )
+                if not self.actual_close_date:
+                    lost_errors["actual_close_date"] = _(
+                        "Actual close date is required when marking an opportunity as Lost."
+                    )
+                if lost_errors:
+                    raise ValidationError(lost_errors)
+
+            elif stage_type == "delayed" or stage_name == "delayed":
+                delayed_errors = {}
+                if not self.delay_reason or not str(self.delay_reason).strip():
+                    delayed_errors["delay_reason"] = _(
+                        "Delay reason is required when marking an opportunity as Delayed."
+                    )
+                if not self.next_follow_up_date:
+                    delayed_errors["next_follow_up_date"] = _(
+                        "Next follow-up date is required when marking an opportunity as Delayed."
+                    )
+                if delayed_errors:
+                    raise ValidationError(delayed_errors)
+
+            elif stage_name == "proposal sent" and not self.proposal_date:
+                self.proposal_date = timezone.now().date()
 
     def __str__(self):
         return f"{self.name}"
@@ -571,13 +766,47 @@ class Opportunity(FinloCoreModel):
                 self.forecast_category = "closed"
 
     def save(self, *args, **kwargs):
+        request = getattr(_thread_local, "request", None)
+        actor = getattr(request, "user", None)
+        if (
+            self._state.adding
+            and actor
+            and actor.is_authenticated
+            and getattr(getattr(actor, "role", None), "system_key", None) == "BDO"
+        ):
+            from finlo_crm.opportunities.authorization import (
+                is_valid_bdo_opportunity_source,
+            )
+
+            if not is_valid_bdo_opportunity_source(actor, self.source_lead, request):
+                raise ValidationError(
+                    _(
+                        "A BDO may create an opportunity only from an assigned qualified lead."
+                    )
+                )
+            if self.owner_id not in (None, actor.pk):
+                raise ValidationError(
+                    {"owner": _("A BDO must own the opportunity they create.")}
+                )
+            self.owner = actor
+
         if self.stage:
             self.probability = self.stage.probability
         if self.amount is not None and self.probability is not None:
-            self.expected_revenue = self.amount * (self.probability / 100)
+            self.expected_revenue = (
+                self.amount * Decimal(str(self.probability)) / Decimal("100")
+            )
         self.set_forecast_category()
 
         super().save(*args, **kwargs)
+
+        if self.contact_id:
+            OpportunityContactRole.objects.get_or_create(
+                opportunity=self,
+                contact=self.contact,
+                company=self.company,
+                defaults={"is_primary": True},
+            )
 
 
 @receiver(pre_save, sender=Opportunity)

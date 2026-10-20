@@ -14,6 +14,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from finlo.apps import apps
 from finlo.contrib.generics.views import FinloNavView, FinloTabView
 from finlo.registry.feature import FEATURE_REGISTRY
+from finlo.contrib.core.sales_authorization import has_effective_permission
 from finlo.urls import reverse_lazy
 from finlo.utils.decorators import (
     htmx_required,
@@ -36,7 +37,17 @@ IMPORT_EXCLUDED_FIELDS = [
     "created_by",
     "updated_by",
     "history",
+    "lead_owner",
+    "sub_owner",
 ]
+
+
+def has_model_import_permission(user, model):
+    """Check effective model-create access and keep employee creation out of imports."""
+    if model._meta.label_lower == "core.finlouser":
+        return False
+    permission = f"{model._meta.app_label}.add_{model._meta.model_name}"
+    return has_effective_permission(user, permission)
 
 
 def get_model_verbose_name(module_name, app_label):
@@ -178,15 +189,13 @@ class ImportDataView(TemplateView):
                     None,
                 )
                 if model:
-                    add_perm = f"{model._meta.app_label}.add_{model._meta.model_name}"
-                    if self.request.user.has_perm(add_perm):
+                    if has_model_import_permission(self.request.user, model):
                         models.append(self._format_model_info(model))
 
             else:
                 # Return only models the user has add permission for
                 for model in import_models:
-                    add_perm = f"{model._meta.app_label}.add_{model._meta.model_name}"
-                    if self.request.user.has_perm(add_perm):
+                    if has_model_import_permission(self.request.user, model):
                         models.append(self._format_model_info(model))
         except Exception as e:
             logger.error("Error getting available models: %s", e)

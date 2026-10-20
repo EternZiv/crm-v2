@@ -308,6 +308,20 @@ class Lead(FinloCoreModel):
     requirements = models.TextField(
         blank=True, null=True, verbose_name=_("Requirements")
     )
+    customer_interest = models.TextField(
+        blank=True, default="", verbose_name=_("Customer Interest")
+    )
+    qualified_at = models.DateTimeField(
+        null=True, blank=True, verbose_name=_("Qualified At")
+    )
+    qualified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="qualified_leads",
+        verbose_name=_("Qualified By"),
+    )
     is_convert = models.BooleanField(
         default=False, null=True, blank=True, editable=False, db_index=True
     )
@@ -361,7 +375,59 @@ class Lead(FinloCoreModel):
             owner_name = getattr(self.lead_owner, "username", str(self.lead_owner))
             self.title = f"{self.lead_company}/{self.first_name}/{owner_name}"
 
+        if self.lead_status_id:
+            status_name = getattr(self.lead_status, "name", "")
+            if status_name and status_name.strip().lower() == "qualified":
+                if not self.qualified_at:
+                    self.qualified_at = timezone.now()
+                if not self.qualified_by and actor and actor.is_authenticated:
+                    self.qualified_by = actor
+
         super().save(*args, **kwargs)
+
+    OWNER_FIELDS = ["lead_owner", "sub_owner"]
+
+    def is_owned_by(self, user):
+        """Return True if user is the primary owner or assigned sub_owner."""
+        if not user or not user.is_authenticated:
+            return False
+        return self.lead_owner_id == user.pk or self.sub_owner_id == user.pk
+
+    def is_qualified(self):
+        """Return True if lead has been qualified."""
+        if self.qualified_at is not None:
+            return True
+        if self.lead_status_id and getattr(self.lead_status, "name", None):
+            return self.lead_status.name.strip().lower() == "qualified"
+        return False
+
+    def qualify(self, actor=None, customer_interest=None, requirements=None, user=None, status=None):
+        """Mark this lead as qualified, recording metadata and preserving ownership."""
+        from finlo.contrib.generics.views.details import check_record_change_access
+
+        effective_actor = actor or user
+        if effective_actor and not check_record_change_access(effective_actor, self):
+            raise ValidationError(_("You are not authorized to qualify this lead."))
+
+        if customer_interest is not None:
+            self.customer_interest = customer_interest
+        if requirements is not None:
+            self.requirements = requirements
+
+        self.qualified_at = timezone.now()
+        if effective_actor:
+            self.qualified_by = effective_actor
+
+        if status:
+            self.lead_status = status
+        else:
+            qualified_status = LeadStatus.objects.filter(
+                company=self.company, name__iexact="qualified"
+            ).first()
+            if qualified_status:
+                self.lead_status = qualified_status
+
+        self.save()
 
     def clean(self):
         super().clean()
@@ -422,6 +488,17 @@ class Lead(FinloCoreModel):
         This method to get change owner url
         """
         return reverse_lazy("leads:convert_lead", kwargs={"pk": self.pk})
+
+    def get_create_opportunity_url(self):
+        """Open the opportunity form with this lead as its source."""
+        return (
+            f"{reverse_lazy('opportunities:opportunity_single_create')}"
+            f"?lead_id={self.pk}&new=true"
+        )
+
+    def get_qualify_url(self):
+        """Return the URL to open the qualify lead modal."""
+        return reverse_lazy("leads:qualify_lead", kwargs={"pk": self.pk})
 
 
 class EmailToLeadConfig(FinloCoreModel):

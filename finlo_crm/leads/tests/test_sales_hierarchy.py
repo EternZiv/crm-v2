@@ -15,6 +15,7 @@ from finlo.auth.models import User
 from finlo.contrib.core.authorization import can_access_company_record
 from finlo.contrib.core.models import (
     Company,
+    ImportHistory,
     Role,
     SalesAssignment,
     SalesRegion,
@@ -22,14 +23,20 @@ from finlo.contrib.core.models import (
 )
 from finlo.contrib.core.sales_authorization import (
     has_effective_permission,
+    allowed_employee_role_keys,
+    can_assign_employee_role,
     get_sales_scope_region_ids,
     get_sales_scope_user_ids,
 )
 from finlo.contrib.utils.middlewares import _thread_local
+from finlo.registry.feature import FEATURE_REGISTRY
+from finlo.contrib.core.api.views import FinloUserViewSet
 from finlo.core.exceptions import PermissionDenied
 from finlo_crm.leads.api.views import LeadViewSet
 from finlo_crm.leads.authorization import assign_lead_to_bdo
 from finlo.contrib.core.views.export_data import get_export_queryset
+from finlo.contrib.core.views.import_data.base import has_model_import_permission
+from finlo.contrib.core.views.import_data.step4 import ImportStep4View
 from finlo.api.permissions import FinloModelPermissions
 from finlo.contrib.dashboard.views.component import DashboardComponentFormView
 from finlo.contrib.dashboard.utils import DefaultDashboardGenerator
@@ -41,6 +48,12 @@ from finlo.contrib.generics.views.details import (
 )
 from finlo_crm.leads.forms import LeadSubOwnerForm
 from finlo_crm.leads.models import Lead, LeadStatus
+from finlo_crm.contacts.api.serializers import ContactSerializer
+from finlo_crm.opportunities.api.views import OpportunityViewSet
+from finlo_crm.opportunities.authorization import is_valid_bdo_opportunity_source
+from finlo_crm.opportunities.forms import OpportunitySingleForm
+from finlo_crm.opportunities.api.serializers import OpportunitySerializer
+from finlo_crm.opportunities.models import Opportunity, OpportunityStage
 from finlo_crm.leads.signals import apply_assignment_rules
 from finlo.urls import reverse
 from finlo_crm.leads.dashboard import lead_kpi_cards
@@ -425,14 +438,24 @@ class SalesHierarchyTests(TestCase):
         def expected(role, module, action):
             if role == "SUPER_ADMIN":
                 return True
-            if module in {"dashboard", "reports", "employees", "regions", "teams"}:
+            if module in {"dashboard", "reports", "regions", "teams"}:
                 return action == "view"
+            if module == "employees":
+                return action == "view" or (
+                    action == "add" and role in {"HEAD_OF_SALES", "RSM"}
+                )
             if module == "settings":
                 return False
             if action == "view":
                 return True
             if action == "add":
-                return module in {"leads", "activities"}
+                if module == "leads":
+                    return role != "BDO"
+                if module == "contacts":
+                    return True
+                if module == "opportunities":
+                    return role != "BDO"
+                return module == "activities"
             if action == "change":
                 return role in {"RSM", "SSM", "ASM", "BDO"}
             return False
@@ -453,6 +476,279 @@ class SalesHierarchyTests(TestCase):
             self.assertFalse(has_effective_permission(self.asm, permission))
         with patch.object(self.asm, "has_perm", return_value=True):
             self.assertTrue(has_effective_permission(self.asm, permission))
+
+    def test_employee_creation_roles_follow_the_approved_six_role_matrix(self):
+        users_by_role = {
+            "SUPER_ADMIN": self.head,
+            "HEAD_OF_SALES": self.head_of_sales,
+            "RSM": self.rsm,
+            "SSM": self.ssm,
+            "ASM": self.asm,
+            "BDO": self.bdo,
+        }
+        expected_roles = {
+            "SUPER_ADMIN": {"SUPER_ADMIN", "HEAD_OF_SALES", "RSM", "SSM", "ASM", "BDO"},
+            "HEAD_OF_SALES": {"RSM", "SSM", "ASM", "BDO"},
+            "RSM": {"SSM", "ASM", "BDO"},
+            "SSM": set(),
+            "ASM": set(),
+            "BDO": set(),
+        }
+        available_roles = {
+            role.system_key: role for role in self.roles.values()
+        }
+
+        for role_key, user in users_by_role.items():
+            with self.subTest(actor=role_key):
+                self.assertEqual(
+                    allowed_employee_role_keys(user), expected_roles[role_key]
+                )
+                for target_key, target_role in available_roles.items():
+                    self.assertEqual(
+                        can_assign_employee_role(user, target_role),
+                        target_key in expected_roles[role_key],
+                        f"{role_key} -> {target_key}",
+                    )
+
+    def test_employee_api_enforces_role_matrix_and_ignores_privilege_flags(self):
+        users_by_role = {
+            "SUPER_ADMIN": self.head,
+            "HEAD_OF_SALES": self.head_of_sales,
+            "RSM": self.rsm,
+            "SSM": self.ssm,
+            "ASM": self.asm,
+            "BDO": self.bdo,
+        }
+        allowed_target = {
+            "SUPER_ADMIN": "BDO",
+            "HEAD_OF_SALES": "RSM",
+            "RSM": "BDO",
+        }
+        forbidden_target = {
+            "SUPER_ADMIN": None,
+            "HEAD_OF_SALES": "SUPER_ADMIN",
+            "RSM": "RSM",
+            "SSM": "BDO",
+            "ASM": "BDO",
+            "BDO": "BDO",
+        }
+        add_user = Permission.objects.get(
+            content_type__app_label="core",
+            codename="add_finlouser",
+        )
+        factory = APIRequestFactory()
+
+        for role_key, actor in users_by_role.items():
+            actor.user_permissions.add(add_user)
+            if role_key in allowed_target:
+                target_role = self.roles[allowed_target[role_key]]
+                payload = {
+                    "username": f"created-{role_key.lower()}",
+                    "email": f"created-{role_key.lower()}@example.test",
+                    "password": secrets.token_urlsafe(16),
+                    "company": self.company.pk,
+                    "role": target_role.pk,
+                    "country": "US",
+                    "is_staff": True,
+                    "is_superuser": True,
+                    "user_permissions": [add_user.pk],
+                    "groups": [],
+                }
+                request = factory.post("/api/core/users/", payload, format="json")
+                request.session = {}
+                force_authenticate(request, user=actor)
+                response = FinloUserViewSet.as_view({"post": "create"})(request)
+                self.assertEqual(response.status_code, 201, response.data)
+                created_user = User.objects.get(username=payload["username"])
+                self.assertEqual(created_user.role_id, target_role.pk)
+                self.assertFalse(created_user.is_staff)
+                self.assertFalse(created_user.is_superuser)
+                self.assertFalse(created_user.user_permissions.exists())
+
+            disallowed_role = forbidden_target[role_key]
+            if disallowed_role is not None:
+                payload = {
+                    "username": f"forbidden-{role_key.lower()}",
+                    "email": f"forbidden-{role_key.lower()}@example.test",
+                    "password": secrets.token_urlsafe(16),
+                    "company": self.company.pk,
+                    "role": self.roles[disallowed_role].pk,
+                    "country": "US",
+                }
+                request = factory.post("/api/core/users/", payload, format="json")
+                request.session = {}
+                force_authenticate(request, user=actor)
+                response = FinloUserViewSet.as_view({"post": "create"})(request)
+                self.assertIn(response.status_code, {400, 403}, response.data)
+                self.assertFalse(User.objects.filter(username=payload["username"]).exists())
+
+    def test_import_permission_uses_effective_role_policy(self):
+        users_by_role = (
+            self.head,
+            self.head_of_sales,
+            self.rsm,
+            self.ssm,
+            self.asm,
+            self.bdo,
+        )
+        for user in users_by_role:
+            with patch.object(user, "has_perm", return_value=True):
+                self.assertEqual(
+                    has_model_import_permission(user, Lead),
+                    user.role.system_key != "BDO",
+                )
+                self.assertFalse(
+                    has_model_import_permission(user, User)
+                )
+
+    def test_import_step4_rejects_bdo_with_raw_lead_add_permission(self):
+        self.grant(self.bdo, "add_lead")
+        self.assertIn(Lead, FEATURE_REGISTRY.get("import_models", []))
+        history_count = ImportHistory.objects.count()
+        request = RequestFactory().post("/import/step4/")
+        request.user = self.bdo
+        request.active_company = self.company
+        request.session = {
+            "import_data": {
+                "module": "Lead",
+                "app_label": "leads",
+                "field_mappings": {},
+                "headers": [],
+            },
+            "import_config": {"single_import": False},
+        }
+        view = ImportStep4View()
+        with patch.object(view, "process_import") as process_import:
+            response = view.post(request)
+
+        self.assertEqual(response.status_code, 200)
+        process_import.assert_not_called()
+        self.assertEqual(ImportHistory.objects.count(), history_count)
+
+    def test_bdo_opportunity_api_requires_qualified_assigned_lead(self):
+        qualified_status = LeadStatus.all_objects.create(
+            name="Qualified", probability=60, company=self.company
+        )
+        lead = self.make_lead(self.asm)
+        lead.lead_status = qualified_status
+        lead.sub_owner = self.bdo
+        lead.save(update_fields=["lead_status", "sub_owner"])
+        self.assertTrue(is_valid_bdo_opportunity_source(self.bdo, lead))
+        self.assertFalse(is_valid_bdo_opportunity_source(self.other_bdo, lead))
+        form_request = RequestFactory().get(
+            "/opportunities/create/", {"lead_id": lead.pk}
+        )
+        form_request.user = self.bdo
+        form_request.active_company = self.company
+        form = OpportunitySingleForm(
+            request=form_request,
+            initial={"source_lead_id": lead.pk},
+        )
+        self.assertIn("source_lead_id", form.fields)
+        self.assertTrue(form.fields["source_lead_id"].queryset.filter(pk=lead.pk).exists())
+
+        stage = OpportunityStage.all_objects.create(
+            name="Prospecting",
+            order=1,
+            probability=10,
+            company=self.company,
+        )
+        payload = {
+            "name": "Qualified source opportunity",
+            "stage": stage.pk,
+            "company": self.company.pk,
+            "source_lead_id": lead.pk,
+        }
+        request = APIRequestFactory().post(
+            "/api/opportunities/", payload, format="json"
+        )
+        force_authenticate(request, user=self.bdo)
+        response = OpportunityViewSet.as_view({"post": "create"})(request)
+        self.assertEqual(response.status_code, 201, response.data)
+        opportunity = Opportunity.all_objects.get(pk=response.data["id"])
+        self.assertEqual(opportunity.source_lead_id, lead.pk)
+        self.assertEqual(opportunity.owner_id, self.bdo.pk)
+
+        payload.pop("source_lead_id")
+        request = APIRequestFactory().post(
+            "/api/opportunities/", payload, format="json"
+        )
+        force_authenticate(request, user=self.bdo)
+        response = OpportunityViewSet.as_view({"post": "create"})(request)
+        self.assertEqual(response.status_code, 400)
+
+    def test_contact_and_opportunity_reject_cross_company_references(self):
+        foreign_role = Role.all_objects.create(
+            role_name="Foreign BDO",
+            system_key="BDO",
+            company=self.other_company,
+        )
+        foreign_user = User.objects.create_user(
+            username="foreign-bdo",
+            email="foreign-bdo@example.test",
+            password=secrets.token_urlsafe(16),
+            company=self.other_company,
+            role=foreign_role,
+            country="US",
+        )
+        request = SimpleNamespace(
+            user=self.asm,
+            active_company=self.company,
+            session={},
+        )
+        contact_serializer = ContactSerializer(
+            data={
+                "contact_owner": foreign_user.pk,
+                "first_name": "Foreign",
+                "last_name": "Owner",
+                "email": "foreign-owner@example.test",
+                "company": self.company.pk,
+            },
+            context={"request": request},
+        )
+        self.assertFalse(contact_serializer.is_valid())
+        self.assertIn("contact_owner", contact_serializer.errors)
+
+        request.user = self.head
+        superadmin_contact_serializer = ContactSerializer(
+            data={
+                "contact_owner": foreign_user.pk,
+                "first_name": "Foreign",
+                "last_name": "Owner",
+                "email": "foreign-owner-superadmin@example.test",
+                "company": self.company.pk,
+            },
+            context={"request": request},
+        )
+        self.assertFalse(superadmin_contact_serializer.is_valid())
+        self.assertIn("contact_owner", superadmin_contact_serializer.errors)
+
+        foreign_stage = OpportunityStage.all_objects.create(
+            name="Foreign Stage",
+            order=1,
+            probability=10,
+            company=self.other_company,
+        )
+        opportunity_serializer = OpportunitySerializer(
+            data={
+                "name": "Cross-company stage",
+                "stage": foreign_stage.pk,
+                "company": self.company.pk,
+            },
+            context={"request": request},
+        )
+        self.assertFalse(opportunity_serializer.is_valid())
+        self.assertIn("stage", opportunity_serializer.errors)
+        superadmin_opportunity_serializer = OpportunitySerializer(
+            data={
+                "name": "Cross-company stage",
+                "stage": foreign_stage.pk,
+                "company": self.company.pk,
+            },
+            context={"request": request},
+        )
+        self.assertFalse(superadmin_opportunity_serializer.is_valid())
+        self.assertIn("stage", superadmin_opportunity_serializer.errors)
 
     def test_drf_and_html_permission_checks_follow_lead_role_matrix(self):
         from types import SimpleNamespace
@@ -483,7 +779,7 @@ class SalesHierarchyTests(TestCase):
             "RSM": (True, True, True, False),
             "SSM": (True, True, True, False),
             "ASM": (True, True, True, False),
-            "BDO": (True, True, True, False),
+            "BDO": (True, False, True, False),
         }
 
         for role_key, user in users_by_role.items():

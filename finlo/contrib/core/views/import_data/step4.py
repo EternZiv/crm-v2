@@ -10,6 +10,8 @@ from datetime import datetime
 from decimal import Decimal
 from io import StringIO
 
+from django.core.exceptions import FieldDoesNotExist
+
 # Third-party imports (other)
 import pandas as pd
 
@@ -32,7 +34,11 @@ from finlo.views.generic import View
 from ...models import ImportHistory
 
 # Local imports
-from .base import get_model_verbose_name
+from .base import (
+    IMPORT_EXCLUDED_FIELDS,
+    get_model_verbose_name,
+    has_model_import_permission,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -110,8 +116,9 @@ class ImportStep4View(View):
                 ),
                 None,
             )
-            add_perm = f"{app_label_check}.add_{module_name.lower()}"
-            if not registered or not request.user.has_perm(add_perm):
+            if not registered or not has_model_import_permission(
+                request.user, registered
+            ):
                 field_mappings = import_data.get("field_mappings", {})
                 headers = import_data.get("headers", [])
                 return render(
@@ -290,6 +297,19 @@ class ImportStep4View(View):
         match_fields = import_data.get("match_fields", [])
 
         model = apps.get_model(app_label, module_name)
+        allowed_fields = {
+            field.name
+            for field in model._meta.fields
+            if getattr(field, "editable", True)
+            and field.name not in IMPORT_EXCLUDED_FIELDS
+        }
+        invalid_fields = set(field_mappings) - allowed_fields
+        if invalid_fields:
+            raise ValueError(
+                "Import mappings contain fields that cannot be imported: "
+                + ", ".join(sorted(invalid_fields))
+            )
+
         field_metadata = {
             f.name: {
                 "type": f.get_internal_type(),
@@ -328,23 +348,61 @@ class ImportStep4View(View):
         created_count = updated_count = error_count = 0
         current_time = timezone.now()
         user = self.request.user if self.request.user.is_authenticated else None
-        company = getattr(self.request, "active_company", None)
+        company = getattr(self.request, "active_company", None) or getattr(
+            user, "company", None
+        )
+        if any(
+            field.name == "company" for field in model._meta.get_fields()
+        ) and company is None:
+            raise ValueError("Select an authorized company before importing records.")
 
         # Preload FK objects referenced in mappings
         fk_cache = {}
         for field, mapping in fk_mappings.items():
+            if field not in field_metadata or field not in allowed_fields:
+                raise ValueError(f"Foreign-key mapping for {field!r} is not allowed.")
             related_model = field_metadata[field]["related_model"]
+            related_queryset = related_model.objects.all()
+            try:
+                related_model._meta.get_field("company")
+            except FieldDoesNotExist:
+                pass
+            else:
+                related_queryset = related_queryset.filter(company_id=company.pk)
+            from finlo.contrib.core.authorization import scope_queryset_to_company
+
+            related_queryset = scope_queryset_to_company(
+                related_queryset, user, self.request
+            )
             fk_cache[field] = {
-                k: related_model.objects.filter(pk=v).first()
+                k: related_queryset.filter(pk=v).first()
                 for k, v in mapping.items()
             }
 
         # Preload replace_values FKs
         for field, value in replace_values.items():
+            if field not in field_metadata or field not in allowed_fields:
+                raise ValueError(f"Replacement mapping for {field!r} is not allowed.")
             if field_metadata[field]["is_fk"]:
                 related_model = field_metadata[field]["related_model"]
+                related_queryset = related_model.objects.all()
+                try:
+                    related_model._meta.get_field("company")
+                except FieldDoesNotExist:
+                    pass
+                else:
+                    related_queryset = related_queryset.filter(
+                        company_id=company.pk
+                    )
+                from finlo.contrib.core.authorization import (
+                    scope_queryset_to_company,
+                )
+
+                related_queryset = scope_queryset_to_company(
+                    related_queryset, user, self.request
+                )
                 fk_cache.setdefault(field, {})
-                fk_cache[field]["__replace__"] = related_model.objects.filter(
+                fk_cache[field]["__replace__"] = related_queryset.filter(
                     pk=value
                 ).first()
 
@@ -360,6 +418,10 @@ class ImportStep4View(View):
                     for f in match_fields
                 }
                 qset = model.objects.filter(**{k: v for k, v in filters.items() if v})
+                if company is not None and any(
+                    field.name == "company" for field in model._meta.get_fields()
+                ):
+                    qset = qset.filter(company_id=company.pk)
                 existing_objs = {
                     tuple(getattr(obj, f) for f in match_fields): obj for obj in qset
                 }
@@ -723,6 +785,9 @@ class ImportStep4View(View):
                                 continue
 
                         obj = model(**mapped)
+                        if model._meta.label_lower == "leads.lead":
+                            obj.lead_owner = user
+                            obj.sub_owner = None
                         obj.created_at = mapped.get("created_at", current_time)
                         obj.updated_at = current_time
                         if user:
@@ -782,6 +847,9 @@ class ImportStep4View(View):
                             updated_groups[frozenset(changed_fields)].append(instance)
                         else:
                             obj = model(**mapped)
+                            if model._meta.label_lower == "leads.lead":
+                                obj.lead_owner = user
+                                obj.sub_owner = None
                             obj.created_at = mapped.get("created_at", current_time)
                             obj.updated_at = current_time
                             if user:

@@ -35,6 +35,20 @@ from finlo_crm.opportunities.models import (
     OpportunityTeamMember,
 )
 
+
+class OpportunityModelPermissions(FinloModelPermissions):
+    """Allow BDO opportunity POSTs to reach the lead-specific serializer guard."""
+
+    def has_permission(self, request, view):
+        if (
+            getattr(view, "action", None) == "create"
+            and getattr(getattr(request.user, "role", None), "system_key", None)
+            == "BDO"
+        ):
+            return True
+        return super().has_permission(request, view)
+
+
 # Define common Swagger parameters for documentation
 search_param = openapi.Parameter(
     "search",
@@ -69,7 +83,7 @@ class OpportunityViewSet(SearchFilterMixin, BulkOperationsMixin, viewsets.ModelV
     permission_classes = [
         permissions.IsAuthenticated,
         IsCompanyMember,
-        FinloModelPermissions,
+        OpportunityModelPermissions,
     ]
     scope_list_to_view_permission = True
     search_fields = ["name", "tracking_number", "order_number"]
