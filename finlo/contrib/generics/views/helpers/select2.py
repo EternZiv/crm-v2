@@ -169,6 +169,12 @@ class FinloSelect2DataView(LoginRequiredMixin, View):
             except Exception:
                 pass
 
+        from finlo.contrib.core.sales_authorization import (
+            scope_queryset_to_sales_hierarchy,
+        )
+
+        queryset = scope_queryset_to_sales_hierarchy(queryset, request.user)
+
         if dependency_value and dependency_model and dependency_field:
             try:
                 dep_app_label, dep_model_name = dependency_model.split(".")

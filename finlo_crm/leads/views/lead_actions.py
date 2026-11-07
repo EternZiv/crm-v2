@@ -99,6 +99,18 @@ class LeadFormView(LoginRequiredMixin, FinloMultiStepFormView):
         kwargs["request"] = self.request
         return kwargs
 
+    def has_permission(self):
+        user = self.request.user
+        if getattr(user, "is_superuser", False):
+            return True
+        pk = self.kwargs.get("pk") or self.request.GET.get("id")
+        from finlo.contrib.core.sales_authorization import has_effective_permission
+        if not pk or getattr(self, "duplicate_mode", False):
+            return has_effective_permission(
+                user, "leads.add_lead"
+            ) or has_effective_permission(user, "leads.add_own_lead")
+        return super().has_permission()
+
 
 @method_decorator(htmx_required, name="dispatch")
 # See LeadFormView above: keeps custom field persistence and the
@@ -126,6 +138,18 @@ class LeadsSingleFormView(LoginRequiredMixin, FinloSingleFormView):
         kwargs = super().get_form_kwargs()
         kwargs["request"] = self.request
         return kwargs
+
+    def has_permission(self):
+        user = self.request.user
+        if getattr(user, "is_superuser", False):
+            return True
+        pk = self.kwargs.get("pk") or self.request.GET.get("id")
+        from finlo.contrib.core.sales_authorization import has_effective_permission
+        if not pk or getattr(self, "duplicate_mode", False):
+            return has_effective_permission(
+                user, "leads.add_lead"
+            ) or has_effective_permission(user, "leads.add_own_lead")
+        return super().has_permission()
 
     form_mode = [
         {

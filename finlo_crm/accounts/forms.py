@@ -182,7 +182,7 @@ class AddChildAccountForm(forms.Form):
     )
 
     parent_account = forms.ModelChoiceField(
-        queryset=Account.objects.all(),
+        queryset=Account.objects.none(),
         required=False,
         widget=forms.HiddenInput(),  # Make this a hidden field
     )
@@ -200,35 +200,69 @@ class AddChildAccountForm(forms.Form):
 
     def setup_account_queryset(self):
         """
-        Set up the account queryset based on the request parameters.
+        Set up the account queryset based on company and sales hierarchy.
         """
-        if not self.request:
-            self.fields["account"].queryset = Account.objects.all()
-            return
+        req = self.request
+        if not req:
+            from finlo.contrib.utils.middlewares import get_current_request
 
-        parent_id = self.request.GET.get("id")
+            req = get_current_request()
+        user = getattr(req, "user", None) if req else None
+        company = getattr(req, "active_company", None)
+
+        from finlo.contrib.core.sales_authorization import (
+            scope_queryset_to_sales_hierarchy,
+        )
+
+        base_qs = Account.objects.all()
+        if company:
+            base_qs = base_qs.filter(company=company)
+        if user and not getattr(user, "is_superuser", False):
+            base_qs = scope_queryset_to_sales_hierarchy(base_qs, user)
+
+        self.fields["parent_account"].queryset = base_qs
+
+        parent_id = req.GET.get("id") if req else None
         if not parent_id:
-            self.fields["account"].queryset = Account.objects.all()
+            self.fields["account"].queryset = base_qs
             return
 
         try:
-            parent_account = Account.objects.get(pk=parent_id)
-
-            queryset = Account.objects.all()
-            queryset = queryset.exclude(id=parent_id)
-
-            queryset = queryset.filter(parent_account__isnull=True)
+            parent_account = base_qs.get(pk=parent_id)
+            queryset = base_qs.exclude(id=parent_id).filter(parent_account__isnull=True)
             descendant_ids = self.get_descendant_ids(parent_account)
             if descendant_ids:
                 queryset = queryset.exclude(id__in=descendant_ids)
-
             self.fields["account"].queryset = queryset
-
         except Account.DoesNotExist:
-            # If parent doesn't exist, show all accounts without parents
-            self.fields["account"].queryset = Account.objects.filter(
-                parent_account__isnull=True
-            )
+            self.fields["account"].queryset = base_qs.filter(parent_account__isnull=True)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        account = cleaned_data.get("account")
+        parent_account = cleaned_data.get("parent_account")
+
+        req = self.request
+        if not req:
+            from finlo.contrib.utils.middlewares import get_current_request
+
+            req = get_current_request()
+        user = getattr(req, "user", None) if req else None
+
+        if user and not getattr(user, "is_superuser", False):
+            from finlo.contrib.core.sales_authorization import can_access_sales_record
+
+            if account and not can_access_sales_record(user, account):
+                self.add_error(
+                    "account", _("You do not have permission to access this account.")
+                )
+            if parent_account and not can_access_sales_record(user, parent_account):
+                self.add_error(
+                    "parent_account",
+                    _("You do not have permission to access the parent account."),
+                )
+
+        return cleaned_data
 
     def get_descendant_ids(self, account):
         """

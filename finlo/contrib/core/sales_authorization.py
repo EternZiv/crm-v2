@@ -54,7 +54,14 @@ def sales_role_permission_decision(user, permission):
         model_name = model_name[4:]
 
     if app_label == "core":
-        if model_name in _HIERARCHY_MODELS or model_name == "finlouser":
+        if model_name == "finlouser":
+            if action == "view":
+                return True
+            if action == "add":
+                # Create employees: HEAD_OF_SALES can onboard RSM/SSM/ASM/BDO, RSM can onboard SSM/ASM/BDO
+                return role_key in {"HEAD_OF_SALES", "RSM"}
+            return False
+        if model_name in _HIERARCHY_MODELS:
             return action == "view"
         return False
 
@@ -67,9 +74,22 @@ def sales_role_permission_decision(user, permission):
     if action == "view":
         return True
     if action == "add":
-        return app_label in {"leads", "activity"}
+        # Create Leads: SUPER_ADMIN, HEAD_OF_SALES, RSM, SSM, ASM (BDO strictly prohibited)
+        if app_label == "leads":
+            return role_key != "BDO"
+        # Create Contacts: Yes for all six roles
+        if app_label == "contacts":
+            return True
+        # Create Opportunities: HEAD_OF_SALES, RSM, SSM, ASM, and BDO (for assigned records)
+        if app_label == "opportunities":
+            return True
+        if app_label == "accounts":
+            return True
+        if app_label == "activity":
+            return True
+        return False
     if action == "change":
-        return role_key in {"RSM", "SSM", "ASM", "BDO"}
+        return role_key in {"HEAD_OF_SALES", "RSM", "SSM", "ASM", "BDO"}
     return False
 
 

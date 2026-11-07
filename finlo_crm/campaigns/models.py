@@ -287,6 +287,7 @@ class Campaign(FinloCoreModel):
         decimal_places=2,
         null=True,
         blank=True,
+        validators=[MinValueValidator(0)],
         verbose_name=_("Expected Revenue"),
     )
     budget_cost = models.DecimalField(
@@ -294,6 +295,7 @@ class Campaign(FinloCoreModel):
         decimal_places=2,
         null=True,
         blank=True,
+        validators=[MinValueValidator(0)],
         verbose_name=_("Budget Cost"),
     )
     actual_cost = models.DecimalField(
@@ -301,6 +303,7 @@ class Campaign(FinloCoreModel):
         decimal_places=2,
         null=True,
         blank=True,
+        validators=[MinValueValidator(0)],
         verbose_name=_("Actual Cost"),
     )
     expected_response = models.FloatField(
@@ -381,6 +384,14 @@ class Campaign(FinloCoreModel):
             raise ValidationError(
                 {"expected_response": _("Expected Response (%) must be between 0 and 100.")}
             )
+        for cost_field, label in (
+            ("expected_revenue", _("Expected Revenue")),
+            ("budget_cost", _("Budget Cost")),
+            ("actual_cost", _("Actual Cost")),
+        ):
+            val = getattr(self, cost_field)
+            if val is not None and val < 0:
+                raise ValidationError({cost_field: _(f"{label} cannot be negative.")})
         if self.parent_campaign_id:
             ancestor = self.parent_campaign
             while ancestor is not None:

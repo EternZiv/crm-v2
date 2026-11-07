@@ -121,8 +121,10 @@ class UserNavbar(LoginRequiredMixin, FinloNavView):
         """
         Get the configuration for the "New" button in the navbar.
         """
-        if self.request.user.has_perm(
-            f"{User._meta.app_label}.add_{User._meta.model_name}"
+        from finlo.contrib.core.sales_authorization import has_effective_permission
+
+        if has_effective_permission(
+            self.request.user, f"{User._meta.app_label}.add_{User._meta.model_name}"
         ):
             return {
                 "url": f"""{reverse_lazy("core:user_create_single_form")}?new=true""",
@@ -155,8 +157,10 @@ class UserListView(LoginRequiredMixin, FinloListView):
         """
         Get the configuration for the "Add" button when no record exist.
         """
-        if self.request.user.has_perm(
-            f"{User._meta.app_label}.add_{User._meta.model_name}"
+        from finlo.contrib.core.sales_authorization import has_effective_permission
+
+        if has_effective_permission(
+            self.request.user, f"{User._meta.app_label}.add_{User._meta.model_name}"
         ):
             return {
                 "url": f"""{reverse_lazy("core:user_create_single_form")}?new=true""",
@@ -363,8 +367,10 @@ class UserGroupByView(LoginRequiredMixin, FinloGroupByView):
         """
         Get the configuration for the "Add" button when no record exist.
         """
-        if self.request.user.has_perm(
-            f"{User._meta.app_label}.add_{User._meta.model_name}"
+        from finlo.contrib.core.sales_authorization import has_effective_permission
+
+        if has_effective_permission(
+            self.request.user, f"{User._meta.app_label}.add_{User._meta.model_name}"
         ):
             return {
                 "url": f"""{reverse_lazy("core:user_create_single_form")}?new=true""",
@@ -424,20 +430,28 @@ class UserFormView(
 
     def has_permission(self):
         """
-        Override permission check for user profile editing.
+        Override permission check:
+        - Edit: allowed for Super Admin. A user may also edit their own profile if they have core.can_change_profile.
+        - Create: allowed if user has effective core.add_finlouser permission (Super Admin, Head of Sales, RSM).
         """
         user = self.request.user
-        pk = self.kwargs.get(self.pk_url_kwarg)
+        if getattr(user, "is_superuser", False):
+            return True
 
+        from finlo.contrib.core.sales_authorization import (
+            _role_key,
+            has_effective_permission,
+        )
+
+        pk = self.kwargs.get("pk") or self.kwargs.get(getattr(self, "pk_url_kwarg", "pk"))
         if pk:
             if int(pk) == user.pk:
                 return user.has_perm("core.can_change_profile")
+            return _role_key(user) == "SUPER_ADMIN"
 
-            return user.has_perm(
-                f"{User._meta.app_label}.change_{User._meta.model_name}"
-            )
-
-        return user.has_perm(f"{User._meta.app_label}.add_{User._meta.model_name}")
+        return has_effective_permission(
+            user, f"{User._meta.app_label}.add_{User._meta.model_name}"
+        )
 
 
 @method_decorator(htmx_required, name="dispatch")
@@ -601,20 +615,28 @@ class UserFormViewSingle(
 
     def has_permission(self):
         """
-        Override permission check for user profile editing.
+        Override permission check:
+        - Edit: allowed for Super Admin. A user may also edit their own profile if they have core.can_change_profile.
+        - Create: allowed if user has effective core.add_finlouser permission (Super Admin, Head of Sales, RSM).
         """
         user = self.request.user
-        pk = self.kwargs.get("pk")
+        if getattr(user, "is_superuser", False):
+            return True
 
+        from finlo.contrib.core.sales_authorization import (
+            _role_key,
+            has_effective_permission,
+        )
+
+        pk = self.kwargs.get("pk") or self.kwargs.get(getattr(self, "pk_url_kwarg", "pk"))
         if pk:
             if int(pk) == user.pk:
                 return user.has_perm("core.can_change_profile")
+            return _role_key(user) == "SUPER_ADMIN"
 
-            return user.has_perm(
-                f"{User._meta.app_label}.change_{User._meta.model_name}"
-            )
-
-        return user.has_perm(f"{User._meta.app_label}.add_{User._meta.model_name}")
+        return has_effective_permission(
+            user, f"{User._meta.app_label}.add_{User._meta.model_name}"
+        )
 
 
 @method_decorator(htmx_required, name="dispatch")
@@ -632,6 +654,17 @@ class UserDeleteView(
     """
 
     model = User
+
+    def dispatch(self, request, *args, **kwargs):
+        user = request.user
+        if not getattr(user, "is_superuser", False):
+            from finlo.contrib.core.sales_authorization import _role_key
+
+            if _role_key(user) != "SUPER_ADMIN":
+                from finlo.core.exceptions import PermissionDenied
+
+                raise PermissionDenied(_("Only Super Admin can delete users."))
+        return super().dispatch(request, *args, **kwargs)
 
     def get_post_delete_response(self):
         """Get the response after deleting a user."""

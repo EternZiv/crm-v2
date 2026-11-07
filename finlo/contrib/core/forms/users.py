@@ -29,6 +29,65 @@ from ..models import Company, Department, MultipleCurrency, Role
 logger = logging.getLogger(__name__)
 
 
+def _restrict_user_role_field(form):
+    """Restrict available roles in form dropdown based on current actor's role."""
+    if "role" not in form.fields:
+        return
+    request = getattr(form, "request", None)
+    if not request:
+        from finlo.contrib.utils.middlewares import get_current_request
+
+        request = get_current_request()
+    user = getattr(request, "user", None) if request else None
+    if not user or getattr(user, "is_superuser", False):
+        return
+
+    from finlo.contrib.core.sales_authorization import _role_key
+
+    role_key = _role_key(user)
+    if role_key == "SUPER_ADMIN":
+        return
+
+    allowed_role_keys = set()
+    if role_key == "HEAD_OF_SALES":
+        allowed_role_keys = {"RSM", "SSM", "ASM", "BDO"}
+    elif role_key == "RSM":
+        allowed_role_keys = {"SSM", "ASM", "BDO"}
+
+    form.fields["role"].queryset = form.fields["role"].queryset.filter(
+        system_key__in=allowed_role_keys
+    )
+
+
+def _validate_user_role_assignment(form, role):
+    """Enforce that only Super Admin can edit roles, and creators can only assign subordinate roles."""
+    request = getattr(form, "request", None)
+    if not request:
+        from finlo.contrib.utils.middlewares import get_current_request
+
+        request = get_current_request()
+    user = getattr(request, "user", None) if request else None
+
+    if user and not getattr(user, "is_superuser", False):
+        from finlo.contrib.core.sales_authorization import _role_key
+
+        role_key = _role_key(user)
+        if role_key != "SUPER_ADMIN":
+            if form.instance and form.instance.pk and form.instance.role != role:
+                raise ValidationError(_("Only Super Admin can change user roles."))
+
+            target_key = getattr(role, "system_key", None)
+            allowed_role_keys = set()
+            if role_key == "HEAD_OF_SALES":
+                allowed_role_keys = {"RSM", "SSM", "ASM", "BDO"}
+            elif role_key == "RSM":
+                allowed_role_keys = {"SSM", "ASM", "BDO"}
+
+            if target_key not in allowed_role_keys:
+                raise ValidationError(_("You do not have permission to assign this role."))
+    return role
+
+
 class UserFormClass(FinloMultiStepForm):
     """Form class for User model with password fields."""
 
@@ -117,6 +176,11 @@ class UserFormClass(FinloMultiStepForm):
             self.fields["state"].initial = resolve_subdivision_choice(
                 self.fields["state"].choices, self.instance.state
             )
+        _restrict_user_role_field(self)
+
+    def clean_role(self):
+        role = self.cleaned_data.get("role")
+        return _validate_user_role_assignment(self, role)
 
 
 class UserFormSingle(FinloModelForm):
@@ -195,6 +259,11 @@ class UserFormSingle(FinloModelForm):
             self.fields["state"].initial = resolve_subdivision_choice(
                 self.fields["state"].choices, self.instance.state
             )
+        _restrict_user_role_field(self)
+
+    def clean_role(self):
+        role = self.cleaned_data.get("role")
+        return _validate_user_role_assignment(self, role)
 
 
 class UserFormClassSingle(FinloModelForm):

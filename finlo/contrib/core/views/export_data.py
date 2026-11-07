@@ -29,7 +29,10 @@ from reportlab.pdfgen import canvas
 from finlo.apps import apps
 from finlo.contrib.core.utils import get_allowed_user_ids
 from finlo.contrib.core.authorization import scope_queryset_to_company
-from finlo.contrib.core.sales_authorization import has_effective_permission
+from finlo.contrib.core.sales_authorization import (
+    has_effective_permission,
+    scope_queryset_to_sales_hierarchy,
+)
 from finlo.contrib.generics.views import (
     FinloListView,
     FinloModalDetailView,
@@ -89,7 +92,8 @@ def get_export_queryset(user, model, request=None):
     if user.is_superuser or has_effective_permission(
         user, f"{app_label}.export_{model_name}"
     ):
-        return scope_queryset_to_company(model.objects.all(), user, request)
+        qs = scope_queryset_to_company(model.objects.all(), user, request)
+        return scope_queryset_to_sales_hierarchy(qs, user)
 
     if has_effective_permission(user, f"{app_label}.export_own_{model_name}"):
         owner_fields = getattr(model, "OWNER_FIELDS", [])
@@ -100,7 +104,8 @@ def get_export_queryset(user, model, request=None):
         for field in owner_fields:
             query |= Q(**{f"{field}__in": allowed_ids})
         queryset = model.objects.filter(query)
-        return scope_queryset_to_company(queryset, user, request)
+        qs = scope_queryset_to_company(queryset, user, request)
+        return scope_queryset_to_sales_hierarchy(qs, user)
 
     return None
 

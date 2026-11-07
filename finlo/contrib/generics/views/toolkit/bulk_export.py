@@ -216,7 +216,10 @@ class FinloBulkExportMixin:
     def _build_export_rows(self, queryset, selected_fields):
         """Build the exported row data for ``queryset`` from ``selected_fields``."""
         data = []
-        for obj in FinloBulkExportMixin.get_export_objects(self, queryset):
+        objects = FinloBulkExportMixin.get_export_objects(self, queryset)
+        if hasattr(objects, "iterator"):
+            objects = objects.iterator(chunk_size=1000)
+        for obj in objects:
             row = []
             for _verbose_name, field_name, field in selected_fields:
                 try:

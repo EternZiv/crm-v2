@@ -24,18 +24,23 @@ from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 BASE_APP_DIR = BASE_DIR / "finlo"
 IS_VERCEL = os.environ.get("VERCEL", "").lower() in {"1", "true"}
+IS_PRODUCTION = (
+    IS_VERCEL
+    or os.environ.get("ENVIRONMENT", "").lower() == "production"
+    or os.environ.get("DJANGO_ENV", "").lower() == "production"
+)
 
 
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 # Initialize environment variables
 env = environ.Env(
-    DEBUG=(bool, not IS_VERCEL),
-    ENVIRONMENT=(str, "production" if IS_VERCEL else "development"),
-    SECRET_KEY=(str, "" if IS_VERCEL else "django-insecure-default-key"),
-    ALLOWED_HOSTS=(list, [] if IS_VERCEL else ["*"]),
+    DEBUG=(bool, not IS_PRODUCTION),
+    ENVIRONMENT=(str, "production" if IS_PRODUCTION else "development"),
+    SECRET_KEY=(str, "" if IS_PRODUCTION else "django-insecure-default-key"),
+    ALLOWED_HOSTS=(list, [] if IS_PRODUCTION else ["*"]),
     CSRF_TRUSTED_ORIGINS=(
         list,
-        [] if IS_VERCEL else ["http://localhost:8000"],
+        [] if IS_PRODUCTION else ["http://localhost:8000"],
     ),
     SITE_URL=(str, ""),
 )
@@ -50,6 +55,8 @@ DEBUG = env("DEBUG")
 ENVIRONMENT = env("ENVIRONMENT")
 SECRET_KEY = env("SECRET_KEY")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
+if not IS_PRODUCTION and "testserver" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS = list(dict.fromkeys([*ALLOWED_HOSTS, "testserver"]))
 CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
 # Custom page when CSRF verification fails (production); DEBUG=True still uses Django's technical view.
 CSRF_FAILURE_VIEW = "finlo.contrib.core.views.error_pages.csrf_failure"
@@ -88,40 +95,45 @@ def _get_vercel_deployment_hostnames():
     return hostnames
 
 
-if IS_VERCEL:
+if IS_PRODUCTION:
     if DEBUG:
-        raise ImproperlyConfigured("DEBUG must be false on Vercel.")
+        raise ImproperlyConfigured("DEBUG must be false in production.")
     if len(SECRET_KEY) < 50 or SECRET_KEY == "django-insecure-default-key":
         raise ImproperlyConfigured(
-            "Set SECRET_KEY to a strong, unique value of at least 50 characters in Vercel."
+            "Set SECRET_KEY to a strong, unique value of at least 50 characters in production."
         )
     if "*" in ALLOWED_HOSTS:
         raise ImproperlyConfigured(
-            "Wildcard ALLOWED_HOSTS is not permitted on Vercel."
+            "Wildcard ALLOWED_HOSTS is not permitted in production."
         )
 
-    vercel_hostnames = _get_vercel_deployment_hostnames()
-    if vercel_hostnames:
-        ALLOWED_HOSTS = list(dict.fromkeys([*ALLOWED_HOSTS, *vercel_hostnames]))
-        CSRF_TRUSTED_ORIGINS = list(
-            dict.fromkeys(
-                [
-                    *CSRF_TRUSTED_ORIGINS,
-                    *(f"https://{hostname}" for hostname in vercel_hostnames),
-                ]
+    if IS_VERCEL:
+        vercel_hostnames = _get_vercel_deployment_hostnames()
+        if vercel_hostnames:
+            ALLOWED_HOSTS = list(dict.fromkeys([*ALLOWED_HOSTS, *vercel_hostnames]))
+            CSRF_TRUSTED_ORIGINS = list(
+                dict.fromkeys(
+                    [
+                        *CSRF_TRUSTED_ORIGINS,
+                        *(f"https://{hostname}" for hostname in vercel_hostnames),
+                    ]
+                )
             )
-        )
 
     if not ALLOWED_HOSTS:
         raise ImproperlyConfigured(
-            "Set ALLOWED_HOSTS or deploy with a Vercel hostname configured."
+            "Set ALLOWED_HOSTS for production deployment."
         )
 
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SECURE_SSL_REDIRECT = True
-    SECURE_HSTS_SECONDS = 3600
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=3600)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool(
+        "SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True
+    )
+    SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=False)
+    SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
+    CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
 
 # -----------------------------------------------------------------------------
 #  Installed Apps Organization

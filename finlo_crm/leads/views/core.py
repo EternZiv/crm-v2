@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 # Third-party imports (Django)
 from django.contrib.auth.mixins import LoginRequiredMixin
 
+from finlo.contrib.core.sales_authorization import has_effective_permission
 from finlo.contrib.core.utils import field_readonly_hidden_if
 from finlo.contrib.generics.mixins import RecentlyViewedMixin
 from finlo.contrib.generics.views import (
@@ -132,9 +133,9 @@ class LeadNavbar(LoginRequiredMixin, FinloNavView):
     @cached_property
     def new_button(self):
         """New button for lead"""
-        if self.request.user.has_perm("leads.add_lead") or self.request.user.has_perm(
-            "leads.add_own_lead"
-        ):
+        if has_effective_permission(
+            self.request.user, "leads.add_lead"
+        ) or has_effective_permission(self.request.user, "leads.add_own_lead"):
             return {
                 "url": f"""{reverse_lazy("leads:leads_create_single")}?new=true""",
                 "attrs": {"id": "lead-create"},
@@ -204,9 +205,9 @@ class LeadListView(LoginRequiredMixin, FinloListView):
 
     def no_record_add_button(self):
         """No record add button for lead"""
-        if self.request.user.has_perm("leads.add_lead") or self.request.user.has_perm(
-            "leads.add_own_lead"
-        ):
+        if has_effective_permission(
+            self.request.user, "leads.add_lead"
+        ) or has_effective_permission(self.request.user, "leads.add_own_lead"):
             return {
                 "url": f"""{reverse_lazy("leads:leads_create_single")}?new=true""",
                 "attrs": 'id="lead-create"',
@@ -351,9 +352,9 @@ class LeadCardView(LoginRequiredMixin, FinloCardView):
 
     def no_record_add_button(self):
         """No record add button for lead"""
-        if self.request.user.has_perm("leads.add_lead") or self.request.user.has_perm(
-            "leads.add_own_lead"
-        ):
+        if has_effective_permission(
+            self.request.user, "leads.add_lead"
+        ) or has_effective_permission(self.request.user, "leads.add_own_lead"):
             return {
                 "url": f"""{reverse_lazy("leads:leads_create_single")}?new=true""",
                 "attrs": 'id="lead-create"',
@@ -758,9 +759,9 @@ class LeadChartView(LoginRequiredMixin, FinloChartView):
 
     def no_record_add_button(self):
         """No record add button for lead"""
-        if self.request.user.has_perm("leads.add_lead") or self.request.user.has_perm(
-            "leads.add_own_lead"
-        ):
+        if has_effective_permission(
+            self.request.user, "leads.add_lead"
+        ) or has_effective_permission(self.request.user, "leads.add_own_lead"):
             return {
                 "url": f"""{reverse_lazy("leads:leads_create_single")}?new=true""",
                 "attrs": {"id": "lead-create"},

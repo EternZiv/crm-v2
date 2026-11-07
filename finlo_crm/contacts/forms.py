@@ -215,7 +215,7 @@ class ChildContactForm(forms.Form):
     )
 
     parent_contact = forms.ModelChoiceField(
-        queryset=Contact.objects.all(),
+        queryset=Contact.objects.none(),
         required=False,
         widget=forms.HiddenInput(),  # Make this a hidden field
     )
@@ -233,24 +233,37 @@ class ChildContactForm(forms.Form):
 
     def setup_contact_queryset(self):
         """
-        Set up the contact queryset based on the request parameters.
+        Set up the contact queryset based on company and sales hierarchy.
         """
-        if not self.request:
-            self.fields["contact"].queryset = Contact.objects.all()
-            return
+        req = self.request
+        if not req:
+            from finlo.contrib.utils.middlewares import get_current_request
 
-        parent_id = self.request.GET.get("id")
+            req = get_current_request()
+        user = getattr(req, "user", None) if req else None
+        company = getattr(req, "active_company", None)
+
+        from finlo.contrib.core.sales_authorization import (
+            scope_queryset_to_sales_hierarchy,
+        )
+
+        base_qs = Contact.objects.all()
+        if company:
+            base_qs = base_qs.filter(company=company)
+        if user and not getattr(user, "is_superuser", False):
+            base_qs = scope_queryset_to_sales_hierarchy(base_qs, user)
+
+        self.fields["parent_contact"].queryset = base_qs
+
+        parent_id = req.GET.get("id") if req else None
         if not parent_id:
-            self.fields["contact"].queryset = Contact.objects.all()
+            self.fields["contact"].queryset = base_qs
             return
 
         try:
-            parent_contact = Contact.objects.get(pk=parent_id)
+            parent_contact = base_qs.get(pk=parent_id)
 
-            queryset = Contact.objects.all()
-            queryset = queryset.exclude(id=parent_id)
-
-            queryset = queryset.filter(parent_contact__isnull=True)
+            queryset = base_qs.exclude(id=parent_id).filter(parent_contact__isnull=True)
             descendant_ids = self.get_descendant_ids(parent_contact)
             if descendant_ids:
                 queryset = queryset.exclude(id__in=descendant_ids)
@@ -258,10 +271,36 @@ class ChildContactForm(forms.Form):
             self.fields["contact"].queryset = queryset
 
         except Contact.DoesNotExist:
-            # If parent doesn't exist, show all accounts without parents
-            self.fields["contact"].queryset = Contact.objects.filter(
+            self.fields["contact"].queryset = base_qs.filter(
                 parent_contact__isnull=True
             )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        contact = cleaned_data.get("contact")
+        parent_contact = cleaned_data.get("parent_contact")
+
+        req = self.request
+        if not req:
+            from finlo.contrib.utils.middlewares import get_current_request
+
+            req = get_current_request()
+        user = getattr(req, "user", None) if req else None
+
+        if user and not getattr(user, "is_superuser", False):
+            from finlo.contrib.core.sales_authorization import can_access_sales_record
+
+            if contact and not can_access_sales_record(user, contact):
+                self.add_error(
+                    "contact", _("You do not have permission to access this contact.")
+                )
+            if parent_contact and not can_access_sales_record(user, parent_contact):
+                self.add_error(
+                    "parent_contact",
+                    _("You do not have permission to access the parent contact."),
+                )
+
+        return cleaned_data
 
     def get_descendant_ids(self, contact):
         """

@@ -82,7 +82,7 @@ class MailServerNavbar(LoginRequiredMixin, FinloNavView):
     @cached_property
     def new_button(self):
         """Return new button configuration if user has permission"""
-        if self.request.user.has_perm("mail.create_finloemailconfiguration"):
+        if self.request.user.has_perm("mail.add_finloemailconfiguration"):
             return {
                 "url": f"""{reverse_lazy("mail:mail_server_type_selection")}?new=true""",
                 "attrs": {"id": "mail-server-create"},
@@ -132,7 +132,7 @@ class MailServerListView(LoginRequiredMixin, FinloListView):
         """
         Get the configuration for the "Add" button when no record exist.
         """
-        if self.request.user.has_perm("mail.create_finloemailconfiguration"):
+        if self.request.user.has_perm("mail.add_finloemailconfiguration"):
             return {
                 "url": f"""{reverse_lazy("mail:mail_server_type_selection")}?new=true""",
                 "attrs": 'id="mail-server-create"',

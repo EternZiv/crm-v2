@@ -302,6 +302,7 @@ class Lead(FinloCoreModel):
         decimal_places=2,
         null=True,
         blank=True,
+        validators=[MinValueValidator(0)],
         verbose_name=_("Annual Revenue"),
     )
     country = CountryField(verbose_name=_("Country"))
@@ -371,6 +372,10 @@ class Lead(FinloCoreModel):
         if self.no_of_employees is not None and self.no_of_employees < 0:
             raise ValidationError(
                 {"no_of_employees": _("Total Employees must be greater than or equal to 0.")}
+            )
+        if self.annual_revenue is not None and self.annual_revenue < 0:
+            raise ValidationError(
+                {"annual_revenue": _("Annual Revenue cannot be negative.")}
             )
         if not self.sub_owner_id:
             return

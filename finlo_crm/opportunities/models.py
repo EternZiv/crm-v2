@@ -74,6 +74,7 @@ class OpportunityStage(FinloCoreModel):
     probability = models.DecimalField(
         max_digits=5,
         decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name=_("Probability"),
         help_text=_("Default probability percentage for this stage"),
     )
@@ -102,9 +103,14 @@ class OpportunityStage(FinloCoreModel):
         return html
 
     def clean(self):
-        """Validate that opportunity stage order is non-negative."""
+        """Validate that opportunity stage order is non-negative and probability is between 0 and 100."""
+        super().clean()
         if self.order is not None and self.order < 0:
             raise ValidationError(_("Order must be a non-negative integer."))
+        if self.probability is not None and not (0 <= self.probability <= 100):
+            raise ValidationError(
+                {"probability": _("Probability must be between 0 and 100.")}
+            )
 
     @property
     def is_won(self):
@@ -342,7 +348,12 @@ class Opportunity(FinloCoreModel):
     )
 
     amount = models.DecimalField(
-        max_digits=18, decimal_places=2, null=True, blank=True, verbose_name=_("Amount")
+        max_digits=18,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        verbose_name=_("Amount"),
     )
     expected_revenue = models.DecimalField(
         max_digits=18,
@@ -356,6 +367,7 @@ class Opportunity(FinloCoreModel):
         decimal_places=2,
         null=True,
         blank=True,
+        validators=[MinValueValidator(0)],
         verbose_name=_("Quantity"),
         help_text=_("Total Opportunity Quantity"),
     )
@@ -455,6 +467,13 @@ class Opportunity(FinloCoreModel):
 
     def __str__(self):
         return f"{self.name}"
+
+    def clean(self):
+        super().clean()
+        if self.amount is not None and self.amount < 0:
+            raise ValidationError({"amount": _("Amount cannot be negative.")})
+        if self.quantity is not None and self.quantity < 0:
+            raise ValidationError({"quantity": _("Quantity cannot be negative.")})
 
     @classmethod
     def granted_access_filter(cls, user, action):
@@ -1153,6 +1172,7 @@ class OpportunitySplit(FinloCoreModel):
         decimal_places=2,
         null=True,
         blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
         verbose_name=_("Split Percentage"),
         help_text=_("Percentage of total credit (e.g., 25.00 for 25%)."),
     )
@@ -1173,6 +1193,13 @@ class OpportunitySplit(FinloCoreModel):
 
         verbose_name = _("Opportunity Split")
         verbose_name_plural = _("Opportunity Splits")
+
+    def clean(self):
+        super().clean()
+        if self.split_percentage is not None and not (0 <= self.split_percentage <= 100):
+            raise ValidationError(
+                {"split_percentage": _("Split percentage must be between 0 and 100.")}
+            )
 
     def actions(self):
         """

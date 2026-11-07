@@ -4,6 +4,7 @@ Models for managing accounts in the CRM system, including account details,
 
 # Third-party imports (Django)
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.dispatch import receiver
 
 # First party imports (Finlo)
@@ -93,6 +94,7 @@ class Account(FinloCoreModel):
         decimal_places=0,
         null=True,
         blank=True,
+        validators=[MinValueValidator(0)],
         verbose_name=_("Annual Revenue"),
     )
     billing_city = models.CharField(
@@ -171,7 +173,12 @@ class Account(FinloCoreModel):
         verbose_name_plural = _("Accounts")
 
     def clean(self):
-        """Validate that parent_account does not create a circular hierarchy."""
+        """Validate that parent_account does not create a circular hierarchy and annual_revenue >= 0."""
+        super().clean()
+        if self.annual_revenue is not None and self.annual_revenue < 0:
+            raise ValidationError(
+                {"annual_revenue": _("Annual Revenue cannot be negative.")}
+            )
         if self.parent_account_id:
             ancestor = self.parent_account
             while ancestor is not None:

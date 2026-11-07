@@ -249,7 +249,7 @@ class OpportunitySplitTypeActiveToggleView(
             split_type = OpportunitySplitType.objects.get(pk=kwargs["pk"])
             user = request.user
 
-            if user.has_perm("opportunity.change_opportunitysplittype"):
+            if user.has_perm("opportunities.change_opportunitysplittype"):
                 # Toggle is_active
                 split_type.is_active = not getattr(split_type, "is_active", False)
                 split_type.save()

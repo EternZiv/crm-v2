@@ -83,11 +83,74 @@ class SalesAssignmentForm(SalesCompanyFormMixin, FinloModelForm):
         model = SalesAssignment
         fields = ["company", "user", "region", "team", "manager", "is_active"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = kwargs.get("request") or getattr(self, "request", None)
+        if not request:
+            from finlo.contrib.utils.middlewares import get_current_request
+
+            request = get_current_request()
+        actor = getattr(request, "user", None) if request else None
+        if actor and not getattr(actor, "is_superuser", False):
+            from finlo.contrib.core.sales_authorization import (
+                _role_key,
+                get_sales_scope_region_ids,
+                get_sales_scope_team_ids,
+                get_sales_scope_user_ids,
+            )
+
+            if _role_key(actor) == "RSM":
+                if "region" in self.fields:
+                    self.fields["region"].queryset = self.fields["region"].queryset.filter(
+                        pk__in=get_sales_scope_region_ids(actor) or set()
+                    )
+                if "team" in self.fields:
+                    self.fields["team"].queryset = self.fields["team"].queryset.filter(
+                        pk__in=get_sales_scope_team_ids(actor) or set()
+                    )
+                if "manager" in self.fields:
+                    self.fields["manager"].queryset = self.fields["manager"].queryset.filter(
+                        pk__in=get_sales_scope_user_ids(actor) or set()
+                    )
+
     def clean(self):
         cleaned_data = super().clean()
-        role = getattr(cleaned_data.get("user"), "role", None)
-        if role and role.system_key in {key for key, _label in Role.SALES_ROLE_CHOICES}:
-            return cleaned_data
-        if cleaned_data.get("user"):
-            self.add_error("user", "Select an employee with one of the six sales roles.")
+        user_val = cleaned_data.get("user")
+        role = getattr(user_val, "role", None)
+        if not role or role.system_key not in {key for key, _label in Role.SALES_ROLE_CHOICES}:
+            if user_val:
+                self.add_error("user", "Select an employee with one of the six sales roles.")
+
+        request = getattr(self, "request", None)
+        if not request:
+            from finlo.contrib.utils.middlewares import get_current_request
+
+            request = get_current_request()
+        actor = getattr(request, "user", None) if request else None
+
+        if actor and not getattr(actor, "is_superuser", False):
+            from finlo.contrib.core.sales_authorization import (
+                _role_key,
+                get_sales_scope_region_ids,
+                get_sales_scope_team_ids,
+                get_sales_scope_user_ids,
+            )
+
+            actor_role = _role_key(actor)
+            if actor_role == "RSM":
+                region = cleaned_data.get("region")
+                allowed_regions = get_sales_scope_region_ids(actor) or set()
+                if region and region.pk not in allowed_regions:
+                    self.add_error("region", _("You can only assign employees to your own region."))
+
+                team = cleaned_data.get("team")
+                allowed_teams = get_sales_scope_team_ids(actor) or set()
+                if team and team.pk not in allowed_teams:
+                    self.add_error("team", _("You can only assign employees to teams within your region."))
+
+                manager = cleaned_data.get("manager")
+                allowed_users = get_sales_scope_user_ids(actor) or set()
+                if manager and manager.pk not in allowed_users:
+                    self.add_error("manager", _("You can only assign managers within your region."))
+
         return cleaned_data

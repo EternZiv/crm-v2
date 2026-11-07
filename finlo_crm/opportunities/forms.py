@@ -78,6 +78,37 @@ def render_probability_input(value=None):
     return widget.render(name="probability", value=value)
 
 
+def _validate_opportunity_sales_scope(form, cleaned_data):
+    """Enforce sales hierarchy rules (e.g. BDO can only assign to self and access own records)."""
+    user = getattr(form, "request", None) and getattr(form.request, "user", None)
+    if not user:
+        from finlo.contrib.utils.middlewares import get_current_request
+
+        req = get_current_request()
+        user = req.user if req else None
+
+    if user and not getattr(user, "is_superuser", False):
+        from finlo.contrib.core.sales_authorization import (
+            _role_key,
+            can_access_sales_record,
+        )
+
+        role_key = _role_key(user)
+        if role_key == "BDO":
+            owner = cleaned_data.get("owner")
+            if owner and owner != user:
+                form.add_error(
+                    "owner",
+                    _("BDO can only create or manage opportunities assigned to themselves."),
+                )
+            account = cleaned_data.get("account")
+            if account and not can_access_sales_record(user, account):
+                form.add_error(
+                    "account",
+                    _("You do not have permission to link this account."),
+                )
+
+
 class OpportunityFormClass(OwnerQuerysetMixin, FinloMultiStepForm):
     """Multi-step form for creating/editing Opportunity instances.
     Inherits from FinloMultiStepForm to preserve all existing behavior.
@@ -129,6 +160,11 @@ class OpportunityFormClass(OwnerQuerysetMixin, FinloMultiStepForm):
         _make_probability_readonly(self)
         _wire_stage_probability_refresh(self)
 
+    def clean(self):
+        cleaned_data = super().clean()
+        _validate_opportunity_sales_scope(self, cleaned_data)
+        return cleaned_data
+
 
 class OpportunitySingleForm(OwnerQuerysetMixin, FinloModelForm):
     """
@@ -177,6 +213,11 @@ class OpportunitySingleForm(OwnerQuerysetMixin, FinloModelForm):
         super().__init__(*args, **kwargs)
         _make_probability_readonly(self)
         _wire_stage_probability_refresh(self)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        _validate_opportunity_sales_scope(self, cleaned_data)
+        return cleaned_data
 
 
 class OpportunityStageForm(FinloModelForm):

@@ -395,19 +395,38 @@ class AddToCampaignFormview(LoginRequiredMixin, FinloSingleFormView):
         return False
 
     def get_form(self, form_class=None):
-        """Allow unrestricted campaign queryset on the member form."""
+        """Scope campaign queryset on the member form to company and hierarchy."""
         form = super().get_form(form_class)
         if "campaign" in form.fields:
-            form.fields["campaign"].queryset = Campaign.objects.all()
-            form._unrestricted_fields = getattr(form, "_unrestricted_fields", set()) | {
-                "campaign"
-            }
+            qs = Campaign.objects.all()
+            company = getattr(self.request, "active_company", None)
+            if company:
+                qs = qs.filter(company=company)
+            user = self.request.user
+            if not getattr(user, "is_superuser", False):
+                from finlo.contrib.core.sales_authorization import (
+                    scope_queryset_to_sales_hierarchy,
+                )
+
+                qs = scope_queryset_to_sales_hierarchy(qs, user)
+            form.fields["campaign"].queryset = qs
         return form
 
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
     def form_valid(self, form):
+        user = self.request.user
+        campaign = form.cleaned_data.get("campaign")
+        if user and not getattr(user, "is_superuser", False) and campaign:
+            from finlo.contrib.core.sales_authorization import can_access_sales_record
+
+            if not can_access_sales_record(user, campaign):
+                form.add_error(
+                    "campaign",
+                    _("You do not have permission to access this campaign."),
+                )
+                return self.form_invalid(form)
         super().form_valid(form)
         return ScriptResponse(
             extra=HxTriggerResponse.build(id="tab-campaigns-btn"),

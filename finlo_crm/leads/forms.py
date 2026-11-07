@@ -348,7 +348,40 @@ class LeadConversionForm(forms.Form):
     def __init__(self, *args, **kwargs):
         self.lead = kwargs.pop("lead", None)
         self.selected_account = kwargs.pop("selected_account", None)
+        self.request = kwargs.pop("request", None)
         super().__init__(*args, **kwargs)
+
+        req = self.request
+        if not req:
+            from finlo.contrib.utils.middlewares import get_current_request
+
+            req = get_current_request()
+        user = getattr(req, "user", None) if req else None
+        company = getattr(req, "active_company", None) or (
+            self.lead and getattr(self.lead, "company", None)
+        )
+
+        from finlo.contrib.core.sales_authorization import (
+            _role_key,
+            scope_queryset_to_sales_hierarchy,
+        )
+
+        acc_qs = Account.objects.all()
+        cnt_qs = Contact.objects.all()
+        usr_qs = User.objects.filter(is_active=True)
+        if company:
+            acc_qs = acc_qs.filter(company=company)
+            cnt_qs = cnt_qs.filter(company=company)
+            usr_qs = usr_qs.filter(company=company)
+
+        if user and not getattr(user, "is_superuser", False):
+            acc_qs = scope_queryset_to_sales_hierarchy(acc_qs, user)
+            cnt_qs = scope_queryset_to_sales_hierarchy(cnt_qs, user)
+            usr_qs = scope_queryset_to_sales_hierarchy(usr_qs, user)
+
+        self.fields["existing_account"].queryset = acc_qs
+        self.fields["existing_contact"].queryset = cnt_qs
+        self.fields["owner"].queryset = usr_qs
 
         if self.lead:
             # Pre-populate fields with lead data
@@ -367,11 +400,14 @@ class LeadConversionForm(forms.Form):
 
         # Filter opportunities based on selected account
         if self.selected_account:
-            self.fields["existing_opportunity"].queryset = Opportunity.objects.filter(
-                account=self.selected_account
-            )
+            opp_qs = Opportunity.objects.filter(account=self.selected_account)
+            if company:
+                opp_qs = opp_qs.filter(company=company)
+            if user and not getattr(user, "is_superuser", False):
+                opp_qs = scope_queryset_to_sales_hierarchy(opp_qs, user)
+            self.fields["existing_opportunity"].queryset = opp_qs
         else:
-            self.fields["existing_opportunity"].queryset = None
+            self.fields["existing_opportunity"].queryset = Opportunity.objects.none()
 
     def clean(self):
         """Validate account, contact, and opportunity selections for conversion."""
@@ -421,6 +457,57 @@ class LeadConversionForm(forms.Form):
                 self.add_error(
                     "existing_opportunity", _("Please select an existing opportunity.")
                 )
+
+        req = self.request
+        if not req:
+            from finlo.contrib.utils.middlewares import get_current_request
+
+            req = get_current_request()
+        user = getattr(req, "user", None) if req else None
+
+        if user and not getattr(user, "is_superuser", False):
+            from finlo.contrib.core.sales_authorization import (
+                _role_key,
+                can_access_sales_record,
+            )
+
+            role_key = _role_key(user)
+            if account_action == "select_existing":
+                acc = cleaned_data.get("existing_account")
+                if acc and not can_access_sales_record(user, acc):
+                    self.add_error(
+                        "existing_account",
+                        _("You do not have permission to link this account."),
+                    )
+
+            if contact_action == "select_existing":
+                cnt = cleaned_data.get("existing_contact")
+                if cnt and not can_access_sales_record(user, cnt):
+                    self.add_error(
+                        "existing_contact",
+                        _("You do not have permission to link this contact."),
+                    )
+
+            if opportunity_action == "select_existing":
+                opp = cleaned_data.get("existing_opportunity")
+                if opp and not can_access_sales_record(user, opp):
+                    self.add_error(
+                        "existing_opportunity",
+                        _("You do not have permission to link this opportunity."),
+                    )
+
+            owner = cleaned_data.get("owner")
+            if owner:
+                if role_key == "BDO" and owner != user:
+                    self.add_error(
+                        "owner",
+                        _("BDO can only assign converted records to themselves."),
+                    )
+                elif not can_access_sales_record(user, owner):
+                    self.add_error(
+                        "owner",
+                        _("You do not have permission to assign to this owner."),
+                    )
 
         return cleaned_data
 

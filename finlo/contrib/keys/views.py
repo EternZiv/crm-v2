@@ -84,7 +84,7 @@ class ShortKeyNavbar(LoginRequiredMixin, FinloNavView):
         """Return configuration for the create new shortcut key button."""
         if self.request.user.has_perm(
             "keys.add_own_shortcutkey"
-        ) or self.request.user.has_perm("keys.create_shortcutkey"):
+        ) or self.request.user.has_perm("keys.add_shortcutkey"):
             return {
                 "url": f"""{reverse_lazy("keys:short_key_create")}?new=true""",
                 "attrs": {"id": "short-key-create"},
@@ -119,7 +119,7 @@ class ShortKeyListView(LoginRequiredMixin, FinloListView):
         """
         if self.request.user.has_perm(
             "keys.add_own_shortcutkey"
-        ) or self.request.user.has_perm("keys.create_shortcutkey"):
+        ) or self.request.user.has_perm("keys.add_shortcutkey"):
             return {
                 "url": f"""{reverse_lazy("keys:short_key_create")}?new=true""",
                 "attrs": 'id="short-key-create"',

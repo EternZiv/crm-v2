@@ -230,7 +230,7 @@ class ChildCampaignForm(forms.Form):
     )
 
     parent_campaign = forms.ModelChoiceField(
-        queryset=Campaign.objects.all(), required=False, widget=forms.HiddenInput()
+        queryset=Campaign.objects.none(), required=False, widget=forms.HiddenInput()
     )
 
     def __init__(self, *args, **kwargs):
@@ -247,22 +247,37 @@ class ChildCampaignForm(forms.Form):
 
     def setup_campaign_queryset(self):
         """
-        Set up the campaign queryset based on the request parameters.
+        Set up the campaign queryset based on company and sales hierarchy.
         """
-        if not self.request:
-            self.fields["campaign"].queryset = Campaign.objects.all()
-            return
+        req = self.request
+        if not req:
+            from finlo.contrib.utils.middlewares import get_current_request
 
-        parent_id = self.request.GET.get("id")
+            req = get_current_request()
+        user = getattr(req, "user", None) if req else None
+        company = getattr(req, "active_company", None)
+
+        from finlo.contrib.core.sales_authorization import (
+            scope_queryset_to_sales_hierarchy,
+        )
+
+        base_qs = Campaign.objects.all()
+        if company:
+            base_qs = base_qs.filter(company=company)
+        if user and not getattr(user, "is_superuser", False):
+            base_qs = scope_queryset_to_sales_hierarchy(base_qs, user)
+
+        self.fields["parent_campaign"].queryset = base_qs
+
+        parent_id = req.GET.get("id") if req else None
         if not parent_id:
-            self.fields["campaign"].queryset = Campaign.objects.all()
+            self.fields["campaign"].queryset = base_qs
             return
 
         try:
-            parent_campaign = Campaign.objects.get(pk=parent_id)
+            parent_campaign = base_qs.get(pk=parent_id)
 
-            queryset = Campaign.objects.all()
-            queryset = queryset.exclude(id=parent_id)
+            queryset = base_qs.exclude(id=parent_id)
 
             queryset = queryset.filter(parent_campaign__isnull=True)
             descendant_ids = self.get_descendant_ids(parent_campaign)
@@ -272,9 +287,36 @@ class ChildCampaignForm(forms.Form):
             self.fields["campaign"].queryset = queryset
 
         except Campaign.DoesNotExist:
-            self.fields["campaign"].queryset = Campaign.objects.filter(
+            self.fields["campaign"].queryset = base_qs.filter(
                 parent_campaign__isnull=True
             )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        campaign = cleaned_data.get("campaign")
+        parent_campaign = cleaned_data.get("parent_campaign")
+
+        req = self.request
+        if not req:
+            from finlo.contrib.utils.middlewares import get_current_request
+
+            req = get_current_request()
+        user = getattr(req, "user", None) if req else None
+
+        if user and not getattr(user, "is_superuser", False):
+            from finlo.contrib.core.sales_authorization import can_access_sales_record
+
+            if campaign and not can_access_sales_record(user, campaign):
+                self.add_error(
+                    "campaign", _("You do not have permission to access this campaign.")
+                )
+            if parent_campaign and not can_access_sales_record(user, parent_campaign):
+                self.add_error(
+                    "parent_campaign",
+                    _("You do not have permission to access the parent campaign."),
+                )
+
+        return cleaned_data
 
     def get_descendant_ids(self, campaign):
         """
