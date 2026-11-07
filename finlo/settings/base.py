@@ -48,7 +48,7 @@ env = environ.Env(
 # Read from .env file if exists
 env_file = BASE_DIR / ".env"
 if env_file.exists():
-    env.read_env(str(env_file), overwrite=True)
+    env.read_env(str(env_file), overwrite=False)
 
 # Environment variables
 DEBUG = env("DEBUG")
@@ -119,6 +119,8 @@ if IS_PRODUCTION:
                     ]
                 )
             )
+        elif not ALLOWED_HOSTS:
+            ALLOWED_HOSTS = [".vercel.app"]
 
     if not ALLOWED_HOSTS:
         raise ImproperlyConfigured(
@@ -367,7 +369,7 @@ DATABASES["default"]["CONN_HEALTH_CHECKS"] = env.bool(
     "DB_CONN_HEALTH_CHECKS", default=True
 )
 DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = env.bool(
-    "DISABLE_SERVER_SIDE_CURSORS", default=IS_VERCEL
+    "DISABLE_SERVER_SIDE_CURSORS", default=True
 )
 
 if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":

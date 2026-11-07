@@ -13,12 +13,7 @@ if _Path(__file__).with_name("local_settings.py").is_file():
 
 VERCEL_UAT_MODE = _os.environ.get("VERCEL_UAT_MODE", "").strip() == "1"
 
-if VERCEL_UAT_MODE and not IS_VERCEL:
-    raise _ImproperlyConfigured(
-        "VERCEL_UAT_MODE=1 may only be used on a Vercel deployment."
-    )
-
-if IS_VERCEL and VERCEL_UAT_MODE:
+if VERCEL_UAT_MODE:
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
