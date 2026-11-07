@@ -1,0 +1,4 @@
+# File installation mapping for finlo-crm package
+# Format: source_path destination_path
+
+debian/finlo-crm.service usr/lib/systemd/system/

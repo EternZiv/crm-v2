@@ -1,0 +1,61 @@
+"""
+URL patterns for core API
+"""
+
+# Third-party imports (Django)
+from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenVerifyView,
+)
+
+# First party imports (Finlo)
+from finlo.urls import include, path
+
+# Local imports
+from .views import (
+    BusinessHourViewSet,
+    CompanyViewSet,
+    CustomerRoleViewSet,
+    DepartmentViewSet,
+    HolidayViewSet,
+    FinloAttachmentViewSet,
+    FinloUserViewSet,
+    ImportHistoryViewSet,
+    PartnerRoleViewSet,
+    RoleViewSet,
+    SalesAssignmentViewSet,
+    SalesRegionViewSet,
+    SalesTeamViewSet,
+    TeamRoleViewSet,
+)
+
+# Create a router and register our viewsets with it
+router = DefaultRouter()
+router.register(r"companies", CompanyViewSet)
+router.register(r"departments", DepartmentViewSet)
+router.register(r"roles", RoleViewSet)
+router.register(r"users", FinloUserViewSet)
+router.register(r"sales-regions", SalesRegionViewSet)
+router.register(r"sales-teams", SalesTeamViewSet)
+router.register(r"sales-assignments", SalesAssignmentViewSet)
+
+router.register(r"business-hours", BusinessHourViewSet)
+router.register(r"team-roles", TeamRoleViewSet)
+router.register(r"customer-roles", CustomerRoleViewSet)
+router.register(r"partner-roles", PartnerRoleViewSet)
+router.register(r"import-histories", ImportHistoryViewSet)
+router.register(r"attachments", FinloAttachmentViewSet)
+router.register(r"holidays", HolidayViewSet)
+
+
+# The API URLs are now determined automatically by the router
+urlpatterns = [
+    # JWT Authentication endpoints
+    path("token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("token/verify/", TokenVerifyView.as_view(), name="token_verify"),
+    # Include the router URLs
+    path("", include(router.urls)),
+]

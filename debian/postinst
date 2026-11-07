@@ -1,0 +1,79 @@
+#!/bin/bash
+# Post-installation script for finlo-crm
+
+set -e
+
+APP_USER="finlo-crm"
+APP_GROUP="finlo-crm"
+APP_DIR="/opt/finlo-crm"
+CONFIG_DIR="/etc/finlo-crm"
+VAR_DIR="/var/lib/finlo-crm"
+LOG_DIR="/var/log/finlo-crm"
+
+case "$1" in
+    configure)
+        # Create system user and group if they don't exist
+        if ! getent group "$APP_GROUP" > /dev/null 2>&1; then
+            addgroup --system "$APP_GROUP"
+        fi
+
+        if ! getent passwd "$APP_USER" > /dev/null 2>&1; then
+            adduser --system --home "$APP_DIR" --shell /bin/bash \
+                    --ingroup "$APP_GROUP" --disabled-password \
+                    --gecos "Finlo CRM system user" "$APP_USER"
+        fi
+
+        # Set correct ownership and permissions
+        chown -R "$APP_USER:$APP_GROUP" "$APP_DIR"
+        chown -R "$APP_USER:$APP_GROUP" "$VAR_DIR"
+        chown -R "$APP_USER:$APP_GROUP" "$LOG_DIR"
+
+        # Set directory permissions
+        chmod 755 "$APP_DIR"
+        chmod 750 "$CONFIG_DIR"
+        chmod 755 "$VAR_DIR"
+        chmod 755 "$LOG_DIR"
+
+        # Set file permissions
+        chmod 640 "$CONFIG_DIR"/*.conf || true
+
+        # Generate a random secret key if not already set
+        if grep -q "SECRET_KEY=change-this-in-production" "$CONFIG_DIR/finlo-crm.conf"; then
+            SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(50))")
+            sed -i "s/SECRET_KEY=change-this-in-production/SECRET_KEY=$SECRET_KEY/" "$CONFIG_DIR/finlo-crm.conf"
+        fi
+
+        # Create media directory
+        mkdir -p "$APP_DIR/media"
+        chown "$APP_USER:$APP_GROUP" "$APP_DIR/media"
+        chmod 755 "$APP_DIR/media"
+
+        echo "Finlo CRM has been installed successfully!"
+        echo ""
+        echo "Configuration file: $CONFIG_DIR/finlo-crm.conf"
+        echo "Application directory: $APP_DIR"
+        echo "Data directory: $VAR_DIR"
+        echo "Log directory: $LOG_DIR"
+        echo ""
+        echo "To configure the application:"
+        echo "1. Edit $CONFIG_DIR/finlo-crm.conf"
+        echo "2. Set up your database connection"
+        echo "3. Start the service: sudo systemctl start finlo-crm"
+        echo "4. Enable automatic startup: sudo systemctl enable finlo-crm"
+        echo ""
+        echo "Management commands can be run with: finlo-crm-manage <command>"
+        echo "For example: finlo-crm-manage createsuperuser"
+        ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

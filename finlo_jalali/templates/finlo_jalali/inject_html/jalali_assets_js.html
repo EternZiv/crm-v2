@@ -1,0 +1,10 @@
+{% load static finlo_jalali_tags %}
+{% uses_jalali_calendar as jalali %}
+{% if jalali %}
+    <script>
+        document.body.dataset.useJalaliCalendar = "true";
+    </script>
+    <script src="{% static 'finlo_jalali/js/jalalidatepicker.min.js' %}"></script>
+    <script src="{% static 'finlo_jalali/js/finlo_jalali.js' %}"></script>
+    <script src="{% static 'finlo_jalali/js/finlo_calendar_jalali.js' %}"></script>
+{% endif %}

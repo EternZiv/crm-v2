@@ -1,0 +1,211 @@
+# Finlo extension system
+
+The Finlo **platform** supports extending installed apps in separate packages without forking target-app migrations or form/view classes. CRM modules (`finlo_crm.*`) are common targets; core modules (`finlo.contrib.core`, etc.) work the same way.
+
+| Mechanism | Doc | Package | Status |
+|-----------|-----|---------|--------|
+| **`_inherit_model`** — add DB columns to existing models | [models/inherit.md](./models/inherit.md) | `finlo/extension/models/` | Implemented |
+| **`_inherit_form`** — extend create/edit forms | [forms/inherit.md](./forms/inherit.md) | `finlo/extension/forms/` | Implemented |
+| **`_inherit_list`** — extend list views (`FinloListView`) | [list/inherit.md](./list/inherit.md) | `finlo/extension/list/` | Implemented |
+| **`_inherit_card`** — extend card views (`FinloCardView`) | [card/inherit.md](./card/inherit.md) | `finlo/extension/card/` | Implemented |
+| **`_inherit_kanban`** — extend kanban views (`FinloKanbanView`) | [kanban/inherit.md](./kanban/inherit.md) | `finlo/extension/kanban/` | Implemented |
+| **`_inherit_detail`** — extend detail views (`FinloDetailView`) | [detail/inherit.md](./detail/inherit.md) | `finlo/extension/detail/` | Implemented |
+| **`_inherit_filter`** — extend filtersets (`FinloFilterSet`) | [filter/inherit.md](./filter/inherit.md) | `finlo/extension/filter/` | Implemented |
+| **`_inherit_nav`** — extend nav bars (`FinloNavView`) | [nav/inherit.md](./nav/inherit.md) | `finlo/extension/nav/` | Implemented |
+| **`_inherit_formatter`** — extend date/time format & parse (`DateTimeFormatter`) | [formatting/inherit.md](./formatting/inherit.md) | `finlo/extension/formatting/` | Implemented |
+| **`_inherit_view`** — extend `finlo.views.generic.View` subclasses | [view/inherit.md](./view/inherit.md) | `finlo/extension/view/` | Implemented |
+| **`_inherit_tab`** — extend tab shells (`FinloTabView`) | [tab/inherit.md](./tab/inherit.md) | `finlo/extension/tab/` | Implemented |
+| **`_inherit_mixin`** — extend a bare mixin class or module-level function | [mixin/inherit.md](./mixin/inherit.md) | `finlo/extension/mixin/` | Implemented |
+
+## Package layout
+
+```text
+finlo/extension/
+├── __init__.py           # model API + makemigrations/migrate autodetector patch
+├── bootstrap.py          # bootstrap_extensions() — compose all layers (URLconf hook)
+├── models/               # _inherit_model (metaclass, migrations, registry)
+├── forms/                # _inherit_form (registry, compose, resolve, bootstrap, cache)
+├── filter/               # _inherit_filter (registry, compose, resolve, bootstrap, cache)
+├── nav/                  # _inherit_nav (registry, compose, resolve, bootstrap, cache)
+├── list/                 # _inherit_list (registry, compose, resolve, bootstrap, cache)
+├── card/                 # _inherit_card (registry, compose, resolve, bootstrap, cache)
+├── kanban/               # _inherit_kanban (registry, compose, resolve, bootstrap, cache)
+├── detail/               # _inherit_detail (registry, compose, resolve, bootstrap, cache)
+├── formatting/           # _inherit_formatter (registry, compose, resolve, bootstrap, cache)
+├── view/                 # _inherit_view (registry, compose, resolve, bootstrap, cache)
+├── tab/                  # _inherit_tab (registry, compose, resolve, bootstrap, cache)
+└── mixin/                # _inherit_mixin (registry, compose, metaclass, bootstrap, cache — no resolve.py, target patched directly)
+```
+
+Each view/form subpackage includes a **`cache.py`** module (resolver cache + bootstrap fingerprint) with **no imports** of `compose`, `bootstrap`, or `resolve`. That breaks cyclic imports between `registry`, `compose`, `bootstrap`, and `resolve` while keeping behavior unchanged.
+
+## Typical extension app
+
+**CRM example** (`my_lead_extensions`):
+
+```text
+my_lead_extensions/
+├── apps.py               # AppLauncher; auto_import_modules = ["models", "forms", "filters", "navbars", "lists", ...]
+├── models.py             # _inherit_model = "leads.Lead"
+├── forms.py              # _inherit_form = "finlo_crm.leads.forms.LeadSingleForm"
+├── filters.py            # _inherit_filter = "finlo_crm.leads.filters.LeadFilter"
+├── navbars.py            # _inherit_nav = "finlo_crm.leads.views.core.LeadNavbar"
+├── lists.py              # _inherit_list = "finlo_crm.leads.views.core.LeadListView"
+├── cards.py              # _inherit_card = "finlo_crm.leads.views.core.LeadCardView"
+├── kanbans.py            # _inherit_kanban = "...LeadKanbanView"
+├── details.py            # _inherit_detail = "...LeadDetailView"
+└── migrations/
+```
+
+**Core platform example** (same mechanics; see `finlo/extension/*/tests.py`):
+
+```text
+# Model: _inherit_model = "core.Department"
+# Form:  _inherit_form = "finlo.contrib.core.forms.base.HolidayForm"
+# List:  _inherit_list = "finlo.contrib.core.views.users.UserListView"
+# Detail: _inherit_detail = "finlo.contrib.core.views.users.UserDetailView"
+# Kanban: _inherit_kanban = "finlo.contrib.core.views.users.UserKanbanView"
+# Formatter: _inherit_formatter = "finlo.contrib.generics.formatting.datetime.DateTimeFormatter"
+# View:  _inherit_view = "finlo.contrib.generics.views.helpers.edit_field.FieldInfoResolver"
+```
+
+```python
+# Client local_settings.py only — do not edit finlo/settings/base.py or finlo_apps.py
+INSTALLED_APPS += [
+    "my_lead_extensions",  # after target apps (finlo_crm.*, core, etc.) is OK
+]
+```
+
+## Bootstrap
+
+| Layer | When it composes | Entry point |
+|-------|------------------|-------------|
+| **Models** | Import / `makemigrations` | `ExtensionModelBase` + `FinloAutodetector` (no `ready()` hook) |
+| **Forms** | Startup + each `get_form_class()` | `apply_form_extensions()` via `bootstrap_extensions()` and `resolve_form_class()` |
+| **Filters** | Startup + each `get_filterset_class()` | `apply_filter_extensions()` via `bootstrap_extensions()` and `resolve_filterset_class()` |
+| **Nav** | Startup + each navbar HTTP request | `apply_nav_extensions()` via `bootstrap_extensions()` and `FinloNavView.as_view()` wrapper |
+| **Lists** | Startup + each list HTTP request | `apply_list_extensions()` via `bootstrap_extensions()` and `FinloListView.as_view()` wrapper |
+| **Cards** | Startup + each card HTTP request | `apply_card_extensions()` + `resolve_card_view_class()` via `FinloListView.as_view()` (`FinloCardView`) |
+| **Kanban** | Startup + each kanban HTTP request | `apply_kanban_extensions()` + `resolve_kanban_view_class()` via `FinloListView.as_view()` |
+| **Detail** | Startup + each detail HTTP request | `apply_detail_extensions()` + `resolve_detail_view_class()` via `FinloDetailView.as_view()` |
+| **Formatter** | Startup + each `get_datetime_formatter()` | `apply_formatter_extensions()` via `bootstrap_extensions()` and `get_datetime_formatter()` |
+| **View** | Startup + each Finlo `View.as_view()` / `resolve_view_class()` | `apply_view_extensions()` via `bootstrap_extensions()` and `finlo.views.generic.View.as_view` |
+| **Tab** | Startup + each `FinloTabView.as_view()` / `resolve_tab_view_class()` | `apply_tab_extensions()` via `bootstrap_extensions()` and `FinloTabView.as_view` |
+| **Mixin** | Startup only — patched directly onto the target, once | `apply_mixin_extensions()` via `bootstrap_extensions()`, and eagerly at class-registration time (no per-request resolution — see [mixin/inherit.md](./mixin/inherit.md)) |
+
+**Unified startup** — `finlo/urls/project.py` calls `bootstrap_extensions()` at import time, **and** connects it to Django's `request_started` signal (once, self-disconnecting) as a safety net:
+
+```python
+from finlo.extension.bootstrap import bootstrap_extensions
+
+bootstrap_extensions()
+request_started.connect(_bootstrap_extensions_on_first_request, weak=False)
+```
+
+The direct call exists for the common case (import order already correct), but is not sufficient on its own: `finlo/urls/project.py` is only ever imported **once**, by whichever app's `AppLauncher._register_urls()` happens to trigger it first — commonly an early app such as `finlo.contrib.core` — and that happens *during* `AppConfig.ready()`, before every app has finished loading (`django.apps.apps.ready` is still `False`). Extension apps that load later in `INSTALLED_APPS` (e.g. `custom_fields`, often last) have not registered anything yet at that point, so the direct call silently composes nothing for them. `request_started` only fires once Django setup has fully completed — guaranteed after every `AppConfig.ready()` has run — so it reliably (re-)composes extensions registered by late-loading apps, uniformly across WSGI, ASGI, and the test client.
+
+`bootstrap_extensions()` runs `apply_form_extensions`, `apply_filter_extensions`, `apply_nav_extensions`, `apply_list_extensions`, `apply_card_extensions`, `apply_kanban_extensions`, `apply_detail_extensions`, `apply_detail_section_extensions`, `apply_tab_extensions`, `apply_formatter_extensions`, `apply_view_extensions`, and `apply_mixin_extensions` (all `force=True`). Every `apply_*_extensions()` is safe to call more than once — each either rebuilds its composed class from scratch or (for `mixin`) tracks which specs are already applied and only applies the difference (see [mixin/inherit.md](./mixin/inherit.md#bootstrap)).
+
+**Naming:** Under `finlo/`, types and functions omit a redundant `Finlo` prefix when the import path already provides context — e.g. `ListExtension`, `FormExtension`, `bootstrap_extensions()` (not `FinloListExtension`). Framework types such as `FinloCoreModel` in `finlo.contrib.core` keep their established names.
+
+`CoreConfig.ready()` also invokes all `apply_*_extensions` hooks when `django.apps.ready` is already true; in practice the **URLconf call above** is what matters for extension apps listed after their target apps.
+
+Extension apps may load **after** the apps they extend in `INSTALLED_APPS`; no `finlo_apps.py` / `base.py` edits are required.
+
+**Migrations:** `finlo/extension/__init__.py` patches `makemigrations` / `migrate` to use `FinloAutodetector` so injected model fields generate migrations in the **owning extension app**, not in the target app.
+
+| Layer | Load-order sensitivity |
+|-------|-------------------------|
+| Form / filter / formatter | No — `get_form_class()` / `get_filterset_class()` / `get_datetime_formatter()` resolve when called |
+| Nav / list / card / kanban / detail / view / tab | No for authors — per-request `as_view()` wrapper (see [nav/inherit.md](./nav/inherit.md), [list/inherit.md](./list/inherit.md#why-request-time-resolution), [view/inherit.md](./view/inherit.md), [tab/inherit.md](./tab/inherit.md)) |
+
+Filter panel field options come from `_get_model_fields()` and composed `Meta.exclude` — see [filter/inherit.md](./filter/inherit.md#how-the-filter-panel-uses-your-filterset).
+
+## Registration and cache invalidation
+
+When an extension class is defined (`__init_subclass__`):
+
+| Step | Module | Action |
+|------|--------|--------|
+| 1 | `metaclass.py` | Build `*ExtensionSpec`, call `register_*_extension()` |
+| 2 | `registry.py` | Append spec to `*_EXTENSION_REGISTRY`; invalidate resolver cache (`list`/`kanban`/`detail`: `invalidate_after_registry_change()`; `filter`: `invalidate_all()`) |
+| 3 | `metaclass.py` | Call `_compose_registered_target()` → `apply_*_extensions()` when `django.apps.ready` |
+
+`registry.py` does **not** import `compose` or `resolve`. `compose.py` loads `get_*_extensions_for()` via a **lazy import inside** `compose_*_view_class()`. `bootstrap` and `resolve` read/write shared state only through `cache.py` (`RESOLVER_CACHE`, `LAST_FINGERPRINT` / `BOOTSTRAP_APPLIED`).
+
+```text
+registry  →  cache          (invalidate only)
+bootstrap →  compose → registry   (lazy get_* inside compose)
+resolve   →  bootstrap (lazy apply_*)
+          →  registry  (COMPOSED_MAP)
+          →  cache     (RESOLVER_CACHE)
+```
+
+Do not import `finlo.extension` from `finlo/__init__.py` (risk of `AppRegistryNotReady`).
+
+## Targeting a shared base class
+
+`_inherit_list` and `_inherit_view` (`resolve_list_view_class()` / `resolve_view_class()`) check an exact match for the concrete class being dispatched first, then fall back to checking each class in its `__mro__` for a registration — so one extension registered against a shared base class (e.g. `FinloListView`, `FinloMultiStepFormView`, `FinloDetailTabView`) applies to **every** concrete subclass automatically, present and future, without registering against each one by name. A concrete-class registration always takes priority over a base-class one. Multiple independent apps can target the same base class and stack normally — each composed mixin's `super()` chains to the next. See `finlo/extension/list/resolve.py` / `finlo/extension/view/resolve.py`'s `_resolve_via_base_class()` for the mechanism, and these real examples:
+
+- `custom_fields/extensions/list.py`'s `CustomFieldListContextExtension` (targets `FinloListView`) and `custom_fields/extensions/view.py`'s `CustomFieldMultiStepFormKwargsExtension` (targets `FinloMultiStepFormView`).
+- `finlo/contrib/duplicates/view_extensions.py`'s `DuplicateCheckSingleFormExtension`/`DuplicateCheckMultiStepFormExtension` (targets `FinloSingleFormView`/`FinloMultiStepFormView`) and `DuplicateTabExtension` (targets `FinloDetailTabView`).
+- `finlo/contrib/cadences/view_extensions.py`'s `CadenceTabExtension` — targets the **same** `FinloDetailTabView` as `DuplicateTabExtension` above; both compose together correctly (verified: `DuplicateTabExtensionMixin → CadenceTabExtensionMixin → target` in the MRO, `super()` chaining through both).
+
+This closes the one case that previously had no declarative equivalent and required a raw monkey-patch on the base class directly — no other `_inherit_*` package has this fallback yet (form/filter/detail/etc. resolvers still match on the exact target only).
+
+## Pre-compose hooks (dynamic, per-model discovery)
+
+Some extensions are not statically declared against one named target — they are registered once per model that opts in to a feature at runtime (see `custom_fields/extensions/forms.py`, `extensions/detail.py`, `extensions/filter.py`: one extension per model discovered via `finlo.registry.feature.FEATURE_REGISTRY`). Since which models have opted in can change after this app's own `ready()` runs, discovery must re-run every time Finlo is about to compose that extension type.
+
+`finlo.extension._pre_compose_hooks.register_pre_compose_hook(extension_type, callback)` registers a no-argument callback to run at the very start of the matching `apply_*_extensions()` (`"forms"`, `"filter"`, `"detail"`, `"detail_section"` today) — an ordinary registration, not a reassignment of the bootstrap function itself:
+
+```python
+from finlo.extension._pre_compose_hooks import register_pre_compose_hook
+
+register_pre_compose_hook("forms", my_discovery_function)
+```
+
+## Public API (extension authors)
+
+| Layer | Import | Registration class |
+|-------|--------|-------------------|
+| Model | `from finlo.contrib.core.models import FinloCoreModel` | Subclass + `_inherit_model = "app_label.Model"` |
+| Form | `from finlo.extension.forms import FormExtension` | Subclass + `_inherit_form = "module.FormClass"` |
+| Filter | `from finlo.extension.filter import FilterExtension` | Subclass + `_inherit_filter = "module.FilterClass"` |
+| Nav | `from finlo.extension.nav import NavExtension` | Subclass + `_inherit_nav = "module.NavbarClass"` |
+| List | `from finlo.extension.list import ListExtension` | Subclass + `_inherit_list = "module.ListViewClass"` |
+| Card | `from finlo.extension.card import CardExtension` | Subclass + `_inherit_card = "module.CardViewClass"` |
+| Kanban | `from finlo.extension.kanban import KanbanExtension` | Subclass + `_inherit_kanban = "module.KanbanViewClass"` |
+| Detail | `from finlo.extension.detail import DetailExtension` | Subclass + `_inherit_detail = "module.DetailViewClass"` |
+| Formatter | `from finlo.extension.formatting import DateTimeFormatterExtension` | Subclass + `_inherit_formatter = "module.DateTimeFormatter"` |
+| View | `from finlo.extension.view import ViewExtension` | Subclass + `_inherit_view = "module.ViewClass"` |
+| Mixin | `from finlo.extension.mixin import MixinExtension` | Subclass + `_inherit_mixin = "module.MixinClass"` or `"module.function_name"` |
+
+Startup (platform — already wired in `finlo/urls/project.py`):
+
+```python
+from finlo.extension.bootstrap import bootstrap_extensions
+```
+
+Debug helpers:
+
+```python
+from finlo.extension.forms import resolve_form_class, print_form_mro, get_form_extensions
+from finlo.extension.filter import resolve_filterset_class, print_filter_mro, get_filter_extensions
+from finlo.extension.nav import resolve_nav_view_class, print_nav_view_mro, get_nav_extensions
+from finlo.extension.list import resolve_list_view_class, print_list_view_mro, get_list_extensions
+from finlo.extension.card import resolve_card_view_class, print_card_view_mro, get_card_extensions
+from finlo.extension.kanban import resolve_kanban_view_class, print_kanban_view_mro, get_kanban_extensions
+from finlo.extension.detail import resolve_detail_view_class, print_detail_view_mro, get_detail_extensions
+from finlo.extension.formatting import get_datetime_formatter, resolve_datetime_formatter_class
+from finlo.extension.view import resolve_view_class
+from finlo.extension.mixin import get_mixin_extensions, is_mixin_extension_applied, print_mixin_extension_chain
+```
+
+```bash
+python manage.py check   # includes form/filter/nav extension check IDs (E001+)
+```
+
+## Architecture
+
+See [Plan_FINLO_INHERIT_MIGRATION.md](../../Plan_FINLO_INHERIT_MIGRATION.md) for HR → CRM mapping and design decisions.
