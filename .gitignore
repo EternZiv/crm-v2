@@ -158,7 +158,8 @@ whoosh_index/
 # Load testing credentials and reports
 load_tests/data/*.csv
 load_tests/data/*.json
-reports/
+/reports/
+load_tests/reports/
 *.locust.log
 
 .init_password
