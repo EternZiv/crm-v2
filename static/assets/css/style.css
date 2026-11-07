@@ -2145,6 +2145,23 @@ input::placeholder {
   display: flex !important;
 }
 
+.htmx-indicator,
+.pagination-indicator {
+  display: none !important;
+  pointer-events: none;
+}
+
+.htmx-request.htmx-indicator,
+.htmx-request .htmx-indicator {
+  display: flex !important;
+  pointer-events: none;
+}
+
+.htmx-request.pagination-indicator,
+.htmx-request .pagination-indicator {
+  display: block !important;
+}
+
 .progress li.active .sec::before {
   background-color: #7C87C2;
 }
