@@ -38,13 +38,18 @@ class ActiveCompanyMiddleware:
         request.active_company = None
         if request.user.is_authenticated:
             company_id = request.session.get("active_company_id")
+            user_company = getattr(request.user, "company", None)
+            user_company_id = getattr(request.user, "company_id", None)
             if company_id:
-                try:
-                    request.active_company = Company.objects.get(id=company_id)
-                except Company.DoesNotExist:  # Fixed pylint complaint
-                    request.active_company = getattr(request.user, "company", None)
+                if user_company and user_company_id == company_id:
+                    request.active_company = user_company
+                else:
+                    try:
+                        request.active_company = Company.objects.get(id=company_id)
+                    except Company.DoesNotExist:  # Fixed pylint complaint
+                        request.active_company = user_company
             else:
-                request.active_company = getattr(request.user, "company", None)
+                request.active_company = user_company
         return self.get_response(request)
 
 
@@ -244,14 +249,20 @@ class EnsureSectionMiddleware(MiddlewareMixin):
 
         return valid_sections
 
+    _section_path_cache = {}
+
     def get_section_from_path(self, path):
         """Extract section by matching path with menu_registry URLs"""
+        if path in self._section_path_cache:
+            return self._section_path_cache[path]
+
         try:
             # Special case: root path mapped to home view
             # If the resolved URL name is 'home_view', we want section to be 'home'
             try:
                 resolved_root = resolve(path)
                 if getattr(resolved_root, "url_name", None) == "home_view":
+                    self._section_path_cache[path] = "home"
                     return "home"
             except Resolver404:
                 # If root cannot be resolved, fall back to normal logic
@@ -265,6 +276,7 @@ class EnsureSectionMiddleware(MiddlewareMixin):
                 if menu_url and path.startswith(menu_url):
                     section = getattr(menu_cls, "section", None)
                     if section:
+                        self._section_path_cache[path] = section
                         return section
 
             # If no match found by URL, try to resolve and match by app_label
@@ -277,6 +289,7 @@ class EnsureSectionMiddleware(MiddlewareMixin):
                             if cls_app_label == resolved.app_name:
                                 section = getattr(menu_cls, "section", None)
                                 if section:
+                                    self._section_path_cache[path] = section
                                     return section
             except Resolver404:
                 pass
@@ -284,4 +297,5 @@ class EnsureSectionMiddleware(MiddlewareMixin):
         except Exception as e:
             logger.warning("Error in get_section_from_path: %s", e)
 
+        self._section_path_cache[path] = None
         return None

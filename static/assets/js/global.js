@@ -2091,6 +2091,7 @@ document.body.addEventListener("htmx:historyRestore", function () {
         }
     }
     document.addEventListener("htmx:afterRequest", cleanupLoadingState, true);
+    document.addEventListener("htmx:afterSettle", cleanupLoadingState, true);
     document.addEventListener("htmx:responseError", cleanupLoadingState, true);
     document.addEventListener("htmx:sendError", cleanupLoadingState, true);
     document.addEventListener("htmx:timeout", cleanupLoadingState, true);

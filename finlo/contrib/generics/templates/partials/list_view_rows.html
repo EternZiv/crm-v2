@@ -154,12 +154,13 @@
                 hx-get="{{ group_by_load_more_url }}"
                 hx-target="#data-container-{{ data_container_id }}"
                 hx-select="tr"
+                hx-trigger="intersect root:#table-container-{{ data_container_id }} once"
             {% else %}
                 hx-get="{{ search_url }}?{{ search_params }}&page={{ next_page }}"
                 hx-target="#data-container-{{ view_id }}"
                 hx-select="#data-container-{{ view_id }} tr"
+                hx-trigger="intersect root:#table-container-{{ view_id }} once"
             {% endif %}
-            hx-trigger="intersect once"
             hx-swap="beforeend"
             hx-indicator="#loadingIndicator"
         >
