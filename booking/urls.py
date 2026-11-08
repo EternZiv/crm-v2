@@ -2,6 +2,8 @@
 URLs for the finlo_booking app.
 """
 
+from django.views.generic import RedirectView
+
 from finlo.urls import path
 
 from . import views
@@ -9,6 +11,7 @@ from . import views
 app_name = "booking"
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="my-bookings/?section=my_jobs", permanent=False)),
     # Settings views
     path(
         "booking-settings/",

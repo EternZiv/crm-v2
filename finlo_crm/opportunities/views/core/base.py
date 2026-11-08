@@ -41,13 +41,11 @@ class OpportunityView(LoginRequiredMixin, FinloView):
     """Render the opportunities page."""
 
     nav_url = reverse_lazy("opportunities:opportunities_nav")
+    chart_url = reverse_lazy("opportunities:opportunities_chart")
     list_url = reverse_lazy("opportunities:opportunities_list")
-    kanban_url = reverse_lazy("opportunities:opportunities_kanban")
-    group_by_url = reverse_lazy("opportunities:opportunities_group_by")
     card_url = reverse_lazy("opportunities:opportunities_card")
     split_view_url = reverse_lazy("opportunities:opportunities_split_view")
-    chart_url = reverse_lazy("opportunities:opportunities_chart")
-    timeline_url = reverse_lazy("opportunities:opportunities_timeline")
+    default_layout = "chart"
 
 
 @method_decorator(htmx_required, name="dispatch")
@@ -63,15 +61,12 @@ class OpportunityNavbar(LoginRequiredMixin, FinloNavView):
     search_url = reverse_lazy("opportunities:opportunities_list")
     main_url = reverse_lazy("opportunities:opportunities_view")
     filterset_class = OpportunityFilter
-    kanban_url = reverse_lazy("opportunities:opportunities_kanban")
-    group_by_url = reverse_lazy("opportunities:opportunities_group_by")
+    chart_url = reverse_lazy("opportunities:opportunities_chart")
     card_url = reverse_lazy("opportunities:opportunities_card")
     split_view_url = reverse_lazy("opportunities:opportunities_split_view")
-    chart_url = reverse_lazy("opportunities:opportunities_chart")
-    timeline_url = reverse_lazy("opportunities:opportunities_timeline")
+    default_layout = "chart"
     model_name = "Opportunity"
     model_app_label = "opportunities"
-    exclude_kanban_fields = "owner"
     enable_actions = True
     enable_quick_filters = True
 

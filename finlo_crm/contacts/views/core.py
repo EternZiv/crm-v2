@@ -58,13 +58,11 @@ class ContactView(LoginRequiredMixin, FinloView):
     """
 
     nav_url = reverse_lazy("contacts:contacts_navbar")
+    chart_url = reverse_lazy("contacts:contact_chart_view")
     list_url = reverse_lazy("contacts:contact_list_view")
-    kanban_url = reverse_lazy("contacts:contact_kanban_view")
-    group_by_url = reverse_lazy("contacts:contact_group_by_view")
     card_url = reverse_lazy("contacts:contact_card_view")
     split_view_url = reverse_lazy("contacts:contact_split_view")
-    chart_url = reverse_lazy("contacts:contact_chart_view")
-    timeline_url = reverse_lazy("contacts:contacts_timeline")
+    default_layout = "chart"
 
 
 @method_decorator(htmx_required, name="dispatch")
@@ -79,19 +77,16 @@ class ContactNavbar(LoginRequiredMixin, FinloNavView):
 
     search_url = reverse_lazy("contacts:contact_list_view")
     main_url = reverse_lazy("contacts:contacts_view")
-    kanban_url = reverse_lazy("contacts:contact_kanban_view")
-    group_by_url = reverse_lazy("contacts:contact_group_by_view")
+    chart_url = reverse_lazy("contacts:contact_chart_view")
     card_url = reverse_lazy("contacts:contact_card_view")
+    split_view_url = reverse_lazy("contacts:contact_split_view")
+    default_layout = "chart"
     model_str = "contacts.Contact"
     model_name = "Contact"
     model_app_label = "contacts"
     filterset_class = ContactFilter
-    exclude_kanban_fields = "company"
     enable_actions = True
     enable_quick_filters = True
-    split_view_url = reverse_lazy("contacts:contact_split_view")
-    chart_url = reverse_lazy("contacts:contact_chart_view")
-    timeline_url = reverse_lazy("contacts:contacts_timeline")
 
     @cached_property
     def new_button(self):

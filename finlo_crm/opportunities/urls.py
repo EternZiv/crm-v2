@@ -1,5 +1,8 @@
 """URL configuration for opportunities module."""
 
+# Third-party imports (Django)
+from django.views.generic import RedirectView
+
 # First party imports (Finlo)
 from finlo.urls import path
 
@@ -9,6 +12,7 @@ from finlo_crm.opportunities import views
 app_name = "opportunities"
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="opportunities-view/?section=sales", permanent=False)),
     path(
         "opportunities-view/",
         views.OpportunityView.as_view(),

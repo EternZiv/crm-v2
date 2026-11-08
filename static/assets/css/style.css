@@ -1,3 +1,61 @@
+/* ============================================================
+   GLOBAL ZERO-ANIMATION & ZERO-TRANSITION SYSTEM
+   Completely removes all animations, keyframes, transitions,
+   and delays across the CRM for instant, zero-lag UI response.
+   ============================================================ */
+*,
+*::before,
+*::after {
+  -webkit-animation: none !important;
+  -moz-animation: none !important;
+  -o-animation: none !important;
+  animation: none !important;
+  -webkit-animation-duration: 0s !important;
+  animation-duration: 0s !important;
+  -webkit-animation-delay: 0s !important;
+  animation-delay: 0s !important;
+  -webkit-transition: none !important;
+  -moz-transition: none !important;
+  -o-transition: none !important;
+  transition: none !important;
+  -webkit-transition-duration: 0s !important;
+  transition-duration: 0s !important;
+  -webkit-transition-delay: 0s !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+/* Neutralize Tailwind & custom animation classes */
+.animate-spin,
+.animate-pulse,
+.animate-bounce,
+.animate-ping,
+.animate-fade-in,
+[class*="animate-"] {
+  -webkit-animation: none !important;
+  animation: none !important;
+  transform: none !important;
+}
+
+/* Neutralize HTMX swap / settle transition delays */
+.htmx-swapping,
+.htmx-settling {
+  opacity: 1 !important;
+  transition: none !important;
+}
+
+/* Instant drawer, sidebar, and modals */
+.sidebarModal,
+.sidebarModal.active,
+[data-modal-backdrop],
+[data-drawer-backdrop],
+.modal-backdrop {
+  -webkit-transition: none !important;
+  transition: none !important;
+  -webkit-animation: none !important;
+  animation: none !important;
+}
+
 :root {
   /* Split view active tile colors; match Tailwind primary palette */
   --split-view-active-bg: #D5D8F0;      /* primary-300 */
@@ -6,7 +64,7 @@
 
 .btn-with-icon:hover img {
   filter: brightness(0) invert();
-  transition: 0.3s;
+  transition: none;
 }
 .w-fill-available {
   width: -webkit-fill-available;
@@ -75,20 +133,8 @@
 }
 
 @layer utilities {
-  @keyframes fade-in {
-    0% {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-
-    100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
   .animate-fade-in {
-    animation: fade-in 0.3s ease-out forwards;
+    animation: none !important;
   }
 }
 

@@ -43,8 +43,10 @@ def get_sub_section_menu(request=None) -> Dict[str, List[Dict]]:
         all_perms = getattr(obj, "all_perms", False)
 
         # Skip items if user doesn't have required perms
-        if request and request.user:
-            if all_perms:
+        if request and getattr(request, "user", None) and request.user.is_authenticated:
+            if getattr(request.user, "is_superuser", False):
+                pass
+            elif all_perms:
                 # user must have ALL permissions
                 if not all(request.user.has_perm(p) for p in perm):
                     continue

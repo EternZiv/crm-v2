@@ -9,6 +9,7 @@ from functools import cached_property
 # Third-party imports (Django)
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.cache import cache
 
 from finlo.contrib.generics.views import (
     FinloListView,
@@ -238,15 +239,19 @@ class ShortKeyDataView(LoginRequiredMixin, View):
 
     def get(self, request, *args, **kwargs):
         """Return all shortcut keys for the logged-in user as JSON."""
-        shortcuts = [
-            {
-                "key": sk.key,
-                "page": sk.page,
-                "command": sk.command.lower(),
-                "section": sk.get_section(),
-                "title": sk.get_page_title(),
-            }
-            for sk in ShortcutKey.all_objects.filter(user=request.user)
-        ]
+        cache_key = f"user_shortcuts_{request.user.id}"
+        shortcuts = cache.get(cache_key)
+        if shortcuts is None:
+            shortcuts = [
+                {
+                    "key": sk.key,
+                    "page": sk.page,
+                    "command": sk.command.lower(),
+                    "section": sk.get_section(),
+                    "title": sk.get_page_title(),
+                }
+                for sk in ShortcutKey.all_objects.filter(user=request.user)
+            ]
+            cache.set(cache_key, shortcuts, timeout=300)
 
         return JsonResponse({"shortcuts": shortcuts})

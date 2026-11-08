@@ -292,7 +292,6 @@ class ActivityView(LoginRequiredMixin, FinloView):
 
     nav_url = reverse_lazy("activity:activity_nav_view")
     list_url = reverse_lazy("activity:activity_tabbed_view")
-    kanban_url = reverse_lazy("activity:activity_kanban_tabbed_view")
 
 
 @method_decorator(htmx_required, name="dispatch")
@@ -308,11 +307,9 @@ class ActivityNavbar(LoginRequiredMixin, FinloNavView):
     search_url = reverse_lazy("activity:activity_list_view")
     main_url = reverse_lazy("activity:activity_view")
     filterset_class = ActivityFilter
-    kanban_url = reverse_lazy("activity:activity_kanban_tabbed_view")
     model_name = "Activity"
     model_app_label = "activity"
     enable_actions = True
-    exclude_kanban_fields = "call_type,reminder,activity_type,meeting_host"
     # The lists show Related To as the linked related_object_col column; the
     # raw related_object field would be a second, plain-text "Related To".
     column_selector_exclude_fields = ["related_object"]

@@ -37,6 +37,7 @@
                 title="{% trans 'Quick actions' %}"
                 aria-label="{% trans 'Quick actions' %}"
                 data-tooltip-placement="{% if LANGUAGE_BIDI %}left{% else %}right{% endif %}"
+                onkeydown="if (event.key === 'Enter') { this.checked = !this.checked; }"
             >
             <span class="plus-icon bg-primary-600">
                 <span class="fa fa-plus" aria-hidden="true"></span>
@@ -44,7 +45,8 @@
             <ul class="floating-nav">
                 {% for menu in floating_menu %}
                     <li
-                        hx-get="{{ menu.url }}?{{ request.GET.urlencode }}"
+                        hx-get="{{ menu.url }}{% if request.GET.urlencode %}{% if '?' in menu.url %}&{% else %}?{% endif %}{{ request.GET.urlencode }}{% endif %}"
+                        hx-trigger="click, keyup[key=='Enter']"
                         {% for key, value in menu.items.items %}
                             {{ key }}="{{ value }}"
                         {% endfor %}

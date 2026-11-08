@@ -8,6 +8,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{{ TITLE }}</title>
+        <link rel="shortcut icon" href="{% static 'assets/img/finlo-favicon.ico' %}" type="image/x-icon">
 
         <!-- Head Start: Blocking initialization scripts -->
         {% load_registered_html "head_start" as head_start_html %}
@@ -101,7 +102,6 @@
         <link rel="stylesheet" href="{% static 'assets/css/calendar.css' %}">
         <link rel="stylesheet" href="{% static 'assets/css/select2.min.css' %}">
         <link rel="stylesheet" href="{% static 'assets/css/sweetalert_toast/toast.css' %}">
-        <link rel="stylesheet" href="{% static 'assets/css/animate.min.css' %}">
 
         {% block extra_css %}{% endblock extra_css %}
 

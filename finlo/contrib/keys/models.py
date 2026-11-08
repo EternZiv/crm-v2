@@ -4,6 +4,9 @@ Models for the keys app
 
 # Third-party imports (Django)
 from django.conf import settings
+from django.core.cache import cache
+from django.db.models.signals import post_delete, post_save
+from django.dispatch import receiver
 
 from finlo.contrib.core.models import FinloCoreModel
 from finlo.contrib.utils.middlewares import _thread_local
@@ -120,3 +123,12 @@ class ShortcutKey(FinloCoreModel):
                     return section_name
 
         return None
+
+
+@receiver(post_save, sender=ShortcutKey)
+@receiver(post_delete, sender=ShortcutKey)
+def invalidate_user_shortcuts_cache(sender, instance, **kwargs):
+    """Invalidate cached shortcut keys when a shortcut is created, updated or deleted."""
+    if instance.user_id:
+        cache.delete(f"user_shortcuts_{instance.user_id}")
+

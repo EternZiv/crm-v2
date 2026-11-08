@@ -773,7 +773,7 @@ class FinloMultiStepFormView(FormViewCommonMixin, FormView):
                             f"hx-swap='innerHTML' "
                             f"hx-trigger='load'>"
                             f"</div>"
-                            f"<script>$('#reloadButton').click();</script>"
+                            f"<script>$('#reloadButton, #detailReloadButton, #detailViewReloadButton').first().click();</script>"
                         )
 
                     # Check if detail_url_name is provided and this is a create operation

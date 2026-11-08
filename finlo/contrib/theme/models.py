@@ -235,20 +235,31 @@ class CompanyTheme(FinloCoreModel):
     def get_theme_for_company(cls, company):
         """
         Get the theme for a specific company
-        Returns the theme object or default theme
+        Returns the theme object or default theme (cached)
         """
         if not company:
             return cls.get_default_theme()
+
+        company_id = getattr(company, "pk", company)
+        from django.core.cache import cache
+        cache_key = f"finlo_company_theme_{company_id}"
+        cached_theme = cache.get(cache_key)
+        if cached_theme is not None:
+            return cached_theme
 
         company_theme = (
             cls.all_objects.filter(company=company).select_related("theme").first()
         )
         if company_theme and company_theme.theme:
-            return company_theme.theme
+            theme = company_theme.theme
+        else:
+            theme = FinloColorTheme.objects.filter(
+                name="Finlo Purple Theme (Default)"
+            ).first()
 
-        return FinloColorTheme.objects.filter(
-            name="Finlo Purple Theme (Default)"
-        ).first()
+        if theme:
+            cache.set(cache_key, theme, timeout=3600)
+        return theme
 
 
 # Backwards compatibility alias

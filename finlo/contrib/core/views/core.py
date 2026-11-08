@@ -197,7 +197,15 @@ class LoginUserView(View):
         """
         Render login page with an optional 'next' param preserved.
         """
-        next_url = safe_url(request, request.GET.get("next", "/"))
+        if request.user.is_authenticated:
+            return redirect(settings.DEFAULT_HOME_REDIRECT)
+
+        raw_next = request.GET.get("next")
+        if not raw_next or raw_next == "/":
+            next_url = settings.DEFAULT_HOME_REDIRECT
+        else:
+            next_url = safe_url(request, raw_next, settings.DEFAULT_HOME_REDIRECT)
+
         condition_view = InitializeDatabaseConditionView()
         initialize_database = condition_view.get_initialize_condition()
         show_forgot_password = False
@@ -226,7 +234,11 @@ class LoginUserView(View):
         """
         identifier = request.POST.get("username")
         secret = request.POST.get("password")
-        next_url = safe_url(request, request.POST.get("next", "/"))
+        raw_next = request.POST.get("next")
+        if not raw_next or raw_next == "/":
+            next_url = settings.DEFAULT_HOME_REDIRECT
+        else:
+            next_url = safe_url(request, raw_next, settings.DEFAULT_HOME_REDIRECT)
 
         ip = (
             request.META.get(
@@ -331,11 +343,13 @@ class LogoutView(View):
             }}
         </script>
 
-        <meta http-equiv="refresh" content="0;url=/login">
+        <meta http-equiv="refresh" content="0;url=/login/">
         """
 
         response = HttpResponse()
         response.content = script_content
+        if request.headers.get("HX-Request") == "true" or request.META.get("HTTP_HX_REQUEST"):
+            response["HX-Redirect"] = "/login/"
         return response
 
 

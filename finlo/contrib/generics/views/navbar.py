@@ -33,12 +33,11 @@ class FinloNavView(TemplateView):
     filterset_class = None
     search_url: str = ""
     main_url: str = ""
-    kanban_url: str = ""
-    group_by_url: str = ""
     card_url: str = ""
-    timeline_url: str = ""
+    split_view_url: str = ""
+    chart_url: str = ""
     default_layout: str = (
-        "list"  # "list", "kanban", "group_by", "card", or a custom_layouts key
+        "chart"  # "chart" (default), "list", "card", "split_view"
     )
     custom_layouts: dict = {}
     actions: list = []
@@ -205,59 +204,10 @@ class FinloNavView(TemplateView):
         Build the ordered list of layout options for the view toggle.
 
         Single source of truth for both the toggle button's icon and the
-        dropdown list, so adding/removing a layout type only needs a change
-        here instead of two parallel template blocks.
+        dropdown list. Supported layouts: Chart View (default), List, Card, Split View.
         """
-        layouts = [
-            {
-                "key": "list",
-                "url": True,
-                "icon": "assets/icons/l3.svg",
-                "icon_width": 16,
-                "label": _("List"),
-            },
-        ]
-        if context["card_url"]:
-            layouts.append(
-                {
-                    "key": "card",
-                    "url": context["card_url"],
-                    "icon": "assets/icons/card-view.svg",
-                    "icon_width": 16,
-                    "label": _("Card"),
-                }
-            )
-        if context["kanban_url"]:
-            layouts.append(
-                {
-                    "key": "kanban",
-                    "url": context["kanban_url"],
-                    "icon": "assets/icons/l2.svg",
-                    "icon_width": 16,
-                    "label": _("Kanban"),
-                }
-            )
-        if context["timeline_url"]:
-            layouts.append(
-                {
-                    "key": "timeline",
-                    "url": context["timeline_url"],
-                    "icon": "assets/icons/timeline.svg",
-                    "icon_width": 18,
-                    "label": _("Timeline"),
-                }
-            )
-        if context["group_by_url"]:
-            layouts.append(
-                {
-                    "key": "group_by",
-                    "url": context["group_by_url"],
-                    "icon": "assets/icons/group-by.svg",
-                    "icon_width": 16,
-                    "label": _("Group By"),
-                }
-            )
-        if context["chart_url"]:
+        layouts = []
+        if context.get("chart_url"):
             layouts.append(
                 {
                     "key": "chart",
@@ -267,7 +217,26 @@ class FinloNavView(TemplateView):
                     "label": _("Chart View"),
                 }
             )
-        if context["split_view_url"]:
+        layouts.append(
+            {
+                "key": "list",
+                "url": True,
+                "icon": "assets/icons/l3.svg",
+                "icon_width": 16,
+                "label": _("List"),
+            }
+        )
+        if context.get("card_url"):
+            layouts.append(
+                {
+                    "key": "card",
+                    "url": context["card_url"],
+                    "icon": "assets/icons/card-view.svg",
+                    "icon_width": 16,
+                    "label": _("Card"),
+                }
+            )
+        if context.get("split_view_url"):
             layouts.append(
                 {
                     "key": "split_view",
@@ -277,7 +246,7 @@ class FinloNavView(TemplateView):
                     "label": _("Split View"),
                 }
             )
-        for key, layout in context["custom_layouts"].items():
+        for key, layout in (context.get("custom_layouts") or {}).items():
             if layout.get("url"):
                 layouts.append(
                     {
@@ -293,9 +262,13 @@ class FinloNavView(TemplateView):
     def get_context_data(self, **kwargs):
         """Add effective_layout, nav_title, search_url, and search_push_url to context."""
         context = super().get_context_data(**kwargs)
-        context["effective_layout"] = self.request.GET.get("layout") or getattr(
-            self, "default_layout", "list"
+        chart_url = getattr(self, "chart_url", None)
+        effective_layout = self.request.GET.get("layout") or getattr(
+            self, "default_layout", "chart"
         )
+        if effective_layout == "chart" and not chart_url:
+            effective_layout = "list"
+        context["effective_layout"] = effective_layout
         context["nav_title"] = self.nav_title
         context["nav_description"] = self.nav_description
         context["main_session_id"] = getattr(self, "main_session_id", "mainSession")
@@ -374,32 +347,15 @@ class FinloNavView(TemplateView):
             context["quick_filter_url"] += (
                 f"{separator}{quick_filter_params.urlencode()}"
             )
-        context["kanban_url"] = self.kanban_url
-        context["group_by_url"] = getattr(self, "group_by_url", None) or ""
         context["card_url"] = getattr(self, "card_url", None) or ""
-        context["timeline_url"] = getattr(self, "timeline_url", None) or ""
-        timeline_settings_url = ""
-        if getattr(self, "timeline_url", None):
-            try:
-                base = str(reverse_lazy("generics:timeline_settings"))
-                params = [
-                    ("app_label", self.model_app_label),
-                    ("model", self.model_name),
-                    ("main_url", context["main_url"]),
-                ]
-                for key in self.request.GET:
-                    if key in ("app_label", "model", "main_url"):
-                        continue
-                    for value in self.request.GET.getlist(key):
-                        params.append((key, value))
-                timeline_settings_url = base + "?" + urlencode(params)
-            except Exception:
-                pass
-        context["timeline_settings_modal_url"] = timeline_settings_url
         split_url = getattr(self, "split_view_url", None)
         context["split_view_url"] = str(split_url) if split_url else ""
         chart_url = getattr(self, "chart_url", None)
         context["chart_url"] = str(chart_url) if chart_url else ""
+        context["kanban_url"] = ""
+        context["group_by_url"] = ""
+        context["timeline_url"] = ""
+        context["timeline_settings_modal_url"] = ""
         context["custom_layouts"] = getattr(self, "custom_layouts", None) or {}
         all_layouts = self.get_all_layouts(context)
         context["all_layouts"] = all_layouts
@@ -409,10 +365,10 @@ class FinloNavView(TemplateView):
                 for layout in all_layouts
                 if layout["key"] == context["effective_layout"]
             ),
-            None,
+            all_layouts[0] if all_layouts else None,
         )
         context["effective_layout_icon"] = (
-            active_layout["icon"] if active_layout else "assets/icons/l3.svg"
+            active_layout["icon"] if active_layout else "assets/icons/pie-chart-view.svg"
         )
         context["actions"] = self.actions
         context["new_button"] = self.new_button or {}

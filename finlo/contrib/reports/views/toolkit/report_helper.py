@@ -48,6 +48,10 @@ def create_temp_report_with_preview(original_report, preview_data):
 class ReportPreviewMixin:
     """Shared helpers for report preview session handling."""
 
+    def create_temp_report(self, original_report, preview_data):
+        """Create a temporary Report instance with preview data applied."""
+        return create_temp_report_with_preview(original_report, preview_data)
+
     def get_session_key(self, report):
         """to get the session key"""
         return f"report_preview_{report.pk}"

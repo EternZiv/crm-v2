@@ -7,6 +7,7 @@ and menu context for templates.
 
 from django.conf import settings
 from django.core.cache import cache
+from django.utils.functional import SimpleLazyObject
 from django.utils.translation import get_language
 
 from finlo.contrib.core.models import Company, FinloContentType, RecentlyViewed
@@ -26,6 +27,8 @@ COMPANY_LIST_CACHE_KEY = "available_companies"
 
 def company_list(request):
     """Return all available companies, cached to avoid a query on every request."""
+    if getattr(request, "_skip_header_context", False) or request.headers.get("HX-Request") == "true":
+        return {"available_companies": []}
     companies = cache.get(COMPANY_LIST_CACHE_KEY)
     if companies is None:
         companies = list(Company.objects.all())
@@ -60,7 +63,7 @@ def recently_viewed_items(request):
     pre-populate each row's cached GenericForeignKey value so the template's
     later ``item.content_object``/``item.get_detail_url`` access is free.
     """
-    if getattr(request, "_skip_header_context", False):
+    if getattr(request, "_skip_header_context", False) or request.headers.get("HX-Request") == "true":
         return {"recently_viewed_items": []}
 
     if request.user.is_authenticated:
@@ -119,7 +122,7 @@ class UnreadNotifications(list):
 
 def unread_notifications(request):
     """Return unread notifications and sound preference for the current user."""
-    if getattr(request, "_skip_header_context", False):
+    if getattr(request, "_skip_header_context", False) or request.headers.get("HX-Request") == "true":
         return {
             "unread_notifications": UnreadNotifications([]),
             "unread_notifications_count": 0,
@@ -146,19 +149,41 @@ def unread_notifications(request):
 
 
 def menu_context_processor(request):
-    """Return context for various menus."""
+    """Return context for various menus, lazily evaluated on template demand."""
 
     current_app_label = (
         request.resolver_match.app_name if request.resolver_match else None
     )
-    section_param = request.GET.get("section")
+    from finlo.contrib.core.middlewares import get_section_from_path
+
+    section_param = request.GET.get("section") or get_section_from_path(request.path)
+
+    # For partial HTMX requests that only target navbar, mainSession, modals, etc.,
+    # skip evaluating heavy menu registries and permission checks.
+    target = request.headers.get("HX-Target", "")
+    is_partial = getattr(request, "_skip_header_context", False) or (
+        request.headers.get("HX-Request") == "true"
+        and target in ("navBar", "mainSession", "modalBox", "filter-panel")
+        and "#sideMenuContainer" not in request.headers.get("HX-Select-OOB", "")
+    )
+
+    if is_partial:
+        return {
+            "main_section_menu": [],
+            "sub_section_menu": {},
+            "settings_menu": [],
+            "floating_menu": [],
+            "my_settings_menu": [],
+            "current_section": section_param,
+            "current_app_label": current_app_label,
+        }
 
     return {
-        "main_section_menu": get_main_section_menu(request),
-        "sub_section_menu": get_sub_section_menu(request),
-        "settings_menu": get_settings_menu(request),
-        "floating_menu": get_floating_menu(request),
-        "my_settings_menu": get_my_settings_menu(request),
+        "main_section_menu": SimpleLazyObject(lambda: get_main_section_menu(request)),
+        "sub_section_menu": SimpleLazyObject(lambda: get_sub_section_menu(request)),
+        "settings_menu": SimpleLazyObject(lambda: get_settings_menu(request)),
+        "floating_menu": SimpleLazyObject(lambda: get_floating_menu(request)),
+        "my_settings_menu": SimpleLazyObject(lambda: get_my_settings_menu(request)),
         "current_section": section_param,
         "current_app_label": current_app_label,
     }
@@ -175,9 +200,11 @@ def currency_context(request):
     from finlo.contrib.core.models import MultipleCurrency
 
     company = getattr(request.user, "company", None)
-    default_currency = (
-        MultipleCurrency.get_default_currency(company) if company else None
-    )
+    if not hasattr(request, "_cached_default_currency"):
+        request._cached_default_currency = (
+            MultipleCurrency.get_default_currency(company) if company else None
+        )
+    default_currency = request._cached_default_currency
 
     user_currency = getattr(request.user, "currency", None) or default_currency
 

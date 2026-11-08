@@ -79,8 +79,6 @@ class UserView(LoginRequiredMixin, FinloView):
     template_name = "settings/users/users_view.html"
     nav_url = reverse_lazy("core:user_nav_view")
     list_url = reverse_lazy("core:user_list_view")
-    kanban_url = reverse_lazy("core:user_kanban_view")
-    group_by_url = reverse_lazy("core:user_group_by_view")
 
 
 @method_decorator(htmx_required, name="dispatch")
@@ -99,11 +97,9 @@ class UserNavbar(LoginRequiredMixin, FinloNavView):
     search_url = reverse_lazy("core:user_list_view")
     main_url = reverse_lazy("core:user_view")
     filterset_class = UserFilter
-    kanban_url = reverse_lazy("core:user_kanban_view")
     model_name = str(User.__name__)
     model_app_label = str(User._meta.app_label)
     nav_width = False
-    group_by_url = reverse_lazy("core:user_group_by_view")
     column_selector_exclude_fields = [
         "password",
         "last_login",

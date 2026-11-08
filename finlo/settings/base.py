@@ -363,7 +363,7 @@ if not _ISOLATED_SECURITY_TEST_SETTINGS and any(
 
 # Connection persistence for better performance
 DATABASES["default"]["CONN_MAX_AGE"] = env.int(
-    "DB_CONN_MAX_AGE", default=0 if (IS_VERCEL or DEBUG) else 60
+    "DB_CONN_MAX_AGE", default=0 if IS_VERCEL else 60
 )
 DATABASES["default"]["CONN_HEALTH_CHECKS"] = env.bool(
     "DB_CONN_HEALTH_CHECKS", default=True
@@ -376,6 +376,21 @@ if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
     DATABASES["default"].setdefault("OPTIONS", {})["sslmode"] = "require"
 elif IS_VERCEL:
     raise ImproperlyConfigured("Vercel deployments must use PostgreSQL.")
+
+# -----------------------------------------------------------------------------
+# Cache Configuration (24-Hour Default Expiration)
+# -----------------------------------------------------------------------------
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "finlo-cache",
+        "TIMEOUT": 86400,  # 24 hours automatic key expiration
+        "OPTIONS": {
+            "MAX_ENTRIES": 10000,
+            "CULL_FREQUENCY": 3,
+        },
+    }
+}
 
 
 # Password validation
@@ -522,6 +537,7 @@ LANGUAGE_COOKIE_SAMESITE = "Lax"
 # Authentication & Defaults
 # -----------------------------------------------------------------------------
 LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/dashboard/?section=home&date_range=all"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "core.FinloUser"
 
@@ -530,7 +546,7 @@ AUTH_USER_MODEL = "core.FinloUser"
 # -----------------------------------------------------------------------------
 EMAIL_BACKEND = "finlo.contrib.mail.backends.FinloDefaultMailBackend"
 
-DEFAULT_HOME_REDIRECT = "/dashboard/?section=home"
+DEFAULT_HOME_REDIRECT = "/dashboard/?section=home&date_range=all"
 
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://127.0.0.1:6379/0")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://127.0.0.1:6379/0")

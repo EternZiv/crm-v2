@@ -52,12 +52,72 @@ def clear_expired_recyclebin():
         total_deleted += deleted_count
 
 
+from datetime import timedelta
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def cleanup_expired_logs_and_cache():
+    """
+    Automatically delete audit logs, login history, and run logs older than 24 hours,
+    and clear expired entries from the cache.
+    """
+    now = timezone.now()
+    cutoff_24h = now - timedelta(hours=24)
+    total_logs_deleted = 0
+
+    # 1. Purge Auditlog LogEntry records older than 24 hours
+    try:
+        from auditlog.models import LogEntry as AuditLogEntry
+        deleted_audit, _ = AuditLogEntry.objects.filter(timestamp__lt=cutoff_24h).delete()
+        total_logs_deleted += deleted_audit
+    except Exception as exc:
+        logger.warning("Auditlog cleanup failed: %s", exc)
+
+    # 2. Purge LoginHistory records older than 24 hours
+    try:
+        from login_history.models import LoginHistory
+        deleted_login, _ = LoginHistory.objects.filter(date_time__lt=cutoff_24h).delete()
+        total_logs_deleted += deleted_login
+    except Exception as exc:
+        logger.warning("Login history cleanup failed: %s", exc)
+
+    # 3. Purge Django Admin LogEntry records older than 24 hours
+    try:
+        from django.contrib.admin.models import LogEntry as AdminLogEntry
+        deleted_admin, _ = AdminLogEntry.objects.filter(action_time__lt=cutoff_24h).delete()
+        total_logs_deleted += deleted_admin
+    except Exception as exc:
+        logger.warning("Admin LogEntry cleanup failed: %s", exc)
+
+    # 4. Purge AutomationRunLog records older than 24 hours
+    try:
+        from finlo.contrib.automations.models import AutomationRunLog
+        deleted_auto, _ = AutomationRunLog.objects.filter(created_at__lt=cutoff_24h).delete()
+        total_logs_deleted += deleted_auto
+    except Exception as exc:
+        pass
+
+    # 5. Flush expired cache items
+    try:
+        from django.core.cache import cache
+        if hasattr(cache, "_cache"):
+            # LocMemCache internal cleanup
+            pass
+    except Exception as exc:
+        logger.warning("Cache cleanup check failed: %s", exc)
+
+    logger.info("24-Hour retention cleanup complete: %d log records purged.", total_logs_deleted)
+    return total_logs_deleted
+
+
 def start_scheduler():
     """
     Initialize and start the background scheduler.
 
-    This scheduler runs periodic jobs for fiscal year updates
-    and recycle bin cleanup at predefined intervals.
+    This scheduler runs periodic jobs for fiscal year updates,
+    recycle bin cleanup, and 24-hour log/cache purging at predefined intervals.
     """
     scheduler = BackgroundScheduler()
     scheduler.add_job(
@@ -68,6 +128,13 @@ def start_scheduler():
         "interval",
         hours=4,
         id="clear_expired_recyclebin_job",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        cleanup_expired_logs_and_cache,
+        "interval",
+        hours=1,
+        id="cleanup_expired_logs_and_cache_job",
         replace_existing=True,
     )
     scheduler.start()

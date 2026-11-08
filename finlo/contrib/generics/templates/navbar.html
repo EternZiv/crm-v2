@@ -53,6 +53,8 @@
                                                     if(typeof $ !== 'undefined' && $(this).data('select2')) $(this).trigger('change.select2');
                                                     htmx.ajax('GET', '{% url 'generics:save_filter_list' %}?main_url={{ main_url|urlencode }}&model_name={{ model_name|urlencode }}&search_url={{ search_url|urlencode }}&create_new=true', {target:'#modalBox', swap:'innerHTML'});
                                                     openModal();
+                                                } else {
+                                                    sessionStorage.setItem('currentViewType', this.value);
                                                 }
                                             "
                                 >
@@ -124,49 +126,7 @@
                                 </select>
                             </div>
 
-                            {% if pinned_view and pinned_view.view_type == view_type %}
-                                <button
-                                    id="rotateBtn"
-                                    type="button"
-                                    title="{% trans 'Unpin default view' %}"
-                                    aria-label="{% trans 'Unpin default view' %}"
-                                    class="rotate-[40deg] hidden sm:block"
-                                    hx-post="{% url 'generics:pin_view' %}"
-                                    hx-vals='{"view_type": "{{ view_type }}", "model_name": "{{ model_name|escapejs }}","unpin": "true"}'
-                                    hx-target="#rotateBtn"
-                                    hx-select="#rotateBtn"
-                                    hx-swap="outerHTML"
-                                >
-                                    <img
-                                        id="pinIcon"
-                                        src="{% static 'assets/icons/pin.svg' %}"
-                                        alt="{% trans 'Unpin' %}"
-                                        width="18"
-                                        class="transition-transform duration-300"
-                                    >
-                                </button>
-                            {% else %}
-                                <button
-                                    id="rotateBtn"
-                                    type="button"
-                                    title="{% trans 'Set as default view' %}"
-                                    aria-label="{% trans 'Set as default view' %}"
-                                    class="hidden sm:block"
-                                    hx-post="{% url 'generics:pin_view' %}"
-                                    hx-vals='{"view_type": "{{ view_type }}", "model_name": "{{ model_name|escapejs }}"}'
-                                    hx-target="#rotateBtn"
-                                    hx-select="#rotateBtn"
-                                    hx-swap="outerHTML"
-                                >
-                                    <img
-                                        id="pinIcon"
-                                        src="{% static 'assets/icons/pin.svg' %}"
-                                        alt="{% trans 'Pin as default' %}"
-                                        width="18"
-                                        class="transition-transform duration-300"
-                                    >
-                                </button>
-                            {% endif %}
+                            {% include "partials/pin_button.html" %}
                         </div>
                     {% endif %}
                 </div>
@@ -197,7 +157,13 @@
                         hx-push-url="{{ search_push_url }}"
                         hx-include="#filtercontainer input, #filtercontainer select"
                     >
-                    <button type="button" class="finlo-search-btn-end">
+                    <button
+                        type="button"
+                        class="finlo-search-btn-end"
+                        onclick="const input = this.previousElementSibling; if (input) { htmx.trigger(input, 'search'); }"
+                        title="{% trans 'Search' %}"
+                        aria-label="{% trans 'Search' %}"
+                    >
                         <img src="{% static 'assets/icons/search.svg' %}" alt="{% trans 'Search' %}" width="20">
                     </button>
                 </div>
@@ -207,7 +173,7 @@
                     <div class="flex items-center">
                         <button
                             type="button"
-                            onclick="htmx.trigger('#reloadButton', 'click')"
+                            onclick="const btn = document.querySelector('#reloadButton, #detailReloadButton, #detailViewReloadButton'); if (btn) { htmx.trigger(btn, 'click'); }"
                             title="{% trans 'Reload' %}"
                             class="bg-[#f3f4f6] w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded transition duration-300 cursor-pointer"
                         >
@@ -242,6 +208,7 @@
             }
             const filterPanel = getActiveFilterPanel();
             const filterContainer = getActiveFilterContainer();
+            if (!filterPanel || !filterContainer) return;
             const wrapper = document.getElementById('filterToggleWrapper');
             const storageKey = 'filterPanelVisible:' + window.location.pathname;
 
@@ -388,43 +355,29 @@
 </div>
 
 <script>
-    $(document).ready(function() {
-      if ($.fn.select2) {
-        $('.js-example-basic-single').select2({ width: "100%"});
-      }
-
-      const $select = $('select[name="view_type"]');
-      if ($select.length) {
-        const serverViewType = "{{ view_type|escapejs }}";
-        $select.val(serverViewType || 'all');
-
-        if ($select.hasClass('js-example-basic-single')) {
-          $select.trigger('change.select2');
+    (function() {
+        function initViewType() {
+            var $select = $('#viewTypeSelect');
+            if (!$select.length) return;
+            if ($select.hasClass('select2-hidden-accessible')) {
+                $select.select2('destroy');
+            }
+            $select.siblings('.select2-container').remove();
+            if (window.jQuery && $.fn.select2) {
+                $select.select2({ width: '100%' });
+            }
+            var serverViewType = "{{ view_type|escapejs }}";
+            var storedValue = sessionStorage.getItem('currentViewType');
+            var valueToSet = serverViewType || storedValue || 'all';
+            $select.val(valueToSet);
+            if ($select.hasClass('select2-hidden-accessible')) {
+                $select.trigger('change.select2');
+            }
         }
-      }
-
-    });
-
-    $(document).on('htmx:beforeSwap', function(event) {
-      const $select = $('select[name="view_type"]');
-      if ($select.length) {
-        sessionStorage.setItem('currentViewType', $select.val());
-      }
-    });
-
-    $(document).on('htmx:afterSwap', function(event) {
-      const $select = $('select[name="view_type"]');
-      if ($select.length) {
-        const serverViewType = "{{ view_type|escapejs }}";
-        const storedValue = sessionStorage.getItem('currentViewType');
-        const valueToSet = serverViewType || storedValue || 'all';
-        $select.val(valueToSet);
-        if ($select.hasClass('js-example-basic-single')) {
-          if (!$select.data('select2')) {
-            $select.select2( { width: "100%"});
-          }
-          $select.trigger('change.select2');
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initViewType);
+        } else {
+            initViewType();
         }
-      }
-    });
+    })();
 </script>

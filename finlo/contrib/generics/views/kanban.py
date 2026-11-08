@@ -649,7 +649,10 @@ class FinloKanbanView(FinloListView):
                 )
                 for key, group in sorted_items.items():
                     total_count = group["_total_count"]
-                    ordered_items = group["items"].order_by(*order_by_tuple)
+                    if total_count == 0:
+                        ordered_items = self.model.objects.none()
+                    else:
+                        ordered_items = group["items"].order_by(*order_by_tuple)
                     page_obj = self._page_for_column(
                         ordered_items, total_count, page_key=key
                     )
@@ -672,10 +675,38 @@ class FinloKanbanView(FinloListView):
             for verbose_name, field_name in filtered_columns:
                 if field_name != group_by:
                     display_columns.append({"name": field_name, "label": verbose_name})
+
+            user = self.request.user
+            has_global_change = bool(
+                getattr(user, "is_superuser", False)
+                or user.has_perm(f"{app_label}.change_{model_name}")
+            )
+            has_own_change = bool(
+                not has_global_change
+                and user.has_perm(f"{app_label}.change_own_{model_name}")
+            )
+            owner_fields = getattr(self.model, "OWNER_FIELDS", []) if has_own_change else []
+
             for key, group in paginated_groups.items():
                 group["count"] = len(group["items"])
                 for item in group["items"]:
-                    item.can_drag = self.can_user_modify_item(item)
+                    if has_global_change:
+                        item.can_drag = True
+                    elif has_own_change:
+                        can_drag = False
+                        for owner_field in owner_fields:
+                            try:
+                                if getattr(item, owner_field, None) == user:
+                                    can_drag = True
+                                    break
+                            except AttributeError:
+                                continue
+                        if not can_drag:
+                            from .helpers.queryset_utils import user_has_granted_access
+                            can_drag = user_has_granted_access(item, user, "change")
+                        item.can_drag = can_drag
+                    else:
+                        item.can_drag = False
                     item.display_columns = []
                     for column in display_columns:
                         field_name = column["name"]

@@ -8,6 +8,7 @@ from urllib.parse import urlencode, urlparse
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import redirect_to_login
+from django.core.cache import cache
 
 from finlo.contrib.generics.mixins import RecentlyViewedMixin
 from finlo.contrib.generics.views import FinloListView, FinloNavView
@@ -315,25 +316,36 @@ class DashboardDetailView(RecentlyViewedMixin, LoginRequiredMixin, TemplateView)
         user_has_custom_dashboard_layout = bool(
             layout and isinstance(layout.order, dict)
         )
-        components = components_qs
+        components_list = list(components_qs.select_related("dashboard", "module"))
 
-        kpi_data = []
-        for component in components.filter(component_type="kpi"):
-            kpi = get_kpi_data(component, self.request)
-            if kpi:
-                kpi_data.append(kpi)
+        date_range = self.request.GET.get("date_range", "all")
+        date_from = self.request.GET.get("date_from", "")
+        date_to = self.request.GET.get("date_to", "")
+        dash_cache_key = f"dash_comp_data_{dashboard.pk}_{self.request.user.pk}_{date_range}_{date_from}_{date_to}"
+        cached_comp_data = cache.get(dash_cache_key)
 
-        chart_data = []
-        for component in components.filter(component_type="chart"):
-            chart = get_chart_data(component, self.request)
-            if chart:
-                chart_data.append(chart)
+        if cached_comp_data is not None:
+            kpi_data, chart_data, table_contexts = cached_comp_data
+        else:
+            kpi_data = []
+            for component in [c for c in components_list if c.component_type == "kpi"]:
+                kpi = get_kpi_data(component, self.request)
+                if kpi:
+                    kpi_data.append(kpi)
 
-        table_contexts = {}
-        for component in components.filter(component_type="table_data"):
-            model, table_context = get_table_data(component, self.request)
-            if model:
-                table_contexts[component.id] = table_context
+            chart_data = []
+            for component in [c for c in components_list if c.component_type == "chart"]:
+                chart = get_chart_data(component, self.request)
+                if chart:
+                    chart_data.append(chart)
+
+            table_contexts = {}
+            for component in [c for c in components_list if c.component_type == "table_data"]:
+                model, table_context = get_table_data(component, self.request)
+                if model:
+                    table_contexts[component.id] = table_context
+
+            cache.set(dash_cache_key, (kpi_data, chart_data, table_contexts), timeout=90)
 
         session_referer_key = f"dashboard_detail_referer_{dashboard.pk}"
         current_referer = self.request.META.get("HTTP_REFERER")
@@ -402,8 +414,8 @@ class DashboardDetailView(RecentlyViewedMixin, LoginRequiredMixin, TemplateView)
             {
                 "current_obj": dashboard,
                 "dashboard": dashboard,
-                "components": components,
-                "has_components": components.exists(),
+                "components": components_list,
+                "has_components": bool(components_list),
                 "user_has_custom_dashboard_layout": user_has_custom_dashboard_layout,
                 "kpi_data": kpi_data,
                 "chart_data": chart_data,

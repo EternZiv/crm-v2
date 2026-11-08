@@ -57,13 +57,11 @@ class CampaignView(LoginRequiredMixin, FinloView):
     """
 
     nav_url = reverse_lazy("campaigns:campaign_nav_view")
+    chart_url = reverse_lazy("campaigns:campaign_chart_view")
     list_url = reverse_lazy("campaigns:campaign_list_view")
-    kanban_url = reverse_lazy("campaigns:campaign_kanban_view")
-    group_by_url = reverse_lazy("campaigns:campaign_group_by")
     card_url = reverse_lazy("campaigns:campaign_card_view")
     split_view_url = reverse_lazy("campaigns:campaign_split_view")
-    chart_url = reverse_lazy("campaigns:campaign_chart_view")
-    timeline_url = reverse_lazy("campaigns:campaign_timeline")
+    default_layout = "chart"
 
 
 @method_decorator(htmx_required, name="dispatch")
@@ -78,19 +76,16 @@ class CampaignNavbar(LoginRequiredMixin, FinloNavView):
 
     search_url = reverse_lazy("campaigns:campaign_list_view")
     main_url = reverse_lazy("campaigns:campaign_view")
-    kanban_url = reverse_lazy("campaigns:campaign_kanban_view")
-    group_by_url = reverse_lazy("campaigns:campaign_group_by")
+    chart_url = reverse_lazy("campaigns:campaign_chart_view")
     card_url = reverse_lazy("campaigns:campaign_card_view")
+    split_view_url = reverse_lazy("campaigns:campaign_split_view")
+    default_layout = "chart"
     model_str = "campaigns.Campaign"
     model_name = "Campaign"
     model_app_label = "campaigns"
     filterset_class = CampaignFilter
-    exclude_kanban_fields = "company"
     enable_actions = True
     enable_quick_filters = True
-    split_view_url = reverse_lazy("campaigns:campaign_split_view")
-    chart_url = reverse_lazy("campaigns:campaign_chart_view")
-    timeline_url = reverse_lazy("campaigns:campaign_timeline")
 
     @cached_property
     def new_button(self):

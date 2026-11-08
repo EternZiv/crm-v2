@@ -13,4 +13,8 @@ FINLO_BEAT_SCHEDULE = {
         "task": "finlo.contrib.core.tasks.process_scheduled_exports",
         "schedule": timedelta(seconds=10),
     },
+    "cleanup-expired-logs-and-cache": {
+        "task": "finlo.contrib.core.tasks.cleanup_expired_logs_and_cache_task",
+        "schedule": timedelta(hours=1),
+    },
 }

@@ -1,5 +1,7 @@
 """Forms for company-scoped sales hierarchy administration."""
 
+from django.utils.translation import gettext_lazy as _
+
 from finlo.auth.models import User
 from finlo.contrib.core.authorization import (
     get_company_scope,

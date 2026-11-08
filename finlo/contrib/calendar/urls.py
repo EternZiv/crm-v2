@@ -1,5 +1,8 @@
 """ "URL configuration for the  app."""
 
+# Third-party imports (Django)
+from django.views.generic import RedirectView
+
 # First party imports (Finlo)
 from finlo.urls import path
 
@@ -11,6 +14,7 @@ app_name = "calendar"
 
 urlpatterns = [
     # Define your URL patterns here
+    path("", RedirectView.as_view(url="calendar-view/?section=schedule", permanent=False)),
     path("calendar-view/", views.CalendarView.as_view(), name="calendar_view"),
     path(
         "calendar-save-preference/",

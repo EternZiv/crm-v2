@@ -96,6 +96,17 @@ class CoreConfig(AppLauncher):
                 apply_kanban_extensions()
                 apply_detail_extensions()
                 apply_tab_extensions()
+
+            # Start background maintenance scheduler (fiscal year, recycle bin, 24h log/cache purge)
+            import os
+            import sys
+            is_server = any("runserver" in arg or "daphne" in arg for arg in sys.argv)
+            if is_server and (os.environ.get("RUN_MAIN") == "true" or "daphne" in sys.argv[0]):
+                try:
+                    from .scheduler import start_scheduler
+                    start_scheduler()
+                except Exception as exc:
+                    logger.warning("Background scheduler startup: %s", exc)
         except Exception as exc:
             logger.warning(
                 "Extension bootstrap skipped or failed: %s",

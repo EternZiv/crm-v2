@@ -1,5 +1,8 @@
 """URL configurations for the leads app."""
 
+# Third-party imports (Django)
+from django.views.generic import RedirectView
+
 # First party imports (Finlo)
 from finlo.urls import path
 
@@ -9,6 +12,7 @@ from finlo_crm.leads import views
 app_name = "leads"
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="leads-view/?section=sales", permanent=False)),
     path("leads-view/", views.LeadView.as_view(), name="leads_view"),
     path("leads-nav/", views.LeadNavbar.as_view(), name="leads_nav"),
     path("leads-list/", views.LeadListView.as_view(), name="leads_list"),

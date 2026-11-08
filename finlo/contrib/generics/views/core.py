@@ -41,14 +41,12 @@ class FinloView(TemplateView):
 
     template_name = "base.html"
     list_url: str = ""
-    kanban_url: str = ""
-    group_by_url: str = ""
     card_url: str = ""
-    timeline_url: str = ""
     split_view_url: str = ""
     chart_url: str = ""
     nav_url: str = ""
     view_id: str = ""
+    default_layout: str = "chart"
     custom_layouts: dict = {}
 
     def _validate_required_urls(self):
@@ -60,13 +58,10 @@ class FinloView(TemplateView):
             )
 
         view_urls = {
-            "list_url": getattr(self, "list_url", "") or "",
-            "kanban_url": getattr(self, "kanban_url", "") or "",
-            "group_by_url": getattr(self, "group_by_url", "") or "",
-            "card_url": getattr(self, "card_url", "") or "",
-            "timeline_url": getattr(self, "timeline_url", "") or "",
-            "split_view_url": getattr(self, "split_view_url", "") or "",
             "chart_url": getattr(self, "chart_url", "") or "",
+            "list_url": getattr(self, "list_url", "") or "",
+            "card_url": getattr(self, "card_url", "") or "",
+            "split_view_url": getattr(self, "split_view_url", "") or "",
         }
         custom_urls = {
             name: (layout or {}).get("url", "")
@@ -75,8 +70,7 @@ class FinloView(TemplateView):
         if not any(view_urls.values()) and not any(custom_urls.values()):
             raise ImproperlyConfigured(
                 f"{self.__class__.__name__} must define at least one non-empty view URL: "
-                "list_url, kanban_url, group_by_url, card_url, timeline_url, "
-                "split_view_url, chart_url, or an entry in custom_layouts."
+                "chart_url, list_url, card_url, split_view_url, or an entry in custom_layouts."
             )
 
     def dispatch(self, request, *args, **kwargs):
@@ -89,13 +83,10 @@ class FinloView(TemplateView):
         layout = self.request.GET.get("layout")
 
         mapping = {
-            "kanban": self.kanban_url,
-            "group_by": self.group_by_url,
-            "card": self.card_url,
-            "timeline": self.timeline_url,
-            "split_view": self.split_view_url,
-            "chart": self.chart_url,
-            "list": self.list_url,
+            "chart": getattr(self, "chart_url", "") or "",
+            "list": getattr(self, "list_url", "") or "",
+            "card": getattr(self, "card_url", "") or "",
+            "split_view": getattr(self, "split_view_url", "") or "",
         }
         for name, layout_config in (
             getattr(self, "custom_layouts", None) or {}
@@ -107,32 +98,37 @@ class FinloView(TemplateView):
             return mapping[layout]
 
         # No explicit layout requested: honor the view's configured default
-        # (kept in sync with FinloNavView.default_layout so the toggle
-        # icon and the loaded content agree).
-        default_layout = getattr(self, "default_layout", None)
+        # (kept in sync with FinloNavView.default_layout = 'chart')
+        default_layout = getattr(self, "default_layout", "chart")
         if default_layout in mapping and mapping[default_layout]:
             return mapping[default_layout]
 
-        # Fallback logic (same as your template)
-        if not self.list_url and self.kanban_url:
-            return self.kanban_url
+        # Fallback logic: prefer chart_url, then list_url, then first non-empty
+        if getattr(self, "chart_url", ""):
+            return self.chart_url
+        if getattr(self, "list_url", ""):
+            return self.list_url
 
-        return self.list_url
+        for u in mapping.values():
+            if u:
+                return u
+
+        return ""
 
     def get_context_data(self, **kwargs):
-        """Add nav/list/kanban/group_by/card/split_view URLs and filter_form trigger to template context."""
+        """Add nav/chart/list/card/split_view URLs and filter_form trigger to template context."""
         context = super().get_context_data(**kwargs)
         filter_form = self.request.headers.get("HX-Trigger")
         if filter_form == "filter-form":
             context["filter_form"] = filter_form
         context["nav_url"] = self.nav_url
-        context["list_url"] = self.list_url
-        context["kanban_url"] = self.kanban_url
-        context["group_by_url"] = self.group_by_url
-        context["card_url"] = getattr(self, "card_url", "") or ""
-        context["timeline_url"] = getattr(self, "timeline_url", "") or ""
-        context["split_view_url"] = getattr(self, "split_view_url", "") or ""
         context["chart_url"] = getattr(self, "chart_url", "") or ""
+        context["list_url"] = self.list_url
+        context["card_url"] = getattr(self, "card_url", "") or ""
+        context["split_view_url"] = getattr(self, "split_view_url", "") or ""
+        context["kanban_url"] = ""
+        context["group_by_url"] = ""
+        context["timeline_url"] = ""
         context["custom_layouts"] = getattr(self, "custom_layouts", None) or {}
         context["layout_url"] = self.get_layout_url()
         context["view_id"] = getattr(self, "view_id", "") or ""

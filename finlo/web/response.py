@@ -165,7 +165,7 @@ class ScriptResponse(HttpResponse):
     """
 
     _ACTION_SCRIPTS = {
-        "reload": "$('#reloadButton').click();",
+        "reload": "$('#reloadButton, #detailReloadButton, #detailViewReloadButton').first().click();",
         "msgs": "$('#reloadMessagesButton').click();",
         "close": "closeModal();",
     }

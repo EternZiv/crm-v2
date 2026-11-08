@@ -493,3 +493,11 @@ def cleanup_old_schedules():
 
     logger.info("Cleaned up %s expired schedules", deleted_count)
     return f"Deleted {deleted_count} expired schedules"
+
+
+@shared_task
+def cleanup_expired_logs_and_cache_task():
+    """Celery periodic task to purge logs older than 24 hours and flush expired cache."""
+    from .scheduler import cleanup_expired_logs_and_cache
+    deleted = cleanup_expired_logs_and_cache()
+    return f"Purged {deleted} log records older than 24 hours."

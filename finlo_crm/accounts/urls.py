@@ -2,6 +2,9 @@
 URL configuration for the Accounts app.
 """
 
+# Third-party imports (Django)
+from django.views.generic import RedirectView
+
 # First party imports (Finlo)
 from finlo.urls import path
 
@@ -11,6 +14,7 @@ from . import views
 app_name = "accounts"
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="accounts-view/?section=people", permanent=False)),
     path("accounts-view/", views.AccountView.as_view(), name="accounts_view"),
     path(
         "accounts-nav-view/", views.AccountsNavbar.as_view(), name="accounts_nav_view"

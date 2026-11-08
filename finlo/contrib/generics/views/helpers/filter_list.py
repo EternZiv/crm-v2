@@ -272,7 +272,7 @@ class PinView(LoginRequiredMixin, View):
                     "view_type": view_type,
                     "all_view_types": True,
                 }
-                return render(request, "navbar.html", context)
+                return render(request, "partials/pin_button.html", context)
 
             # else:
             PinnedView.all_objects.update_or_create(
@@ -287,7 +287,7 @@ class PinView(LoginRequiredMixin, View):
                 "pinned_view": {"view_type": view_type},
                 "all_view_types": True,
             }
-            return render(request, "navbar.html", context)
+            return render(request, "partials/pin_button.html", context)
         except Exception:
             return HttpResponse(status=500)
 

@@ -4,6 +4,9 @@ Supports child campaigns, members, and contact management routes.
 Integrates with HTMX for dynamic campaign interactions.
 """
 
+# Third-party imports (Django)
+from django.views.generic import RedirectView
+
 # First party imports (Finlo)
 from finlo.urls import path
 
@@ -13,6 +16,7 @@ from . import views
 app_name = "campaigns"
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="campaign-view/?section=sales", permanent=False)),
     path("campaign-view/", views.CampaignView.as_view(), name="campaign_view"),
     path(
         "campaign-nav-view/", views.CampaignNavbar.as_view(), name="campaign_nav_view"

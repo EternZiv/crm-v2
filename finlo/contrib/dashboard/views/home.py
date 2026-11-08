@@ -111,6 +111,7 @@ class HomePageView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data()
 
         user_company = getattr(self.request.user, "company", None)
+        user_company_id = getattr(user_company, "pk", "none")
         date_range = self.request.GET.get("date_range")
         if date_range == "all":
             date_range = None
@@ -131,13 +132,20 @@ class HomePageView(LoginRequiredMixin, TemplateView):
             date_to=date_to,
         )
 
-        kpi_data = generator.generate_kpi_data()
-        kpi_data.sort(key=lambda k: k.get("title", ""))
-        for id, data in enumerate(kpi_data):
-            data["order"] = id
+        from django.core.cache import cache
+        cache_key = f"home_dash_{self.request.user.pk}_{user_company_id}_{date_range}_{date_from}_{date_to}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            kpi_data, chart_data, table_data = cached
+        else:
+            kpi_data = generator.generate_kpi_data()
+            kpi_data.sort(key=lambda k: k.get("title", ""))
+            for id, data in enumerate(kpi_data):
+                data["order"] = id
 
-        chart_data = generator.generate_chart_data()
-        table_data = generator.generate_table_data()
+            chart_data = generator.generate_chart_data()
+            table_data = generator.generate_table_data()
+            cache.set(cache_key, (kpi_data, chart_data, table_data), timeout=120)
 
         user_dashboards = []
         try:

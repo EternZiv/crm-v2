@@ -1,5 +1,8 @@
 """URL patterns for the `finlo.contrib.reports` app."""
 
+# Third-party imports (Django)
+from django.views.generic import RedirectView
+
 # First party imports (Finlo)
 from finlo.urls import path
 
@@ -9,6 +12,7 @@ from . import views
 app_name = "reports"
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="reports-list-view/?section=analytics", permanent=False)),
     path(
         "reports-list-view/", views.ReportsListView.as_view(), name="reports_list_view"
     ),

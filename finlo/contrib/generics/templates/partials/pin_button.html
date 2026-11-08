@@ -1,0 +1,45 @@
+{% load static i18n %}
+{% if pinned_view and pinned_view.view_type == view_type %}
+    <button
+        id="rotateBtn"
+        type="button"
+        title="{% trans 'Unpin default view' %}"
+        aria-label="{% trans 'Unpin default view' %}"
+        class="rotate-[40deg] hidden sm:block"
+        hx-post="{% url 'generics:pin_view' %}"
+        hx-vals='{"view_type": "{{ view_type }}", "model_name": "{{ model_name|escapejs }}","unpin": "true"}'
+        hx-target="#rotateBtn"
+        hx-select="#rotateBtn"
+        hx-swap="outerHTML"
+    >
+        <img
+            id="pinIcon"
+            src="{% static 'assets/icons/pin.svg' %}"
+            alt="{% trans 'Unpin' %}"
+            width="18"
+            class="transition-transform duration-300"
+        >
+    </button>
+{% else %}
+    <button
+        id="rotateBtn"
+        type="button"
+        title="{% trans 'Set as default view' %}"
+        aria-label="{% trans 'Set as default view' %}"
+        class="hidden sm:block"
+        hx-post="{% url 'generics:pin_view' %}"
+        hx-vals='{"view_type": "{{ view_type }}", "model_name": "{{ model_name|escapejs }}"}'
+        hx-target="#rotateBtn"
+        hx-select="#rotateBtn"
+        hx-swap="outerHTML"
+    >
+        <img
+            id="pinIcon"
+            src="{% static 'assets/icons/pin.svg' %}"
+            alt="{% trans 'Pin as default' %}"
+            width="18"
+            class="transition-transform duration-300"
+        >
+    </button>
+{% endif %}
+

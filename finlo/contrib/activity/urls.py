@@ -3,6 +3,9 @@ Defines URL patterns for the Activity app, mapping various activity-related view
 such as list, detail, create, update, delete, and Kanban views to their respective endpoints.
 """
 
+# Third-party imports (Django)
+from django.views.generic import RedirectView
+
 # First party imports (Finlo)
 from finlo.urls import path
 
@@ -12,6 +15,7 @@ from . import views
 app_name = "activity"
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="activity-view/?section=schedule", permanent=False)),
     path("activity-view/", views.ActivityView.as_view(), name="activity_view"),
     path(
         "activity-tabbed-view/",

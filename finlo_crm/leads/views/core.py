@@ -68,20 +68,15 @@ class LeadView(LoginRequiredMixin, FinloView):
     """
 
     nav_url = reverse_lazy("leads:leads_nav")
+    chart_url = reverse_lazy("leads:leads_chart")
     list_url = reverse_lazy("leads:leads_list")
-    kanban_url = reverse_lazy("leads:leads_kanban")
-    group_by_url = reverse_lazy("leads:leads_group_by")
     card_url = reverse_lazy("leads:leads_card")
     split_view_url = reverse_lazy("leads:leads_split_view")
-    chart_url = reverse_lazy("leads:leads_chart")
-    timeline_url = reverse_lazy("leads:leads_timeline")
     default_layout = "chart"
 
     def dispatch(self, request, *args, **kwargs):
         view_type = request.GET.get("view_type")
         if view_type == "converted_lead" and request.GET.get("layout") in (
-            "kanban",
-            "group_by",
             "card",
             "split_view",
             "chart",
@@ -108,16 +103,12 @@ class LeadNavbar(LoginRequiredMixin, FinloNavView):
     search_url = reverse_lazy("leads:leads_list")
     main_url = reverse_lazy("leads:leads_view")
     filterset_class = LeadFilter
-    kanban_url = reverse_lazy("leads:leads_kanban")
-    group_by_url = reverse_lazy("leads:leads_group_by")
+    chart_url = reverse_lazy("leads:leads_chart")
     card_url = reverse_lazy("leads:leads_card")
     split_view_url = reverse_lazy("leads:leads_split_view")
-    chart_url = reverse_lazy("leads:leads_chart")
-    timeline_url = reverse_lazy("leads:leads_timeline")
     default_layout = "chart"
     model_name = "Lead"
     model_app_label = "leads"
-    exclude_kanban_fields = "lead_owner"
     enable_actions = True
     enable_quick_filters = True
     column_selector_exclude_fields = ["message_id", "is_convert"]

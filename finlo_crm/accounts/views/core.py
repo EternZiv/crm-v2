@@ -61,13 +61,11 @@ class AccountView(LoginRequiredMixin, FinloView):
     """
 
     nav_url = reverse_lazy("accounts:accounts_nav_view")
+    chart_url = reverse_lazy("accounts:accounts_chart_view")
     list_url = reverse_lazy("accounts:accounts_list_view")
-    kanban_url = reverse_lazy("accounts:accounts_kanban_view")
-    group_by_url = reverse_lazy("accounts:accounts_group_by_view")
     card_url = reverse_lazy("accounts:accounts_card_view")
     split_view_url = reverse_lazy("accounts:accounts_split_view")
-    chart_url = reverse_lazy("accounts:accounts_chart_view")
-    timeline_url = reverse_lazy("accounts:accounts_timeline")
+    default_layout = "chart"
 
 
 @method_decorator(
@@ -84,18 +82,15 @@ class AccountsNavbar(LoginRequiredMixin, FinloNavView):
 
     search_url = reverse_lazy("accounts:accounts_list_view")
     main_url = reverse_lazy("accounts:accounts_view")
-    kanban_url = reverse_lazy("accounts:accounts_kanban_view")
-    group_by_url = reverse_lazy("accounts:accounts_group_by_view")
+    chart_url = reverse_lazy("accounts:accounts_chart_view")
     card_url = reverse_lazy("accounts:accounts_card_view")
+    split_view_url = reverse_lazy("accounts:accounts_split_view")
+    default_layout = "chart"
     model_name = "Account"
     model_app_label = "accounts"
     filterset_class = AccountFilter
-    exclude_kanban_fields = "company"
     enable_actions = True
     enable_quick_filters = True
-    split_view_url = reverse_lazy("accounts:accounts_split_view")
-    chart_url = reverse_lazy("accounts:accounts_chart_view")
-    timeline_url = reverse_lazy("accounts:accounts_timeline")
 
     @cached_property
     def new_button(self):

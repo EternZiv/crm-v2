@@ -2,6 +2,9 @@
 URL configuration for the Contacts app.
 """
 
+# Third-party imports (Django)
+from django.views.generic import RedirectView
+
 # First party imports (Finlo)
 from finlo.urls import path
 
@@ -11,6 +14,7 @@ from . import views
 app_name = "contacts"
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="contacts-view/?section=people", permanent=False)),
     path("contacts-view/", views.ContactView.as_view(), name="contacts_view"),
     path("contacts-navbar/", views.ContactNavbar.as_view(), name="contacts_navbar"),
     path(

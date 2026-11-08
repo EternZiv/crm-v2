@@ -11,7 +11,8 @@ from django.dispatch import receiver
 from finlo.contrib.core.signals import pre_login_render_signal, pre_logout_signal
 
 # First party imports (Finlo)
-from finlo.db.models.signals import post_migrate
+from finlo.db.models.signals import post_delete, post_migrate, post_save
+from django.core.cache import cache
 
 from .models import FinloColorTheme
 
@@ -120,3 +121,10 @@ def add_theme_to_login_context(sender, request, context, **kwargs):
     except Exception:
         # If anything goes wrong, theme stays None (not in context)
         pass
+
+
+@receiver([post_save, post_delete], sender="theme.CompanyTheme")
+def clear_company_theme_cache(sender, instance, **kwargs):
+    """Invalidate cached company theme on update or delete."""
+    if instance and instance.company_id:
+        cache.delete(f"finlo_company_theme_{instance.company_id}")
