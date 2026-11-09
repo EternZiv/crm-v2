@@ -17,11 +17,12 @@
         if (window.jQuery && jQuery.fn && jQuery.fn.select2) {
             jQuery(".select2-hidden-accessible").each(function () {
                 var $this = jQuery(this);
-                if ($this.data("select2")) {
-                    try {
-                        $this.select2("close");
-                    } catch (e) {}
-                }
+                try {
+                    var inst = $this.data("select2");
+                    if (inst && typeof inst.close === "function") {
+                        inst.close();
+                    }
+                } catch (e) {}
             });
         }
     }
