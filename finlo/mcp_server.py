@@ -39,12 +39,14 @@ server = MCPServer(
     name="finlo-crm-readonly",
     instructions=(
         "You are an intelligent enterprise CRM analytics assistant connected to Finlo CRM. "
-        "This MCP server is STRICTLY READ-ONLY. You cannot create, modify, or delete any records. "
-        "All queries respect user account permissions and company tenant boundaries. "
-        "When answering questions about CRM data, leverage the provided chart structures "
-        "(bar, pie, line, funnel) and Markdown tables to render visually engaging answers for the user."
+        "This MCP server is STRICTLY READ-ONLY and STRICTLY AUTHENTICATED. "
+        "You cannot access any CRM data without logging in with your account ID (username/email) and password. "
+        "Use the 'login_crm(username_or_email, password)' tool to authenticate, or configure "
+        "FINLO_USERNAME and FINLO_PASSWORD in your MCP server settings. "
+        "Once authenticated, all queries are locked to that specific user account and tenant. "
+        "Access to any other account's private data is strictly restricted."
     ),
-    version="1.0.0",
+    version="1.1.0",
 )
 
 
@@ -52,20 +54,54 @@ server = MCPServer(
 # Security & Account Scoping Helpers
 # ---------------------------------------------------------------------------
 
-def _get_scoped_user(account_email: str = "") -> User:
-    """Retrieve and validate the active user for permission scoping."""
-    email = account_email.strip() if account_email else os.environ.get("FINLO_ACCOUNT_EMAIL", "").strip()
-    user = None
-    if email:
-        user = User.objects.filter(Q(email__iexact=email) | Q(username__iexact=email)).first()
-        if not user:
-            raise ValueError(f"Account '{email}' does not exist in Finlo CRM.")
-    else:
-        user = User.objects.filter(is_superuser=True).first() or User.objects.first()
+_ACTIVE_USER: Optional[User] = None
 
-    if not user:
-        raise ValueError("No active user accounts found in Finlo CRM.")
-    return user
+
+def _authenticate_credentials(username_or_email: str, password: str) -> Optional[User]:
+    """Validate username or email with password against Django auth."""
+    if not username_or_email or not password:
+        return None
+    ident = username_or_email.strip()
+    user = User.objects.filter(
+        Q(username__iexact=ident) | Q(email__iexact=ident)
+    ).first()
+    if user and user.check_password(password) and user.is_active:
+        return user
+    return None
+
+
+def _get_scoped_user() -> User:
+    """
+    Retrieve the strictly authenticated user for permission and tenant scoping.
+    If not already logged in, checks environment variables FINLO_USERNAME & FINLO_PASSWORD.
+    Throws PermissionError if unauthenticated.
+    """
+    global _ACTIVE_USER
+    if _ACTIVE_USER and _ACTIVE_USER.is_active:
+        return _ACTIVE_USER
+
+    env_user = (
+        os.environ.get("FINLO_USERNAME", "").strip()
+        or os.environ.get("FINLO_USER", "").strip()
+        or os.environ.get("FINLO_ACCOUNT_EMAIL", "").strip()
+    )
+    env_pass = os.environ.get("FINLO_PASSWORD", "").strip()
+
+    if env_user and env_pass:
+        authenticated = _authenticate_credentials(env_user, env_pass)
+        if authenticated:
+            _ACTIVE_USER = authenticated
+            return _ACTIVE_USER
+        raise PermissionError(
+            f"Authentication failed: Invalid credentials provided in environment for '{env_user}'. "
+            "Please check FINLO_USERNAME and FINLO_PASSWORD, or call login_crm(username_or_email, password)."
+        )
+
+    raise PermissionError(
+        "Authentication required: You must log in with your Finlo CRM ID/email and password. "
+        "Please call the 'login_crm(username_or_email, password)' tool, or configure "
+        "FINLO_USERNAME and FINLO_PASSWORD in your MCP server settings."
+    )
 
 
 def _get_scoped_leads(user: User):
@@ -141,15 +177,66 @@ def _get_scoped_activities(user: User):
 
 
 # ---------------------------------------------------------------------------
-# MCP Read-Only Tools
+# MCP Authentication & Read-Only Tools
 # ---------------------------------------------------------------------------
 
 @server.tool()
-def get_account_profile(account_email: str = "") -> Dict[str, Any]:
+def login_crm(username_or_email: str, password: str) -> Dict[str, Any]:
     """
-    Get identity, tenant company, role permissions, and access scope for the active CRM account.
+    Authenticate into Finlo CRM using your account username/email and password.
+    Once authenticated, all queries are strictly locked to your account permissions and company tenant.
+    Access to any other account's private data is strictly restricted.
     """
-    user = _get_scoped_user(account_email)
+    global _ACTIVE_USER
+    user = _authenticate_credentials(username_or_email, password)
+    if not user:
+        raise PermissionError("Authentication failed: Invalid username/email or password.")
+
+    _ACTIVE_USER = user
+    company_name = user.company.name if user.company else "Global / Multi-tenant"
+    roles = list(user.groups.values_list("name", flat=True))
+
+    return {
+        "status": "authenticated",
+        "message": f"Successfully authenticated as {user.username} ({user.email}).",
+        "username": user.username,
+        "email": user.email,
+        "full_name": user.get_full_name() or user.username,
+        "is_superuser": user.is_superuser,
+        "company": company_name,
+        "roles": roles,
+        "scopes": {
+            "leads": "all" if (user.is_superuser or user.has_perm("leads.view_lead")) else ("own" if user.has_perm("leads.view_own_lead") else "none"),
+            "opportunities": "all" if (user.is_superuser or user.has_perm("opportunities.view_opportunity")) else ("own" if user.has_perm("opportunities.view_own_opportunity") else "none"),
+            "contacts": "all" if (user.is_superuser or user.has_perm("contacts.view_contact")) else ("own" if user.has_perm("contacts.view_own_contact") else "none"),
+            "accounts": "all" if (user.is_superuser or user.has_perm("accounts.view_account")) else ("own" if user.has_perm("accounts.view_own_account") else "none"),
+            "campaigns": "all" if (user.is_superuser or user.has_perm("campaigns.view_campaign")) else ("own" if user.has_perm("campaigns.view_own_campaign") else "none"),
+            "activities": "all" if (user.is_superuser or user.has_perm("activity.view_activity")) else ("own" if user.has_perm("activity.view_own_activity") else "none"),
+        },
+        "isolation_policy": (
+            "Superuser: Full Company Tenant Access"
+            if user.is_superuser
+            else "Role-Scoped: Only your assigned records are visible; all other user accounts are restricted."
+        ),
+    }
+
+
+@server.tool()
+def logout_crm() -> Dict[str, str]:
+    """
+    Log out from Finlo CRM and clear the active authenticated session.
+    """
+    global _ACTIVE_USER
+    _ACTIVE_USER = None
+    return {"status": "logged_out", "message": "Successfully logged out from Finlo CRM session."}
+
+
+@server.tool()
+def get_account_profile() -> Dict[str, Any]:
+    """
+    Get identity, tenant company, role permissions, and access scope for the currently authenticated CRM account.
+    """
+    user = _get_scoped_user()
     company_name = user.company.name if user.company else "Global / Multi-tenant"
     roles = list(user.groups.values_list("name", flat=True))
 
@@ -179,12 +266,12 @@ def get_account_profile(account_email: str = "") -> Dict[str, Any]:
 
 
 @server.tool()
-def get_crm_kpis(account_email: str = "") -> Dict[str, Any]:
+def get_crm_kpis() -> Dict[str, Any]:
     """
     Get high-level executive KPI scorecards across Leads, Opportunities, Accounts, and Contacts.
     Returns metrics formatted for rendering KPI metric cards and executive dashboards.
     """
-    user = _get_scoped_user(account_email)
+    user = _get_scoped_user()
 
     leads_qs = _get_scoped_leads(user)
     opps_qs = _get_scoped_opportunities(user)
@@ -270,12 +357,12 @@ def get_crm_kpis(account_email: str = "") -> Dict[str, Any]:
 
 
 @server.tool()
-def get_leads_chart_data(group_by: str = "status", account_email: str = "") -> Dict[str, Any]:
+def get_leads_chart_data(group_by: str = "status") -> Dict[str, Any]:
     """
     Get aggregated Lead analytics data structured for generating charts (Bar, Pie, or Donut).
     group_by options: 'status', 'source', or 'industry'
     """
-    user = _get_scoped_user(account_email)
+    user = _get_scoped_user()
     leads_qs = _get_scoped_leads(user)
     total_leads = leads_qs.count()
 
@@ -324,12 +411,12 @@ def get_leads_chart_data(group_by: str = "status", account_email: str = "") -> D
 
 
 @server.tool()
-def get_pipeline_funnel_chart(account_email: str = "") -> Dict[str, Any]:
+def get_pipeline_funnel_chart() -> Dict[str, Any]:
     """
     Get Sales Pipeline Funnel chart data showing deal stages, deal volume, and conversion value.
     Structured for rendering Funnel charts or stacked stage progress bars.
     """
-    user = _get_scoped_user(account_email)
+    user = _get_scoped_user()
     opps_qs = _get_scoped_opportunities(user)
 
     stages_data = (
@@ -379,12 +466,12 @@ def get_pipeline_funnel_chart(account_email: str = "") -> Dict[str, Any]:
 
 
 @server.tool()
-def get_revenue_trend_chart(months: int = 6, account_email: str = "") -> Dict[str, Any]:
+def get_revenue_trend_chart(months: int = 6) -> Dict[str, Any]:
     """
     Get Monthly Revenue and Opportunity trend data over the last N months.
     Structured for rendering Line or Area charts.
     """
-    user = _get_scoped_user(account_email)
+    user = _get_scoped_user()
     opps_qs = _get_scoped_opportunities(user)
     leads_qs = _get_scoped_leads(user)
 
@@ -438,13 +525,12 @@ def query_crm_table(
     search: str = "",
     limit: int = 20,
     offset: int = 0,
-    account_email: str = "",
 ) -> Dict[str, Any]:
     """
     Browse and inspect tabular CRM records in read-only mode.
-    entity_type: 'leads', 'opportunities', 'contacts', or 'accounts'
+    entity_type: 'leads', 'opportunities', 'contacts', 'accounts', 'campaigns', or 'activities'
     """
-    user = _get_scoped_user(account_email)
+    user = _get_scoped_user()
     limit = min(max(1, limit), 100)
     entity = entity_type.lower().strip()
 
@@ -582,11 +668,11 @@ def query_crm_table(
 
 
 @server.tool()
-def get_lead_details(lead_id: int, account_email: str = "") -> Dict[str, Any]:
+def get_lead_details(lead_id: int) -> Dict[str, Any]:
     """
     Get a complete 360-degree read-only profile of a specific lead.
     """
-    user = _get_scoped_user(account_email)
+    user = _get_scoped_user()
     lead = _get_scoped_leads(user).filter(id=lead_id).first()
     if not lead:
         raise ValueError(f"Lead with ID {lead_id} does not exist or you lack permission to view it.")
