@@ -6,10 +6,13 @@ from typing import Any, Dict, List, Type
 
 # Registry to hold all main section menu classes
 main_section_menu: List[Any] = []
+_CACHED_MAIN_PAGES: List[Dict] = None
 
 
 def register(cls: Type[Any]):
     """Decorator to register a main section menu class."""
+    global _CACHED_MAIN_PAGES
+    _CACHED_MAIN_PAGES = None
     main_section_menu.append(cls)
     return cls
 
@@ -21,6 +24,10 @@ def get_main_section_menu(request=None) -> List[Dict]:
     Returns:
         A list of dictionaries representing menu items, sorted by position.
     """
+    global _CACHED_MAIN_PAGES
+    if _CACHED_MAIN_PAGES is not None:
+        return _CACHED_MAIN_PAGES
+
     pages = []
     for cls in main_section_menu:
         obj = cls()
@@ -44,4 +51,5 @@ def get_main_section_menu(request=None) -> List[Dict]:
             x["position"] if x["position"] is not None else 0,
         )
     )
+    _CACHED_MAIN_PAGES = pages
     return pages

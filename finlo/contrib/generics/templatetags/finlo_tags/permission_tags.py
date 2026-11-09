@@ -55,8 +55,8 @@ def has_super_user(user, perm_data):
     return False
 
 
-@register.simple_tag
-def has_section_perm_url(user, section_name):
+@register.simple_tag(takes_context=True)
+def has_section_perm_url(context, user, section_name):
     """
     Check if the user can see at least one sub-item in a section.
     Returns the first accessible URL if permissions match.
@@ -64,7 +64,8 @@ def has_section_perm_url(user, section_name):
     if not user or not user.is_authenticated:
         return False
 
-    sub_section_items = get_sub_section_menu().get(section_name, [])
+    request = context.get("request") if context else None
+    sub_section_items = get_sub_section_menu(request=request).get(section_name, [])
     if not sub_section_items:
         return "/"
 

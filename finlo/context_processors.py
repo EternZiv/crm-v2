@@ -158,19 +158,20 @@ def menu_context_processor(request):
 
     section_param = request.GET.get("section") or get_section_from_path(request.path)
 
-    # For partial HTMX requests that only target navbar, mainSession, modals, etc.,
+    # For partial HTMX requests that only target navbar, mainSession, modals, mainContent, etc.,
     # skip evaluating heavy menu registries and permission checks.
     target = request.headers.get("HX-Target", "")
+    target_clean = target.lstrip("#")
     is_partial = getattr(request, "_skip_header_context", False) or (
         request.headers.get("HX-Request") == "true"
-        and target in ("navBar", "mainSession", "modalBox", "filter-panel")
+        and target_clean in ("navBar", "mainSession", "modalBox", "filter-panel", "filterpanel", "mainContent")
         and "#sideMenuContainer" not in request.headers.get("HX-Select-OOB", "")
     )
 
     if is_partial:
         return {
             "main_section_menu": [],
-            "sub_section_menu": {},
+            "sub_section_menu": SimpleLazyObject(lambda: get_sub_section_menu(request)),
             "settings_menu": [],
             "floating_menu": [],
             "my_settings_menu": [],

@@ -147,7 +147,7 @@
                         id="searchInput"
                         name="search"
                         placeholder="{% trans 'Search' %}"
-                        class="text-color-600 finlo-search-input--toolbar py-1.5 w-full border border-dark-50 rounded-md focus-visible:outline-0 placeholder:text-[#d3d3d3] placeholder:text-xs text-sm [transition:.3s] focus:border-primary-600"
+                        class="text-color-600 finlo-search-input--toolbar py-1.5 w-full border border-dark-50 rounded-md focus-visible:outline-0 placeholder:text-[#d3d3d3] placeholder:text-xs text-sm focus:border-primary-600"
                         value="{{ request.GET.search }}"
                         hx-get="{{ search_input_url }}"
                         hx-trigger="keyup changed delay:500ms, search"
@@ -175,7 +175,7 @@
                             type="button"
                             onclick="const btn = document.querySelector('#reloadButton, #detailReloadButton, #detailViewReloadButton'); if (btn) { htmx.trigger(btn, 'click'); }"
                             title="{% trans 'Reload' %}"
-                            class="bg-[#f3f4f6] w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded transition duration-300 cursor-pointer"
+                            class="bg-[#f3f4f6] w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded cursor-pointer"
                         >
                             <img src="{% static 'assets/icons/l5.svg' %}" alt="" width="17">
                         </button>
@@ -184,7 +184,7 @@
                 {% if filter_option %}
                     <div
                         id="filterToggleWrapper"
-                        class="relative bg-[#f3f4f6] w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded transition duration-300 cursor-pointer"
+                        class="relative bg-[#f3f4f6] w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded cursor-pointer"
                         hx-on:click="
             function getActiveFilterPanel() {
               // When inside a tabbed view, multiple #filterpanel elements may exist — one
@@ -238,9 +238,7 @@
               filterPanel.classList.remove('visible');
               filterContainer.classList.remove('visible');
               try { localStorage.setItem(storageKey, 'closed'); } catch (e) {}
-              setTimeout(() => {
-                filterPanel.classList.add('hidden');
-              }, 300);
+              filterPanel.classList.add('hidden');
             }
           "
                     >
@@ -256,7 +254,7 @@
                     </div>
                 {% endif %}
                 {% if not show_list_only and not one_view_only %}
-                    <div class="bg-[#f3f4f6] w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded transition duration-300 cursor-pointer">
+                    <div class="bg-[#f3f4f6] w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded cursor-pointer">
                         <button
                             id="layoutDropdownButton"
                             type="button"
@@ -283,7 +281,7 @@
                 {% endif %}
                 {% if not show_list_only %}
                     {% if actions and enable_actions %}
-                        <div class="bg-[#f3f4f6] w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded transition duration-300 cursor-pointer">
+                        <div class="bg-[#f3f4f6] w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded cursor-pointer">
                             <button
                                 title="{% trans 'Actions' %}"
                                 id="dropdownDefaultButton"
@@ -300,7 +298,7 @@
                                     {% for action in actions %}
                                         <li>
                                             <a
-                                                class="block px-4 py-2 hover:text-primary-600 transition duration-300 text-sm"
+                                                class="block px-4 py-2 hover:text-primary-600 text-sm"
                                                 {% if action.attrs %}
                                                     {{ action.attrs|safe }}
                                                 {% endif %}
@@ -322,7 +320,7 @@
                         hx-target="{{ new_button.target|default:'#modalBox' }}"
                         hx-swap="{{ new_button.swap|default:'innerHTML' }}"
                         onclick="{{ new_button.onclick|default:'openModal()' }}"
-                        class="{{ new_button.class|default:'text-sm px-4 py-1.5 bg-primary-600 rounded-md hover:bg-primary-800 transition duration-300 text-[white]' }}"
+                        class="{{ new_button.class|default:'text-sm px-4 py-1.5 bg-primary-600 rounded-md hover:bg-primary-800 text-[white]' }}"
                         {% if new_button.attrs %}
                             {% for attr_name, attr_value in new_button.attrs.items %}
                                 {{ attr_name }}="{{ attr_value|safe }}"
@@ -339,7 +337,7 @@
                         hx-target="{{ second_button.target|default:'#modalBox' }}"
                         hx-swap="{{ second_button.swap|default:'innerHTML' }}"
                         onclick="{{ second_button.onclick|default:'openModal()' }}"
-                        class="{{ second_button.class|default:'text-sm px-4 py-1.5 text-primary-600 rounded-md hover:bg-primary-600 transition duration-300 border border-primary-600 hover:text-white' }}"
+                        class="{{ second_button.class|default:'text-sm px-4 py-1.5 text-primary-600 rounded-md hover:bg-primary-600 border border-primary-600 hover:text-white' }}"
                         {% if second_button.attrs %}
                             {% for attr_name, attr_value in second_button.attrs.items %}
                                 {{ attr_name }}="{{ attr_value|safe }}"
