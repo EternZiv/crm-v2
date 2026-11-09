@@ -2931,17 +2931,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let _notifAudioBuffer = null;
     let _notifAudioCtx = null;
+    let _notifAudioLoading = false;
 
-    (function loadNotificationSound() {
-        _notifAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        fetch("/static/audio/notification-sound.wav")
-            .then(function(r) { return r.arrayBuffer(); })
-            .then(function(buf) { return _notifAudioCtx.decodeAudioData(buf); })
-            .then(function(decoded) { _notifAudioBuffer = decoded; })
-            .catch(function(e) { console.warn("Could not load notification sound:", e); });
-    })();
+    function ensureNotificationAudio() {
+        if (_notifAudioCtx || _notifAudioLoading) return;
+        _notifAudioLoading = true;
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            _notifAudioCtx = new AudioCtx();
+            fetch("/static/audio/notification-sound.wav")
+                .then(function(r) { return r.arrayBuffer(); })
+                .then(function(buf) { return _notifAudioCtx.decodeAudioData(buf); })
+                .then(function(decoded) { _notifAudioBuffer = decoded; })
+                .catch(function(e) { console.warn("Could not load notification sound:", e); });
+        } catch (e) {
+            console.warn("Could not create AudioContext:", e);
+        }
+    }
 
     document.addEventListener("click", function() {
+        ensureNotificationAudio();
         if (_notifAudioCtx && _notifAudioCtx.state === "suspended") {
             _notifAudioCtx.resume();
         }
@@ -2950,12 +2960,15 @@ document.addEventListener('DOMContentLoaded', function () {
     function playNotificationSound() {
         const btn = document.getElementById("notificationSoundToggle");
         if (btn && btn.getAttribute("data-muted") === "true") return;
+        ensureNotificationAudio();
         if (!_notifAudioBuffer || !_notifAudioCtx) return;
         if (_notifAudioCtx.state === "suspended") { _notifAudioCtx.resume(); }
-        const source = _notifAudioCtx.createBufferSource();
-        source.buffer = _notifAudioBuffer;
-        source.connect(_notifAudioCtx.destination);
-        source.start(0);
+        try {
+            const source = _notifAudioCtx.createBufferSource();
+            source.buffer = _notifAudioBuffer;
+            source.connect(_notifAudioCtx.destination);
+            source.start(0);
+        } catch (e) {}
     }
 
     window.handleNewNotification = function handleNewNotification(data) {
