@@ -233,12 +233,9 @@ class Activity(FinloCoreModel):
     def clean(self):
         """Ensure a mail server is configured when an invitation email template is set."""
         super().clean()
-        if (
-            self.mail_template_id
-            and not FinloMailConfiguration.objects.filter(
-                mail_channel="outgoing"
-            ).exists()
-        ):
+        has_db_config = FinloMailConfiguration.objects.filter(mail_channel="outgoing").exists()
+        has_settings_config = bool(getattr(settings, "EMAIL_HOST", None) and getattr(settings, "EMAIL_HOST_USER", None))
+        if self.mail_template_id and not (has_db_config or has_settings_config):
             raise ValidationError(
                 {
                     "mail_template": _(

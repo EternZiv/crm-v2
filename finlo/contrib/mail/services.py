@@ -110,7 +110,7 @@ class FinloMailManager:
             email = EmailMultiAlternatives(
                 subject=subject,
                 body=body,
-                from_email=mail.sender.from_email if mail.sender else None,
+                from_email=mail.sender.from_email if mail.sender else getattr(settings, "DEFAULT_FROM_EMAIL", None),
                 to=to,
                 cc=cc,
                 bcc=bcc,

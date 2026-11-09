@@ -207,7 +207,7 @@ def send_meeting_invites(view_self, activity, emails):
     from_email = (
         mail_config.from_email
         if mail_config and mail_config.from_email
-        else getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@example.com")
+        else getattr(settings, "DEFAULT_FROM_EMAIL", None) or getattr(settings, "EMAIL_HOST_USER", "noreply@example.com")
     )
 
     # Map recipient emails to their user account (if any) so we know whose
@@ -272,41 +272,54 @@ def send_meeting_invites(view_self, activity, emails):
                 pass
 
         html_body = f"""
-<div style="max-width:650px;margin:auto;background:white;border-radius:12px;padding:35px;box-shadow:0 4px 12px rgba(0,0,0,0.08)">
-  <h2 style="color:#000000;text-align:center;font-size:24px;margin-bottom:25px">
+<div style="max-width:650px;margin:auto;background:white;border-radius:12px;padding:35px;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:Inter,Arial,sans-serif">
+  <h2 style="color:#1e293b;text-align:center;font-size:24px;margin-bottom:20px;font-weight:700">
     Meeting Invitation
   </h2>
 
-  <p style="font-size:14px;color:#333;line-height:1.6">
-    You have been invited to a meeting by <strong>{host_name}</strong>.
+  <p style="font-size:15px;color:#334155;line-height:1.6">
+    You have a scheduled meeting with <strong>{host_name}</strong>.
   </p>
 
-  <div style="margin:20px 0;padding:15px;background:#fdf2f1;border-left:4px solid #e54f38;border-radius:6px">
-    <p style="margin:6px 0;font-size:14px;color:#333">
-      &#128197; <strong>Title:</strong> {title}
+  <div style="margin:20px 0;padding:16px 20px;background:#f8fafc;border-left:4px solid #6366f1;border-radius:8px">
+    <p style="margin:6px 0;font-size:15px;color:#1e293b">
+      &#128197; <strong>Topic:</strong> {title}
     </p>
-    <p style="margin:6px 0;font-size:14px;color:#333">
-      &#128336; <strong>When:</strong> {time_line}
+    <p style="margin:6px 0;font-size:15px;color:#1e293b">
+      &#128336; <strong>Scheduled Time:</strong> <span style="color:#4338ca;font-weight:600">{time_line}</span>
     </p>
-    <p style="margin:6px 0;font-size:14px;color:#333">
+    <p style="margin:6px 0;font-size:15px;color:#1e293b">
       &#128100; <strong>Host:</strong> {host_name}
     </p>
-    {f'<p style="margin:6px 0;font-size:14px;color:#333">&#128279; <strong>Join Link:</strong> <a href="{meeting_url}" style="color:#e54f38;">{meeting_url}</a></p>' if meeting_url else ""}
+    {f'<p style="margin:6px 0;font-size:15px;color:#1e293b">&#128279; <strong>Join Link:</strong> <a href="{meeting_url}" style="color:#4f46e5;font-weight:500;">{meeting_url}</a></p>' if meeting_url else ""}
   </div>
 
-  {f'<div style="text-align:center;margin-top:25px"><a href="{meeting_url}" style="display:inline-block;padding:10px 20px;background-color:#e54f38;color:white;text-decoration:none;border-radius:6px;font-weight:500;margin:5px">Join Meeting</a></div>' if meeting_url else ""}
+  <div style="margin:20px 0;padding:14px 18px;background:#f0fdf4;border-left:4px solid #22c55e;border-radius:8px">
+    <p style="margin:0;font-size:14px;color:#15803d;font-weight:600">
+      &#9200; Please be ready at your scheduled meeting time:
+    </p>
+    <p style="margin:6px 0 0 0;font-size:13px;color:#166534;line-height:1.5">
+      Please ensure your audio/video and notes are ready a few minutes before start time so we can begin promptly at <strong>{time_line}</strong>.
+    </p>
+  </div>
 
-  <hr style="margin:30px 0;border:none;border-top:1px solid #eee">
+  {f'<div style="text-align:center;margin-top:25px"><a href="{meeting_url}" style="display:inline-block;padding:12px 28px;background-color:#4f46e5;color:white;text-decoration:none;border-radius:6px;font-weight:600;font-size:15px">Join Meeting</a></div>' if meeting_url else ""}
 
-  <p style="font-size:12px;color:#888;text-align:center;line-height:1.5">
+  <hr style="margin:30px 0;border:none;border-top:1px solid #e2e8f0">
+
+  <p style="font-size:12px;color:#64748b;text-align:center;line-height:1.5">
     This invitation was sent via <strong>{company_name}</strong>.<br>
     If you were not expecting this, please ignore this email.
   </p>
 </div>"""
         plain_body = (
-            f"You have been invited to a meeting by {host_name}.\n\n"
-            f"Title: {title}\nWhen: {time_line}\nHost: {host_name}\n"
-            + (f"Join: {meeting_url}\n" if meeting_url else "")
+            f"Meeting Invitation: {title}\n\n"
+            f"You have a scheduled meeting with {host_name}.\n\n"
+            f"Scheduled Time: {time_line}\n"
+            f"Host: {host_name}\n"
+            + (f"Join Link: {meeting_url}\n\n" if meeting_url else "\n")
+            + f"IMPORTANT: Please be ready at your scheduled meeting time ({time_line}). Please test your setup and join a few minutes early so we can start promptly.\n\n"
+            f"Sent via {company_name}."
         )
 
         try:

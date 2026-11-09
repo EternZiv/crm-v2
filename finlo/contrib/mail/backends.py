@@ -108,10 +108,9 @@ class FinloDefaultMailBackend(EmailBackend):
                 port=port or getattr(settings, "EMAIL_PORT", None),
                 username=username or getattr(settings, "EMAIL_HOST_USER", None),
                 password=password or getattr(settings, "EMAIL_HOST_PASSWORD", None),
-                use_tls=use_tls or getattr(settings, "EMAIL_USE_TLS", None),
-                fail_silently=fail_silently
-                or getattr(settings, "EMAIL_FAIL_SILENTLY", True),
-                use_ssl=use_ssl or getattr(settings, "EMAIL_USE_SSL", None),
+                use_tls=use_tls if use_tls is not None else getattr(settings, "EMAIL_USE_TLS", None),
+                fail_silently=fail_silently if fail_silently is not None else getattr(settings, "EMAIL_FAIL_SILENTLY", False),
+                use_ssl=use_ssl if use_ssl is not None else getattr(settings, "EMAIL_USE_SSL", None),
                 timeout=timeout or getattr(settings, "EMAIL_TIMEOUT", None),
                 ssl_keyfile=ssl_keyfile,
                 ssl_certfile=ssl_certfile,
@@ -539,7 +538,7 @@ class FinloDefaultMailBackend(EmailBackend):
         return (
             self.configuration.fail_silently
             if self.configuration
-            else getattr(settings, "EMAIL_FAIL_SILENTLY", True)
+            else getattr(settings, "EMAIL_FAIL_SILENTLY", False)
         )
 
     @property
@@ -589,12 +588,13 @@ def new_init(
         user_id = request.user.pk
         reply_to = cache.get(f"reply_to{user_id}") if not reply_to else reply_to
 
-    from_email = cache.get(f"dynamic_display_name{user_id}")
+    dynamic_from = cache.get(f"dynamic_display_name{user_id}")
+    final_from_email = from_email or dynamic_from or getattr(settings, "DEFAULT_FROM_EMAIL", None)
     message_init(
         self,
         subject=subject,
         body=body,
-        from_email=from_email,
+        from_email=final_from_email,
         to=to,
         bcc=bcc,
         connection=connection,

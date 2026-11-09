@@ -187,11 +187,21 @@ class MeetingsCreateForm(
             form.instance.participants.exclude(email="").values_list("email", flat=True)
         )
         host_email = getattr(form.instance.meeting_host, "email", "") or ""
+
+        # Include client email from related_object (Lead, Contact, etc.)
+        client_emails = []
+        related = getattr(form.instance, "related_object", None)
+        if related:
+            r_email = getattr(related, "email", None)
+            if r_email and str(r_email).strip():
+                client_emails.append(str(r_email).strip())
+
         all_recipients = list(
             dict.fromkeys(
                 ([host_email] if host_email else [])
                 + participant_emails
                 + external_emails
+                + client_emails
             )
         )
         if all_recipients:

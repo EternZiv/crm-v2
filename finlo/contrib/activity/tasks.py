@@ -15,37 +15,52 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task
-def send_meeting_reminders():
+def send_meeting_reminders(force=False, upcoming_hours=None):
     """
     Periodic task: find meetings whose reminder time has arrived and send reminder emails.
-    Runs every minute via Celery Beat.
+    Supports upcoming_hours window or standard reminder intervals, with cache deduplication.
     """
+    from django.core.cache import cache
     from finlo.contrib.activity.models import Activity
 
     now = timezone.now()
 
-    # Find all scheduled/not-started online meetings with a reminder set and a start time
-    meetings = Activity.objects.filter(
-        activity_type="meeting",
-        reminder__isnull=False,
-        start_datetime__isnull=False,
-        status__in=["not_started", "scheduled"],
-    ).exclude(reminder="")
+    if upcoming_hours:
+        meetings = Activity.objects.filter(
+            activity_type="meeting",
+            start_datetime__gte=now,
+            start_datetime__lte=now + timedelta(hours=upcoming_hours),
+            status__in=["not_started", "scheduled"],
+        )
+    else:
+        # Find all scheduled/not-started meetings with a reminder set and a start time
+        meetings = Activity.objects.filter(
+            activity_type="meeting",
+            reminder__isnull=False,
+            start_datetime__isnull=False,
+            status__in=["not_started", "scheduled"],
+        ).exclude(reminder="")
 
     sent_count = 0
     for meeting in meetings:
-        try:
-            reminder_minutes = int(meeting.reminder)
-        except (ValueError, TypeError):
+        cache_key = f"meeting_reminder_sent_{meeting.pk}"
+        if not force and cache.get(cache_key):
             continue
 
-        remind_at = meeting.start_datetime - timedelta(minutes=reminder_minutes)
+        if not upcoming_hours:
+            try:
+                reminder_minutes = int(meeting.reminder)
+            except (ValueError, TypeError):
+                continue
 
-        # Fire only within this minute's window (now <= remind_at < now + 1 min)
-        if not now <= remind_at < now + timedelta(minutes=1):
-            continue
+            remind_at = meeting.start_datetime - timedelta(minutes=reminder_minutes)
+
+            # Fire if we have reached remind_at and meeting has not passed start time by > 5 min
+            if not (remind_at <= now <= meeting.start_datetime + timedelta(minutes=5)):
+                continue
 
         _send_reminder_for_meeting(meeting)
+        cache.set(cache_key, True, timeout=86400 * 7)
         sent_count += 1
 
     logger.info("Meeting reminders sent: %d", sent_count)
@@ -94,13 +109,20 @@ def _send_reminder_for_meeting(meeting):
     else:
         reminder_label = f"{reminder_minutes} minutes"
 
-    # Collect recipients: internal participants + external
+    # Collect recipients: internal participants + external + client (related_object: Lead/Contact)
     recipient_emails = list(
         meeting.participants.exclude(email="").values_list("email", flat=True)
     )
     external = meeting.external_participants or []
     if isinstance(external, list):
-        recipient_emails += external
+        recipient_emails += [e for e in external if isinstance(e, str) and e.strip()]
+
+    related = getattr(meeting, "related_object", None)
+    if related:
+        r_email = getattr(related, "email", None)
+        if r_email and str(r_email).strip():
+            recipient_emails.append(str(r_email).strip())
+
     all_recipients = list(dict.fromkeys(recipient_emails))  # dedup
 
     if not all_recipients:
@@ -129,48 +151,61 @@ def _send_reminder_for_meeting(meeting):
     )
 
     html_body = f"""
-<div style="max-width:650px;margin:auto;background:white;border-radius:12px;padding:35px;box-shadow:0 4px 12px rgba(0,0,0,0.08)">
-  <h2 style="color:#000000;text-align:center;font-size:24px;margin-bottom:25px">
+<div style="max-width:650px;margin:auto;background:white;border-radius:12px;padding:35px;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:Inter,Arial,sans-serif">
+  <h2 style="color:#1e293b;text-align:center;font-size:24px;margin-bottom:20px;font-weight:700">
     Meeting Reminder
   </h2>
 
-  <p style="font-size:14px;color:#333;line-height:1.6">
-    Your meeting starts in <strong>{reminder_label}</strong>.
+  <p style="font-size:15px;color:#334155;line-height:1.6">
+    Your meeting with <strong>{host_name}</strong> is starting soon.
   </p>
 
-  <div style="margin:20px 0;padding:15px;background:#fdf2f1;border-left:4px solid #e54f38;border-radius:6px">
-    <p style="margin:6px 0;font-size:14px;color:#333">
-      &#128197; <strong>Title:</strong> {title}
+  <div style="margin:20px 0;padding:16px 20px;background:#f8fafc;border-left:4px solid #6366f1;border-radius:8px">
+    <p style="margin:6px 0;font-size:15px;color:#1e293b">
+      &#128197; <strong>Topic:</strong> {title}
     </p>
-    <p style="margin:6px 0;font-size:14px;color:#333">
-      &#128336; <strong>When:</strong> {start_str}
+    <p style="margin:6px 0;font-size:15px;color:#1e293b">
+      &#128336; <strong>Scheduled Time:</strong> <span style="color:#4338ca;font-weight:600">{start_str}</span> (starts in {reminder_label})
     </p>
-    <p style="margin:6px 0;font-size:14px;color:#333">
+    <p style="margin:6px 0;font-size:15px;color:#1e293b">
       &#128100; <strong>Host:</strong> {host_name}
     </p>
-    {f'<p style="margin:6px 0;font-size:14px;color:#333">&#128279; <strong>Join Link:</strong> <a href="{meeting_url}" style="color:#e54f38;">{meeting_url}</a></p>' if meeting_url else ""}
+    {f'<p style="margin:6px 0;font-size:15px;color:#1e293b">&#128279; <strong>Join Link:</strong> <a href="{meeting_url}" style="color:#4f46e5;font-weight:500;">{meeting_url}</a></p>' if meeting_url else ""}
   </div>
 
-  {f'<div style="text-align:center;margin-top:25px"><a href="{meeting_url}" style="display:inline-block;padding:10px 20px;background-color:#e54f38;color:white;text-decoration:none;border-radius:6px;font-weight:500;margin:5px">Join Meeting</a></div>' if meeting_url else ""}
+  <div style="margin:20px 0;padding:14px 18px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px">
+    <p style="margin:0;font-size:14px;color:#92400e;font-weight:600">
+      &#9888; Upcoming Meeting Alert — Please be ready!
+    </p>
+    <p style="margin:6px 0 0 0;font-size:13px;color:#78350f;line-height:1.5">
+      Your meeting starts in <strong>{reminder_label}</strong> ({start_str}). Please ensure you have your notes and connection ready to join promptly.
+    </p>
+  </div>
 
-  <hr style="margin:30px 0;border:none;border-top:1px solid #eee">
+  {f'<div style="text-align:center;margin-top:25px"><a href="{meeting_url}" style="display:inline-block;padding:12px 28px;background-color:#4f46e5;color:white;text-decoration:none;border-radius:6px;font-weight:600;font-size:15px">Join Meeting</a></div>' if meeting_url else ""}
 
-  <p style="font-size:12px;color:#888;text-align:center;line-height:1.5">
+  <hr style="margin:30px 0;border:none;border-top:1px solid #e2e8f0">
+
+  <p style="font-size:12px;color:#64748b;text-align:center;line-height:1.5">
     This reminder was sent via <strong>{company_name}</strong>.<br>
     If you were not expecting this, please ignore this email.
   </p>
 </div>"""
 
     plain_body = (
-        f"Reminder: Your meeting '{title}' starts in {reminder_label}.\n\n"
-        f"When: {start_str}\nHost: {host_name}\n"
-        + (f"Join: {meeting_url}\n" if meeting_url else "")
+        f"Upcoming Meeting Reminder: {title}\n\n"
+        f"Your meeting with {host_name} starts in {reminder_label}.\n\n"
+        f"Scheduled Time: {start_str}\n"
+        f"Host: {host_name}\n"
+        + (f"Join Link: {meeting_url}\n\n" if meeting_url else "\n")
+        + f"PLEASE BE READY: Your meeting starts in {reminder_label} ({start_str}). Please ensure your connection and setup are ready to join promptly.\n\n"
+        f"Sent via {company_name}."
     )
 
     from_email = (
         mail_config.from_email
         if mail_config and mail_config.from_email
-        else getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@example.com")
+        else getattr(settings, "DEFAULT_FROM_EMAIL", None) or getattr(settings, "EMAIL_HOST_USER", "noreply@example.com")
     )
 
     try:
@@ -179,15 +214,19 @@ def _send_reminder_for_meeting(meeting):
             if mail_config
             else get_connection()
         )
-        msg = EmailMultiAlternatives(
-            subject=f"Reminder: {title} starts in {reminder_label}",
-            body=plain_body,
-            from_email=from_email,
-            to=all_recipients,
-            connection=connection,
-        )
-        msg.attach_alternative(html_body, "text/html")
-        msg.send(fail_silently=True)
+        for recipient in all_recipients:
+            try:
+                msg = EmailMultiAlternatives(
+                    subject=f"Reminder: {title} starts in {reminder_label} - Please get ready",
+                    body=plain_body,
+                    from_email=from_email,
+                    to=[recipient],
+                    connection=connection,
+                )
+                msg.attach_alternative(html_body, "text/html")
+                msg.send(fail_silently=False)
+            except Exception as single_err:
+                logger.error("Failed to send reminder for meeting %d to %s: %s", meeting.pk, recipient, single_err)
         logger.info("Reminder sent for meeting %d to %s", meeting.pk, all_recipients)
     except Exception as e:
-        logger.error("Failed to send reminder for meeting %d: %s", meeting.pk, e)
+        logger.error("Failed to process reminders for meeting %d: %s", meeting.pk, e)
