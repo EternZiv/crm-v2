@@ -27,6 +27,7 @@ from django.db.models import Avg, Count, F, Q, Sum
 from mcp.server.mcpserver import MCPServer
 
 from finlo.auth.models import User
+from finlo.contrib.activity.models import Activity
 from finlo_crm.accounts.models import Account
 from finlo_crm.campaigns.models import Campaign
 from finlo_crm.contacts.models import Contact
@@ -115,6 +116,30 @@ def _get_scoped_accounts(user: User):
     return qs
 
 
+def _get_scoped_campaigns(user: User):
+    qs = Campaign.objects.all().select_related("campaign_owner", "company")
+    if user.company:
+        qs = qs.filter(company=user.company)
+    if not user.is_superuser:
+        if not user.has_perm("campaigns.view_campaign") and user.has_perm("campaigns.view_own_campaign"):
+            qs = qs.filter(campaign_owner=user)
+        elif not user.has_perm("campaigns.view_campaign") and not user.has_perm("campaigns.view_own_campaign"):
+            return Campaign.objects.none()
+    return qs
+
+
+def _get_scoped_activities(user: User):
+    qs = Activity.objects.all().select_related("owner", "company")
+    if user.company:
+        qs = qs.filter(company=user.company)
+    if not user.is_superuser:
+        if not user.has_perm("activity.view_activity") and user.has_perm("activity.view_own_activity"):
+            qs = qs.filter(owner=user)
+        elif not user.has_perm("activity.view_activity") and not user.has_perm("activity.view_own_activity"):
+            return Activity.objects.none()
+    return qs
+
+
 # ---------------------------------------------------------------------------
 # MCP Read-Only Tools
 # ---------------------------------------------------------------------------
@@ -136,6 +161,14 @@ def get_account_profile(account_email: str = "") -> Dict[str, Any]:
         "is_superuser": user.is_superuser,
         "company": company_name,
         "roles": roles,
+        "scopes": {
+            "leads": "all" if (user.is_superuser or user.has_perm("leads.view_lead")) else ("own" if user.has_perm("leads.view_own_lead") else "none"),
+            "opportunities": "all" if (user.is_superuser or user.has_perm("opportunities.view_opportunity")) else ("own" if user.has_perm("opportunities.view_own_opportunity") else "none"),
+            "contacts": "all" if (user.is_superuser or user.has_perm("contacts.view_contact")) else ("own" if user.has_perm("contacts.view_own_contact") else "none"),
+            "accounts": "all" if (user.is_superuser or user.has_perm("accounts.view_account")) else ("own" if user.has_perm("accounts.view_own_account") else "none"),
+            "campaigns": "all" if (user.is_superuser or user.has_perm("campaigns.view_campaign")) else ("own" if user.has_perm("campaigns.view_own_campaign") else "none"),
+            "activities": "all" if (user.is_superuser or user.has_perm("activity.view_activity")) else ("own" if user.has_perm("activity.view_own_activity") else "none"),
+        },
         "mode": "READ_ONLY",
         "scope_summary": (
             "Superuser access (All Company Data)"
@@ -177,9 +210,24 @@ def get_crm_kpis(account_email: str = "") -> Dict[str, Any]:
     won_val = float(won_deals.aggregate(v=Sum("amount"))["v"] or 0.0)
     win_rate = round((won_count / total_opps * 100), 1) if total_opps > 0 else 0.0
 
+    total_accounts = accounts_qs.count()
+    total_contacts = contacts_qs.count()
+
     return {
         "account_used": user.email or user.username,
         "company": str(user.company),
+        "total_leads": total_leads,
+        "converted_leads": converted_leads,
+        "lead_conversion_rate": lead_conv_rate,
+        "total_opportunities": total_opps,
+        "total_pipeline_value": total_val,
+        "total_pipeline_value_formatted": f"{total_val:,.2f}",
+        "total_closed_won_revenue": won_val,
+        "total_closed_won_revenue_formatted": f"{won_val:,.2f}",
+        "win_rate_percent": win_rate,
+        "average_deal_size": avg_val,
+        "total_accounts": total_accounts,
+        "total_contacts": total_contacts,
         "kpi_cards": [
             {
                 "title": "Total Pipeline Value",
@@ -213,9 +261,9 @@ def get_crm_kpis(account_email: str = "") -> Dict[str, Any]:
             },
             {
                 "title": "Total Accounts",
-                "value": str(accounts_qs.count()),
-                "metric": accounts_qs.count(),
-                "subtext": f"{contacts_qs.count()} Contacts registered",
+                "value": str(total_accounts),
+                "metric": total_accounts,
+                "subtext": f"{total_contacts} Contacts registered",
             },
         ],
     }
@@ -476,8 +524,47 @@ def query_crm_table(
         ]
         headers = ["ID", "Account Name", "Industry", "Phone", "Website", "Owner"]
 
+    elif entity == "campaigns":
+        qs = _get_scoped_campaigns(user)
+        if search:
+            qs = qs.filter(Q(campaign_name__icontains=search))
+        total = qs.count()
+        rows = [
+            {
+                "id": cmp.id,
+                "name": cmp.campaign_name,
+                "type": cmp.campaign_type or "-",
+                "status": cmp.status or "-",
+                "expected_revenue": f"${float(cmp.expected_revenue or 0):,.2f}",
+                "budget_cost": f"${float(cmp.budget_cost or 0):,.2f}",
+                "owner": str(cmp.campaign_owner) if cmp.campaign_owner else "-",
+            }
+            for cmp in qs[offset : offset + limit]
+        ]
+        headers = ["ID", "Campaign Name", "Type", "Status", "Exp. Revenue", "Budget", "Owner"]
+
+    elif entity in ("activities", "tasks"):
+        qs = _get_scoped_activities(user)
+        if search:
+            qs = qs.filter(Q(title__icontains=search) | Q(subject__icontains=search))
+        total = qs.count()
+        rows = [
+            {
+                "id": act.id,
+                "title": act.title or act.subject or "-",
+                "type": act.activity_type or "-",
+                "status": act.status or "-",
+                "due": act.due_datetime.strftime("%Y-%m-%d %H:%M") if act.due_datetime else "-",
+                "owner": str(act.owner) if act.owner else "-",
+            }
+            for act in qs[offset : offset + limit]
+        ]
+        headers = ["ID", "Title / Subject", "Type", "Status", "Due Date", "Owner"]
+
     else:
-        raise ValueError(f"Entity '{entity_type}' is not supported. Use: leads, opportunities, contacts, or accounts.")
+        raise ValueError(
+            f"Entity '{entity_type}' is not supported. Use: leads, opportunities, contacts, accounts, campaigns, or activities."
+        )
 
     # Build Markdown table
     md_lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
