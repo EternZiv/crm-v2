@@ -48,6 +48,21 @@ logger = logging.getLogger(__name__)
 
 # Fired after a company default currency changes; listeners bulk-update MoneyField amounts.
 company_currency_changed = Signal()
+
+
+from django.db.backends.signals import connection_created
+
+@receiver(connection_created)
+def activate_sqlite_wal_mode(sender, connection, **kwargs):
+    """Enable WAL mode, synchronous=NORMAL, and 64MB cache when SQLite is used."""
+    if connection.vendor == "sqlite":
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("PRAGMA journal_mode=WAL;")
+                cursor.execute("PRAGMA synchronous=NORMAL;")
+                cursor.execute("PRAGMA cache_size=-64000;")
+        except Exception as e:
+            logger.warning("Could not set SQLite WAL mode: %s", e)
 # Fired when a new Company is created; listeners initialize fiscal year, currency, etc.
 company_created = Signal()
 # Fired when init wizard exits early to home; listeners seed default CRM stages.

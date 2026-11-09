@@ -1,0 +1,133 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./templates/**/*.html",
+    "./finlo/**/*.html",
+    "./finlo_crm/**/*.html",
+    "./booking/**/*.html",
+    "./calls/**/*.html",
+    "./custom_fields/**/*.html",
+    "./static/assets/js/**/*.js",
+  ],
+  darkMode: "class",
+  theme: {
+    colors: {
+      white: "#FFFFFF",
+      transparent: "transparent",
+      current: "currentColor",
+      primary: {
+        50: "#F8F8FD",
+        100: "#F0F1FA",
+        200: "#E6E8F7",
+        300: "#D5D8F0",
+        400: "#BCC1E5",
+        500: "#9BA2D7",
+        600: "#7C87C2",
+        700: "#6873AE",
+        800: "#515D98",
+        900: "#38436F",
+      },
+      dark: {
+        25: "#F0F0F0",
+        50: "#E6E6E6",
+        100: "#A8A8A8",
+        200: "#515151",
+        300: "#515151",
+        400: "#64748B",
+        500: "#190906",
+        600: "#000000",
+      },
+      secondary: {
+        50: "#f8fafc",
+        100: "#f1f5f9",
+        200: "#e2e8f0",
+        300: "#cbd5e1",
+        400: "#BCC1E5",
+        500: "#9BA2D7",
+        600: "#7C87C2",
+        700: "#334155",
+        800: "#1e293b",
+        900: "#0f172a",
+      },
+      success: {
+        light: "#86efac",
+        DEFAULT: "#22c55e",
+        dark: "#15803d",
+      },
+      warning: {
+        light: "#fde68a",
+        DEFAULT: "#f59e0b",
+        dark: "#b45309",
+      },
+      danger: {
+        light: "#fca5a5",
+        DEFAULT: "#ef4444",
+        dark: "#b91c1c",
+      },
+      gray: {
+        50: "#f9fafb",
+        100: "#f3f4f6",
+        200: "#e5e7eb",
+        300: "#d1d5db",
+        400: "#9ca3af",
+        500: "#6b7280",
+        600: "#4b5563",
+        700: "#374151",
+        800: "#1f2937",
+        900: "#111827",
+      },
+      red: {
+        500: "#ef4444",
+        600: "#dc2626",
+      },
+      green: {
+        500: "#22c55e",
+        600: "#16a34a",
+      },
+      blue: {
+        500: "#3b82f6",
+        600: "#2563eb",
+      },
+    },
+    extend: {
+      boxShadow: {
+        card: "0px 0px 10px rgba(0, 0, 0, 0.05)",
+      },
+      spacing: {
+        18: "4.5rem",
+        72: "18rem",
+        84: "21rem",
+        96: "24rem",
+      },
+      borderRadius: {
+        "4xl": "2rem",
+        "5xl": "2.5rem",
+      },
+      fontSize: {
+        xxs: "0.625rem",
+      },
+      height: {
+        "screen-50": "50vh",
+        "screen-75": "75vh",
+      },
+      animation: {
+        none: "none",
+      },
+      transitionProperty: {
+        none: "none",
+        all: "none",
+        DEFAULT: "none",
+      },
+      transitionDuration: {
+        DEFAULT: "0s",
+        0: "0s",
+        75: "0s",
+        100: "0s",
+        150: "0s",
+        200: "0s",
+        300: "0s",
+      },
+    },
+  },
+  plugins: [],
+};

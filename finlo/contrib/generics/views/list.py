@@ -551,11 +551,13 @@ class FinloListView(FinloListViewMixin, ListView):
             if isinstance(field, (ForeignKey, OneToOneField)):
                 related_fields.add(lookup)
 
-        try:
-            self.model._meta.get_field("company")
-            related_fields.add("company")
-        except Exception:
-            pass
+        for candidate in ("company", "currency", "created_by"):
+            try:
+                f = self.model._meta.get_field(candidate)
+                if isinstance(f, (ForeignKey, OneToOneField)):
+                    related_fields.add(candidate)
+            except Exception:
+                pass
 
         if related_fields:
             queryset = queryset.select_related(*sorted(related_fields))
