@@ -74,9 +74,8 @@ def sales_role_permission_decision(user, permission):
     if action == "view":
         return True
     if action == "add":
-        # Create Leads: SUPER_ADMIN, HEAD_OF_SALES, RSM, SSM, ASM (BDO strictly prohibited)
         if app_label == "leads":
-            return role_key != "BDO"
+            return True
         # Create Contacts: Yes for all six roles
         if app_label == "contacts":
             return True
@@ -89,7 +88,7 @@ def sales_role_permission_decision(user, permission):
             return True
         return False
     if action == "change":
-        return role_key in {"HEAD_OF_SALES", "RSM", "SSM", "ASM", "BDO"}
+        return role_key in {"RSM", "SSM", "ASM", "BDO"}
     return False
 
 
@@ -105,10 +104,6 @@ def has_effective_permission(user, permission):
 
 def get_sales_scope_user_ids(user):
     """Return scoped employee IDs, or ``None`` for non-sales roles."""
-    cached_user_scope = getattr(user, "_sales_scope_user_ids_cache", None)
-    if cached_user_scope is not None:
-        return set(cached_user_scope) if cached_user_scope is not None else None
-
     role_key = _role_key(user)
 
     from finlo.contrib.utils.middlewares import get_current_request
@@ -131,10 +126,6 @@ def get_sales_scope_user_ids(user):
         frozen = frozenset(scope) if scope is not None else None
         if cache is not None:
             cache[cache_key] = frozen
-        try:
-            user._sales_scope_user_ids_cache = frozen
-        except Exception:
-            pass
         return scope
 
     if role_key not in SALES_ROLE_KEYS:

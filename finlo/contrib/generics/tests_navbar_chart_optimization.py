@@ -26,6 +26,12 @@ User = get_user_model()
 class NavbarAndChartOptimizationTests(TestCase):
     def setUp(self):
         self.user = User.objects.filter(is_superuser=True).first() or User.objects.first()
+        if not self.user:
+            self.user = User.objects.create_superuser(
+                username="test_navbar_admin",
+                email="test_navbar_admin@example.com",
+                password="password123",
+            )
         self.rf = RequestFactory()
         self.middleware = SessionMiddleware(lambda r: None)
 

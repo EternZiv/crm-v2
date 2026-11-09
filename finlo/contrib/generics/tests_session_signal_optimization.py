@@ -28,6 +28,16 @@ User = get_user_model()
 class SessionAndSignalOptimizationTests(TestCase):
     def setUp(self):
         self.user = User.objects.filter(is_superuser=True).first() or User.objects.first()
+        if not self.user:
+            self.user = User.objects.create_superuser(
+                username="test_opt_admin",
+                email="test_opt_admin@example.com",
+                password="password123",
+            )
+        if not Account.objects.exists():
+            from finlo.contrib.core.models import Company
+            company = Company.objects.first() or Company.objects.create(name="Default Test Co")
+            Account.objects.create(name="Test Account 1", company=company)
         self.rf = RequestFactory()
         self.middleware = SessionMiddleware(lambda r: None)
 
