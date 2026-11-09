@@ -296,6 +296,10 @@ class ChildCampaignForm(forms.Form):
         campaign = cleaned_data.get("campaign")
         parent_campaign = cleaned_data.get("parent_campaign")
 
+        if not campaign:
+            self.add_error("campaign", _("Please select a valid campaign."))
+            return cleaned_data
+
         req = self.request
         if not req:
             from finlo.contrib.utils.middlewares import get_current_request
@@ -348,13 +352,3 @@ class ChildCampaignForm(forms.Form):
             raise ValidationError(_("An campaign cannot be its own parent."))
 
         return campaign
-
-    def clean(self):
-        """Validate that a campaign selection is present in form data."""
-        cleaned_data = super().clean()
-        campaign = cleaned_data.get("campaign")
-
-        if not campaign:
-            raise ValidationError(_("Please select a valid campaign."))
-
-        return cleaned_data

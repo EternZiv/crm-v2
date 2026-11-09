@@ -39,3 +39,4 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Successfully sent test email to {recipient}!"))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"Failed to send test email: {e}"))
+

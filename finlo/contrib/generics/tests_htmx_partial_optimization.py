@@ -13,10 +13,8 @@ Verifies that:
 """
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory, TestCase
 from django.template import Context, Template
-from django.views.generic import View
 
 from finlo.context_processors import (
     recently_viewed_items,
@@ -100,7 +98,7 @@ class HTMXContextProcessorOptimizationTests(TestCase):
                 return HttpResponse("ok")
 
         view = DummyNavView.as_view()
-        
+
         # HTMX request
         req_htmx = self.factory.get("/crm/accounts/accounts-nav-view/", HTTP_HX_REQUEST="true")
         req_htmx.user = self.user

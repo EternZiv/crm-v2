@@ -123,8 +123,6 @@ class RecycleBinListView(LoginRequiredMixin, FinloListView):
                 "label": "Delete",
                 "url": reverse_lazy("core:bulk_recycle_bin_delete"),
                 "method": "post",
-                "target": "#modalBox",
-                "swap": "innerHTML",
                 "icon": "fa-trash-alt",
                 "bg_color": "#c0392b26",
                 "hover_bg_color": "#c0392b",

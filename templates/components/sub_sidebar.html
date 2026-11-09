@@ -48,14 +48,17 @@
                                     id="{{ item.id }}"
                                     href="{{ item.url }}?section={{ current_section }}"
                                     data-section="{{ current_section }}"
-                                    hx-boost="true"
-                                    hx-target="#mainContent"
-                                    hx-select="#mainContent"
-                                    hx-swap="outerHTML"
-                                    hx-push-url="true"
-                                    {% for attr, value in item.attrs.items %}
-                                        {{ attr }}="{{ value }}"
-                                    {% endfor %}
+                                    {% if item.attrs %}
+                                        {% for attr, value in item.attrs.items %}
+                                            {{ attr }}="{{ value }}"
+                                        {% endfor %}
+                                    {% else %}
+                                        hx-boost="true"
+                                        hx-target="#mainContent"
+                                        hx-select="#mainContent"
+                                        hx-swap="outerHTML"
+                                        hx-push-url="true"
+                                    {% endif %}
                                     class="sidebar-link group flex items-center gap-3 text-sm px-3 py-2 rounded-md"
                                 >
                                     {% if item.icon %}

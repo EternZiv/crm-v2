@@ -16,7 +16,6 @@ from finlo.utils.decorators import (
     method_decorator,
     permission_required_or_denied,
 )
-from finlo.utils.translation import gettext as _
 from finlo.views.generic import TemplateView, View
 
 # Local imports

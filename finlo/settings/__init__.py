@@ -5,11 +5,12 @@ from pathlib import Path as _Path
 
 from django.core.exceptions import ImproperlyConfigured as _ImproperlyConfigured
 
-from finlo.settings.base import *
-from finlo.settings import finlo_apps
+from finlo.settings.base import *  # noqa: F403
+from finlo.settings.base import IS_VERCEL
+from finlo.settings import finlo_apps as finlo_apps
 
 if _Path(__file__).with_name("local_settings.py").is_file():
-    from finlo.settings.local_settings import *
+    from finlo.settings.local_settings import *  # noqa: F403
 
 VERCEL_UAT_MODE = _os.environ.get("VERCEL_UAT_MODE", "").strip() == "1"
 

@@ -537,7 +537,7 @@ class ListColumnSelectFormView(LoginRequiredMixin, FormView):
                 visible_field_names_set.add(raw)
 
         related_field_parents = set()
-        for _, field_name in visible_fields + removed_custom_field_lists:
+        for _label, field_name in visible_fields + removed_custom_field_lists:
             if isinstance(field_name, (list, tuple)) and len(field_name) >= 2:
                 field_name = field_name[1]
             if "__" in str(field_name):

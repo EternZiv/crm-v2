@@ -40,7 +40,6 @@ class FinloNavView(TemplateView):
         "chart"  # "chart" (default), "list", "card", "split_view"
     )
     custom_layouts: dict = {}
-    actions: list = []
     new_button: dict = None
     second_button: dict = None
     model_name: str = ""

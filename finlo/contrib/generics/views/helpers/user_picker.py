@@ -49,7 +49,7 @@ def _get_model_fields(model):
         field_class = field.__class__.__name__
         if field.choices:
             ftype = "choice"
-            choices = [{"value": v, "label": l} for v, l in field.choices]
+            choices = [{"value": v, "label": lbl} for v, lbl in field.choices]
         elif field_class == "ForeignKey":
             ftype = "foreignkey"
             choices = []

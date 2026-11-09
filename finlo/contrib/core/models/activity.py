@@ -10,7 +10,6 @@ from finlo.registry.permission_registry import permission_exempt_model
 
 # First party imports (Finlo)
 from finlo.utils import timezone
-from finlo.utils.translation import gettext_lazy as _
 
 # Local imports
 from .base import FinloContentType

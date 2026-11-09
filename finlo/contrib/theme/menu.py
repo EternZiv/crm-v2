@@ -7,7 +7,6 @@ from finlo.menu import settings_menu
 
 # First party imports (Finlo)
 from finlo.urls import reverse_lazy
-from finlo.utils.translation import gettext_lazy as _
 
 # Local imports
 from .apps import ThemeConfig

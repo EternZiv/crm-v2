@@ -17,12 +17,14 @@ Including another URLconf
 
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.core.signals import request_started
 from django.http import JsonResponse
 from django.urls import include, path
 from django.views.decorators.cache import cache_page
 from django.views.i18n import JavaScriptCatalog
 
 from finlo import settings
+from finlo.extension.bootstrap import bootstrap_extensions
 
 
 def health_check(request):
@@ -58,9 +60,6 @@ if settings.DEBUG:
 # fully completed (a request cannot happen before app loading finishes), so
 # it is a reliable "everything is actually ready" hook that works uniformly
 # across WSGI, ASGI, and the test client.
-from django.core.signals import request_started
-
-from finlo.extension.bootstrap import bootstrap_extensions
 
 bootstrap_extensions()
 

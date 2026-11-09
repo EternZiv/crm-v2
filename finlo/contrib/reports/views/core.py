@@ -228,8 +228,8 @@ class FavouriteReportsListView(LoginRequiredMixin, FinloListView):
     sorting_target = f"#tableview-{view_id}"
 
     def get_queryset(self):
-        """Load report modules with each row to avoid ContentType N+1 queries."""
-        return super().get_queryset().select_related("module")
+        """Return queryset filtered to favourite reports only, with module preloaded."""
+        return super().get_queryset().filter(is_favourite=True).select_related("module")
 
     @cached_property
     def action_method(self):
@@ -246,12 +246,6 @@ class FavouriteReportsListView(LoginRequiredMixin, FinloListView):
         context = super().get_context_data(**kwargs)
         context["title"] = "Favourite Reports"
         return context
-
-    def get_queryset(self):
-        """Return queryset filtered to favourite reports only."""
-        queryset = super().get_queryset()
-        queryset = queryset.filter(is_favourite=True)
-        return queryset
 
     columns = ["name", ("module", "module_verbose_name"), "folder"]
 

@@ -33,3 +33,4 @@ class Command(BaseCommand):
         )
         result = send_meeting_reminders(force=force, upcoming_hours=upcoming_hours)
         self.stdout.write(self.style.SUCCESS(result))
+

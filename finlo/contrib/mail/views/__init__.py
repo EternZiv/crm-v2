@@ -1,6 +1,22 @@
 """Aggregate view modules for the  package."""
 
-from finlo.contrib.mail.views.core import *
+from finlo.contrib.mail.views.core import (
+    AddEmailView,
+    CheckDraftChangesView,
+    DiscardDraftView,
+    EmailSuggestionView,
+    FinloMailFieldSelectionView,
+    FinloMailFormView,
+    FinloMailPreviewView,
+    FinloMailtDeleteView,
+    RemoveEmailView,
+    SaveDraftView,
+    ScheduleMailModallView,
+    ScheduleMailView,
+    TrackOpenView,
+    extract_inline_images_with_cid,
+    parse_email_pills_context,
+)
 from finlo.contrib.mail.views.mail_template import (
     MailTemplateView,
     MailTemplateNavbar,
@@ -53,6 +69,22 @@ from finlo.contrib.mail.views.inbox import (
 )
 
 __all__ = [
+    # Core mail views
+    "parse_email_pills_context",
+    "extract_inline_images_with_cid",
+    "FinloMailFormView",
+    "AddEmailView",
+    "RemoveEmailView",
+    "EmailSuggestionView",
+    "FinloMailFieldSelectionView",
+    "FinloMailPreviewView",
+    "CheckDraftChangesView",
+    "SaveDraftView",
+    "DiscardDraftView",
+    "FinloMailtDeleteView",
+    "ScheduleMailView",
+    "ScheduleMailModallView",
+    "TrackOpenView",
     # Mail template views
     "MailTemplateView",
     "MailTemplateNavbar",

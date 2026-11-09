@@ -224,7 +224,7 @@ class FinloKanbanView(FinloListView):
                 item.save()
 
             except view.model.DoesNotExist:
-                messages.error(request, f"Item Not found")
+                messages.error(request, "Item Not found")
                 return ScriptResponse(reload=True)
 
             # Reconstruct query parameters

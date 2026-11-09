@@ -34,7 +34,7 @@ except Exception as e:
     CELERY_AVAILABLE = False
     execute_automation_task = None
 
-if not "logger" in locals():
+if "logger" not in locals():
     logger = logging.getLogger(__name__)
 
 

@@ -14,17 +14,12 @@ from django.test import TestCase, RequestFactory
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.contrib.sessions.models import Session
-from django.contrib.sessions.backends.db import SessionStore
 from finlo_crm.accounts.views import AccountListView
 from finlo_crm.accounts.models import Account
 from finlo.contrib.automations.signals import (
     trigger_automations_on_save,
-    is_running_migrations as auto_is_running_migrations,
 )
 from finlo.contrib.workflow.signals import trigger_workflow_rules_on_save
-from finlo.contrib.workflow.methods import (
-    is_running_migrations as wf_is_running_migrations,
-)
 from finlo.registry.feature import FEATURE_REGISTRY
 
 User = get_user_model()
@@ -72,7 +67,7 @@ class SessionAndSignalOptimizationTests(TestCase):
         self.middleware.process_request(req2)
 
         self.assertFalse(req2.session.modified)
-        resp2 = view(req2)
+        _resp2 = view(req2)
         # Verify session.modified remains False after view execution
         self.assertFalse(req2.session.modified)
 
@@ -89,7 +84,7 @@ class SessionAndSignalOptimizationTests(TestCase):
         req.session.modified = False
 
         view = AccountListView.as_view()
-        resp = view(req)
+        _resp = view(req)
 
         # Session should be marked modified and contain the new IDs
         self.assertTrue(req.session.modified)

@@ -14,7 +14,6 @@ from finlo.contrib.generics.forms import FinloModelForm, FinloMultiStepForm
 # First-party imports (Finlo)
 from finlo.urls import reverse_lazy
 from finlo.utils.choices import get_subdivision_choices, resolve_subdivision_choice
-from finlo.utils.translation import gettext_lazy as _
 
 # Local / relative imports
 from ..mixins import OwnerQuerysetMixin

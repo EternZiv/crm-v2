@@ -1,6 +1,6 @@
 """Settings for authorization tests isolated from configured development databases."""
 
-from finlo.settings import *
+from finlo.settings import *  # noqa: F403
 
 from django.core.exceptions import ImproperlyConfigured
 

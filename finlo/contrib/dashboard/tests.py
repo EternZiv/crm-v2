@@ -16,7 +16,6 @@ import pickle
 from unittest.mock import MagicMock
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
-from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.test import RequestFactory, TestCase
 
 from finlo.contrib.dashboard.utils import (

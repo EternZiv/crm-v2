@@ -25,4 +25,18 @@ from . import (
     url_filters,
 )
 
-__all__ = ["register"]
+__all__ = [
+    "register",
+    "action_tags",
+    "asset_tags",
+    "datetime_filters",
+    "display_tags",
+    "field_filters",
+    "history_display",
+    "history_i18n",
+    "icon_tags",
+    "misc_tags",
+    "navigation_tags",
+    "permission_tags",
+    "url_filters",
+]

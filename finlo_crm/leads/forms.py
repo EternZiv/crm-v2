@@ -362,7 +362,6 @@ class LeadConversionForm(forms.Form):
         )
 
         from finlo.contrib.core.sales_authorization import (
-            _role_key,
             scope_queryset_to_sales_hierarchy,
         )
 

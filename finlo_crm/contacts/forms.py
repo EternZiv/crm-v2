@@ -280,6 +280,10 @@ class ChildContactForm(forms.Form):
         contact = cleaned_data.get("contact")
         parent_contact = cleaned_data.get("parent_contact")
 
+        if not contact:
+            self.add_error("contact", _("Please select a valid contact."))
+            return cleaned_data
+
         req = self.request
         if not req:
             from finlo.contrib.utils.middlewares import get_current_request
@@ -333,13 +337,3 @@ class ChildContactForm(forms.Form):
             raise ValidationError(_("An contact cannot be its own parent."))
 
         return contact
-
-    def clean(self):
-        """Validate that a contact is selected for child-contact assignment."""
-        cleaned_data = super().clean()
-        contact = cleaned_data.get("contact")
-
-        if not contact:
-            raise ValidationError(_("Please select a valid contact."))
-
-        return cleaned_data

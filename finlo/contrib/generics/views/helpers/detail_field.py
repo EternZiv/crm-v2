@@ -19,7 +19,6 @@ from finlo.contrib.core.utils import filter_hidden_fields
 from finlo.shortcuts import render
 from finlo.urls import resolve, reverse
 from finlo.utils.decorators import htmx_required, method_decorator
-from finlo.utils.translation import gettext_lazy as _
 from finlo.views.generic import View
 from finlo.web import HttpResponse, ScriptResponse
 

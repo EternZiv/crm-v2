@@ -14,7 +14,6 @@ from finlo.contrib.core.models import Company, FiscalYearInstance, Period
 # First party imports (Finlo)
 from finlo.db.models import Sum
 from finlo.utils.functional import cached_property
-from finlo.utils.translation import gettext_lazy as _
 
 # Local imports
 from finlo_crm.forecast.models import Forecast, ForecastTarget

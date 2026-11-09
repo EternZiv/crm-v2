@@ -4,7 +4,6 @@
 import logging
 
 # Third-party imports (Django)
-from finlo.db.models import Q
 
 logger = logging.getLogger(__name__)
 

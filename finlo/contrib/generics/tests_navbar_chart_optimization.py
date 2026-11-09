@@ -15,9 +15,9 @@ from django.test import TestCase, RequestFactory
 from django.template import Template, Context
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.middleware import SessionMiddleware
-from finlo_crm.leads.views import LeadChartView, LeadNavbar
+from finlo_crm.leads.views import LeadChartView
 from finlo_crm.leads.models import Lead
-from finlo.contrib.core.models import ListColumnVisibility, SavedFilterList
+from finlo.contrib.core.models import ListColumnVisibility
 from django.db import connection, reset_queries
 
 User = get_user_model()

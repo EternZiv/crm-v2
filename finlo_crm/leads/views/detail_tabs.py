@@ -19,7 +19,6 @@ from finlo.contrib.generics.views import (
 from finlo.urls import reverse_lazy
 from finlo.utils.decorators import method_decorator, permission_required_or_denied
 from finlo.utils.functional import cached_property
-from finlo.utils.translation import gettext_lazy as _
 
 # Local imports
 from finlo_crm.leads.models import Lead

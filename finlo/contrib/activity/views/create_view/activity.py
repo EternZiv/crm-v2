@@ -15,7 +15,6 @@ from finlo.urls import reverse_lazy
 from finlo.utils import timezone
 from finlo.utils.decorators import htmx_required, method_decorator
 from finlo.utils.functional import cached_property  # type: ignore
-from finlo.utils.translation import gettext_lazy as _
 
 # First party imports (Finlo)
 from finlo.web import ScriptResponse

@@ -21,7 +21,6 @@ from finlo.contrib.utils.methods import get_section_info_for_model
 from finlo.shortcuts import render
 from finlo.urls import reverse
 from finlo.utils.decorators import htmx_required, method_decorator
-from finlo.utils.translation import gettext_lazy as _
 from finlo.views.generic import DetailView
 from finlo.web import HttpNotFound, HttpResponse
 
@@ -449,7 +448,7 @@ class FinloRelatedListSectionView(DetailView):
 
         annotations = {}
 
-        for _, col_field in columns:
+        for _col_label, col_field in columns:
             if "__" in col_field and col_field.startswith(intermediate_field):
                 field_parts = col_field.split("__", 1)
 
@@ -616,7 +615,7 @@ class FinloRelatedListSectionView(DetailView):
         related_view_own_perm = f"{related_app}.view_own_{related_model_name}"
         related_owner_fields = getattr(model, "OWNER_FIELDS", [])
         for col_attr in col_attrs:
-            for _, attrs in col_attr.items():
+            for _field_key, attrs in col_attr.items():
                 if not isinstance(attrs, dict):
                     continue
                 for key, value in list(attrs.items()):

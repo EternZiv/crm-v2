@@ -42,7 +42,6 @@ from finlo.contrib.generics.views.details import (
 from finlo_crm.leads.forms import LeadSubOwnerForm
 from finlo_crm.leads.models import Lead, LeadStatus
 from finlo_crm.leads.signals import apply_assignment_rules
-from finlo.urls import reverse
 from finlo_crm.leads.dashboard import lead_kpi_cards
 from finlo.contrib.reports.views.export_views import ReportExportView
 from finlo.contrib.dashboard.views.dashboard_helper import get_kpi_data

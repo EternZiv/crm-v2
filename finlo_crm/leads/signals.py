@@ -30,7 +30,6 @@ from finlo.core.exceptions import FieldDoesNotExist
 from finlo.db import transaction
 from finlo.db.models import Count
 from finlo.db.models.signals import post_save, pre_save
-from finlo.shortcuts import render
 from finlo.urls import reverse, reverse_lazy
 from finlo.utils import timezone
 from finlo.web.response import ScriptResponse

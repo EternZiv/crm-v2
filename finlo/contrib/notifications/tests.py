@@ -12,7 +12,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from finlo.context_processors import unread_notifications, UnreadNotifications
-from finlo.contrib.notifications.models import Notification, NotificationSoundPreference
+from finlo.contrib.notifications.models import Notification
 
 User = get_user_model()
 

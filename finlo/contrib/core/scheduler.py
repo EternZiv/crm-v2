@@ -14,6 +14,9 @@ These tasks are intended to run continuously in the background
 alongside the Django application.
 """
 
+import logging
+from datetime import timedelta
+
 # Third-party imports (Django)
 from apscheduler.schedulers.background import BackgroundScheduler
 from django.core.management import call_command
@@ -23,6 +26,8 @@ from finlo.utils import timezone
 
 # Local imports
 from .models import RecycleBin, RecycleBinPolicy
+
+logger = logging.getLogger(__name__)
 
 
 def fiscal_year_update():
@@ -50,12 +55,6 @@ def clear_expired_recyclebin():
             company=policy.company, deleted_at__date__lte=cutoff.date()
         ).delete()
         total_deleted += deleted_count
-
-
-from datetime import timedelta
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 def cleanup_expired_logs_and_cache():
@@ -96,7 +95,7 @@ def cleanup_expired_logs_and_cache():
         from finlo.contrib.automations.models import AutomationRunLog
         deleted_auto, _ = AutomationRunLog.objects.filter(created_at__lt=cutoff_24h).delete()
         total_logs_deleted += deleted_auto
-    except Exception as exc:
+    except Exception:
         pass
 
     # 5. Flush expired cache items

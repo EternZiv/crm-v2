@@ -15,7 +15,7 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 # Bootstrap Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "finlo.settings")
@@ -31,8 +31,8 @@ from finlo.contrib.activity.models import Activity
 from finlo_crm.accounts.models import Account
 from finlo_crm.campaigns.models import Campaign
 from finlo_crm.contacts.models import Contact
-from finlo_crm.leads.models import Lead, LeadStatus
-from finlo_crm.opportunities.models import Opportunity, OpportunityStage
+from finlo_crm.leads.models import Lead
+from finlo_crm.opportunities.models import Opportunity
 
 # Initialize MCP Server
 server = MCPServer(
@@ -541,16 +541,16 @@ def query_crm_table(
         total = qs.count()
         rows = [
             {
-                "id": l.id,
-                "name": l.title,
-                "company": l.lead_company or "-",
-                "email": l.email or "-",
-                "phone": l.contact_number or "-",
-                "status": str(l.lead_status) if l.lead_status else "-",
-                "owner": str(l.lead_owner) if l.lead_owner else "-",
-                "created": l.created_at.strftime("%Y-%m-%d") if l.created_at else "-",
+                "id": lead.id,
+                "name": lead.title,
+                "company": lead.lead_company or "-",
+                "email": lead.email or "-",
+                "phone": lead.contact_number or "-",
+                "status": str(lead.lead_status) if lead.lead_status else "-",
+                "owner": str(lead.lead_owner) if lead.lead_owner else "-",
+                "created": lead.created_at.strftime("%Y-%m-%d") if lead.created_at else "-",
             }
-            for l in qs[offset : offset + limit]
+            for lead in qs[offset : offset + limit]
         ]
         headers = ["ID", "Name / Title", "Company", "Email", "Phone", "Status", "Owner", "Created"]
 

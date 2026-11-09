@@ -545,12 +545,12 @@ class FinloMailFormView(LoginRequiredMixin, TemplateView):
                         )
                         related_object = model_class.objects.get(pk=object_id)
                         context["related_object"] = related_object
-                    except Exception as e:
+                    except Exception:
                         context["related_object"] = None
 
                 except FinloContentType.DoesNotExist:
                     pass
-                except Exception as e:
+                except Exception:
                     pass
         existing_attachments = draft_mail.attachments.all() if draft_mail else []
         context["existing_attachments"] = existing_attachments

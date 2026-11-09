@@ -14,6 +14,7 @@ from django.contrib.auth.models import Permission
 from django.core.cache import cache
 
 # Third-party imports (Django)
+from django.db.backends.signals import connection_created
 from django.dispatch import Signal, receiver
 from django.utils.encoding import force_str
 
@@ -49,8 +50,6 @@ logger = logging.getLogger(__name__)
 # Fired after a company default currency changes; listeners bulk-update MoneyField amounts.
 company_currency_changed = Signal()
 
-
-from django.db.backends.signals import connection_created
 
 @receiver(connection_created)
 def activate_sqlite_wal_mode(sender, connection, **kwargs):
@@ -785,7 +784,7 @@ def ensure_role_view_own_permissions(sender, instance, created, **kwargs):
             view_own_perms = Permission.objects.filter(codename__startswith="view_own_")
 
             if not view_own_perms.exists():
-                print(f"✗ No view_own permissions found")
+                print("✗ No view_own permissions found")
                 return
 
             existing_perm_ids = set(instance.permissions.values_list("id", flat=True))

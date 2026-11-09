@@ -592,7 +592,7 @@ try:
     from .password_utils import get_init_password
 
     DB_INIT_PASSWORD = get_init_password()
-except ImportError as e:
+except ImportError:
     pass
 
 

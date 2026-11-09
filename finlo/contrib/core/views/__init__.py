@@ -285,6 +285,7 @@ __all__ = [
     "protected_media",
     "HomePageView",
     "ReloadMessages",
+    "ClearRecentlyViewedView",
     "SaveActiveTabView",
     "LoginUserView",
     "LogoutView",
@@ -500,6 +501,7 @@ __all__ = [
     "BusinessHourHolidayListView",
     "BusinessHourHolidayModalView",
     "BusinessHourHolidayRemoveView",
+    "BusinessHourHolidayReadonlyDetailView",
     # shift_hour.py
     "ShiftHourListView",
     "ShiftHourFormView",

@@ -21,7 +21,6 @@ from finlo.contrib.utils.middlewares import _thread_local
 
 # First party imports (Finlo)
 from finlo.utils import timezone
-from finlo.utils.translation import gettext_lazy as _
 
 # Local imports
 from .models import FinloMailConfiguration

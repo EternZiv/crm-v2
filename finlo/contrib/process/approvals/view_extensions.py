@@ -15,7 +15,6 @@ form-level error message.
 """
 
 from django.contrib import messages
-from django.core.exceptions import ValidationError
 
 from finlo.apps import apps as finlo_apps
 from finlo.contrib.core.models.base import FinloContentType

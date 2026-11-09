@@ -148,7 +148,7 @@ class UpdateFieldPermissionView(LoginRequiredMixin, View):
         field_name = kwargs.get("field_name")
         permission_type = request.POST.get("permission_type")
 
-        if not permission_type in ["readonly", "readwrite", "hidden"]:
+        if permission_type not in ["readonly", "readwrite", "hidden"]:
             return JsonResponse(
                 {"success": False, "message": "Invalid permission type"}
             )

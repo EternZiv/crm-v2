@@ -441,9 +441,12 @@ class CalendarTeamViewTests(TestCase):
     def test_members_filter_narrows_the_team_view(self):
         """Team can be narrowed to chosen members (owner or assignee)."""
         self._grant(self.manager, "activity.view_own_activity")
-        members = lambda *ids: set(
-            self._events(self.manager, scope="team", **{"members[]": list(ids)})
-        )
+
+        def members(*ids):
+            return set(
+                self._events(self.manager, scope="team", **{"members[]": list(ids)})
+            )
+
         self.assertEqual(members(self.rep.pk), {self.reps.pk})
         self.assertEqual(members(self.manager.pk), {self.own.pk})
         self.assertEqual(
@@ -968,7 +971,10 @@ class CustomCalendarActivitiesTests(CalendarEventsTestBase):
         custom = f"custom_{calendar.pk}"
 
         both = self._fetch("task", "meeting", custom)
-        by_type = lambda t: {e["activityId"] for e in both if e["calendarType"] == t}
+
+        def by_type(t):
+            return {e["activityId"] for e in both if e["calendarType"] == t}
+
         # The custom calendar shows its tasks (and only those) ...
         self.assertEqual(by_type(custom), {self.activity.pk, self.other_activity.pk})
         # ... so Tasks no longer repeats them, while the meeting it doesn't cover stays.

@@ -985,7 +985,7 @@ class CreateStageGroupView(LoginRequiredMixin, View, ProgressStepsMixin):
 
             return None
 
-        except Exception as e:
+        except Exception:
             response = render(
                 request,
                 "common/message_fragment.html",

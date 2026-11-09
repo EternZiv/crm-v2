@@ -16,7 +16,6 @@ from django.core.paginator import Paginator
 # First party imports (Finlo)
 from finlo.apps import apps
 from finlo.shortcuts import render
-from finlo.utils.translation import gettext_lazy as _
 from finlo.views.generic import View
 from finlo.web import HttpNotFound, JsonResponse
 

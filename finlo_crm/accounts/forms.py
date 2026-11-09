@@ -242,6 +242,10 @@ class AddChildAccountForm(forms.Form):
         account = cleaned_data.get("account")
         parent_account = cleaned_data.get("parent_account")
 
+        if not account:
+            self.add_error("account", _("Please select a valid account."))
+            return cleaned_data
+
         req = self.request
         if not req:
             from finlo.contrib.utils.middlewares import get_current_request
@@ -295,13 +299,3 @@ class AddChildAccountForm(forms.Form):
             raise ValidationError(_("An account cannot be its own parent."))
 
         return account
-
-    def clean(self):
-        """Validate form-level data and ensure an account is selected."""
-        cleaned_data = super().clean()
-        account = cleaned_data.get("account")
-
-        if not account:
-            raise ValidationError(_("Please select a valid account."))
-
-        return cleaned_data

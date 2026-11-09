@@ -126,7 +126,6 @@ def create_meeting(config, title, start_datetime, end_datetime):
         },
         token_updater=lambda t: _save_token(config, t),
     )
-    from datetime import datetime as _dt
     from datetime import timezone as _tz
 
     def _fmt(d):

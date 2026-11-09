@@ -58,6 +58,7 @@ __all__ = [
     # Detail Views
     "FinloDetailView",
     "FinloModalDetailView",
+    "resolves_within_settings_shell",
     # List View
     "FinloListView",
     # Card View

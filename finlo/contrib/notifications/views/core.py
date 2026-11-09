@@ -111,7 +111,7 @@ class DeleteAllNotification(LoginRequiredMixin, View):
             HttpResponse: Rendered sidebar list template.
         """
         Notification.objects.filter(user=request.user).delete()
-        messages.success(request, f"All notifications cleared.")
+        messages.success(request, "All notifications cleared.")
         return render(request, "sidebar_list.html", {"request": request})
 
 

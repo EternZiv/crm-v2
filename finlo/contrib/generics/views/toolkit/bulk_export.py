@@ -112,7 +112,6 @@ class FinloBulkExportMixin:
         """
         from finlo.contrib.core.views.export_data import (
             get_export_queryset,
-            is_exportable_field,
         )
 
         user = getattr(self.request, "user", None)

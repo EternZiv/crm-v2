@@ -20,7 +20,6 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from finlo.db.models import Q
 from finlo.shortcuts import get_object_or_404
 from finlo.utils.decorators import method_decorator, permission_required_or_denied
-from finlo.utils.translation import gettext_lazy as _
 from finlo.views.generic import View
 from finlo.web import HttpNotFound, HttpResponse, RefreshResponse
 

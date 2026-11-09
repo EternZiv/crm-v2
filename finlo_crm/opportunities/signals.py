@@ -24,7 +24,6 @@ from finlo.db import models
 from finlo.db.models.signals import post_save, pre_save
 from finlo.shortcuts import render
 from finlo.urls import reverse
-from finlo.utils.translation import gettext_lazy as _
 from finlo.web.response import ScriptResponse
 
 # Local imports
@@ -210,7 +209,7 @@ def sync_opportunity_owner(sender, instance, created, **kwargs):
     owner_changed = old_owner_id and old_owner_id != new_owner.id
 
     # Resolve "Opportunity Owner" TeamRole for this company (FK requires instance)
-    owner_role, _ = TeamRole.objects.get_or_create(
+    owner_role, _role_created = TeamRole.objects.get_or_create(
         company=instance.company,
         team_role_name="Opportunity Owner",
         defaults={"team_role_name": "Opportunity Owner"},
