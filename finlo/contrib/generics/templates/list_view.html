@@ -376,7 +376,7 @@
                         style="min-width: calc({{ columns_min_width }}px{% if bulk_select_option %} + 50px{% endif %}{% if visible_actions or action_method %} + 180px{% endif %})"
                     {% endif %}
                 >
-                    <thead class="sticky top-0 {% if table_class %} bg-primary-300 text-primary-600 {% else %} bg-white {% endif %} z-50">
+                    <thead class="sticky top-0 {% if table_class %} bg-primary-300 text-primary-900 dark:text-gray-100 {% else %} bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 {% endif %} z-50">
                         <tr>
                             {% if bulk_select_option %}
                                 <th
@@ -495,8 +495,10 @@
             {% if no_record_section %}
                 <img
                     src="{% static no_found_img|default:'assets/img/not-found.svg' %}"
-                    alt="404"
-                    class="w-60 m-auto mb-4 mt-5"
+                    alt="{% trans 'No records found' %}"
+                    width="240"
+                    height="173"
+                    class="w-60 h-auto m-auto mb-4 mt-5"
                 >
                 {% if no_record_msg %}
                     <p class="text-sm text-center pb-3">

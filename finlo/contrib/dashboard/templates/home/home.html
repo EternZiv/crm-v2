@@ -7,8 +7,9 @@
         </div>
     </div>
 
-    <div
+    <main
         id="mainContent"
+        role="main"
         class="flex-[1_0] transition-all duration-300 ease-in-out pt-0 overflow-hidden overflow-y-auto h-[100vh]"
     >
         <div class="p-2 sm:p-5" id="home-view">
@@ -59,7 +60,7 @@
                         {% endif %}
                         <a
                             href="{% url 'dashboard:dashboard_list_view' %}?section=analytics"
-                            class="text-sm px-4 py-2 bg-primary-600 rounded-md transition duration-300 text-[white]"
+                            class="text-sm px-4 py-2 bg-primary-800 hover:bg-primary-900 rounded-md transition duration-300 text-white font-medium shadow-sm"
                         >
                             {% trans "View All Dashboards" %}
                         </a>
@@ -118,9 +119,9 @@
                     {% if non_kpi_components %}
                         <div>
                             {% if kpi_components %}
-                                <h4 class="text-lg font-medium mb-4 text-gray-700">
+                                <h2 class="text-lg font-medium mb-4 text-gray-700">
                                     {% trans "Charts & Data" %}
-                                </h4>
+                                </h2>
                             {% endif %}
                             <div class="grid grid-cols-12 gap-3" id="reorderable-components">
                                 {% for component in non_kpi_components %}
@@ -208,9 +209,9 @@
                             />
                         </svg>
                     </div>
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-2">
                         {% trans 'No Components Added' %}
-                    </h3>
+                    </h2>
                     <p class="text-gray-500 mb-6 max-w-md">
                         {% trans "This dashboard doesn't have any components yet. Add charts, tables, KPIs, or targets to visualize your data." %}
                     </p>
@@ -413,5 +414,5 @@
 
             window.exportChart = exportChart;
         </script>
-    </div>
+    </main>
 {% endblock %}

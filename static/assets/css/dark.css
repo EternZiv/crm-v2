@@ -297,6 +297,12 @@ body.dark .custom-scroll {
 body.dark .bg-primary-300 {
   background-color: #3f3f3f !important;
 }
+body.dark thead,
+body.dark thead th,
+body.dark thead th a,
+body.dark thead th span {
+  color: #f8fafc !important;
+}
 
 /* Split view: tile hover in dark theme */
 body.dark #split-view-tiles .split-view-tile:hover {

@@ -2891,6 +2891,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         badge.textContent = currentCount;
+        const notifBtn = badge.closest("button");
+        if (notifBtn) {
+            notifBtn.setAttribute("aria-label", `${currentCount} unread notifications`);
+        }
         badge.style.display = 'flex';
         badge.classList.toggle('hidden', false);
 

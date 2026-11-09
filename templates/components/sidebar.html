@@ -44,20 +44,21 @@
             </span>
             <ul class="floating-nav">
                 {% for menu in floating_menu %}
-                    <li
-                        hx-get="{{ menu.url }}{% if request.GET.urlencode %}{% if '?' in menu.url %}&{% else %}?{% endif %}{{ request.GET.urlencode }}{% endif %}"
-                        hx-trigger="click, keyup[key=='Enter']"
-                        {% for key, value in menu.items.items %}
-                            {{ key }}="{{ value }}"
-                        {% endfor %}
-                        class="bg-primary-600"
-                        title="{{ menu.title }}"
-                        aria-label="{{ menu.title }}"
-                        data-tooltip-placement="{% if LANGUAGE_BIDI %}left{% else %}right{% endif %}"
-                        role="button"
-                        tabindex="0"
-                    >
-                        <img src="{% static menu.icon %}" alt="" width="17" class="w-4 h-4 brightness-0 invert">
+                    <li class="bg-primary-600">
+                        <button
+                            type="button"
+                            hx-get="{{ menu.url }}{% if request.GET.urlencode %}{% if '?' in menu.url %}&{% else %}?{% endif %}{{ request.GET.urlencode }}{% endif %}"
+                            hx-trigger="click, keyup[key=='Enter']"
+                            {% for key, value in menu.items.items %}
+                                {{ key }}="{{ value }}"
+                            {% endfor %}
+                            class="w-full h-full flex items-center justify-center rounded-full text-white cursor-pointer bg-transparent border-0 p-0"
+                            title="{{ menu.title }}"
+                            aria-label="{{ menu.title }}"
+                            data-tooltip-placement="{% if LANGUAGE_BIDI %}left{% else %}right{% endif %}"
+                        >
+                            <img src="{% static menu.icon %}" alt="" width="17" class="w-4 h-4 brightness-0 invert">
+                        </button>
                     </li>
                 {% endfor %}
             </ul>

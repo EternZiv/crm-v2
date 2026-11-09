@@ -12,7 +12,7 @@
         {% block after_sub_sidebar %}{% endblock %}
 
         {% block main_content %}
-            <div
+            <main
                 id="mainContent"
                 class="flex-[1_0] pt-0 {% block main_leftspace_class %}{% if sub_section_menu|get_item:current_section %}leftspace{% endif %}{% endblock %} {% block main_content_classes %}{% endblock %}"
                 {% block main_content_attrs %}{% endblock %}
@@ -24,7 +24,7 @@
                 {% block navbar %}{% endblock %}
 
                 {% block main %}{% endblock %}
-            </div>
+            </main>
         {% endblock %}
     </div>
 

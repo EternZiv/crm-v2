@@ -231,7 +231,6 @@ function initShortcutKeys() {
                 }
             }
         });
-    });
 }
 
 function refreshShortcutKeys() {

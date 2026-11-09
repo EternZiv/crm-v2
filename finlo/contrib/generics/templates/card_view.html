@@ -76,8 +76,10 @@
 
                 <img
                     src="{% static no_found_img|default:'assets/img/not-found.svg' %}"
-                    alt="404"
-                    class="w-60 m-auto mb-4 mt-5"
+                    alt="{% trans 'No records found' %}"
+                    width="240"
+                    height="173"
+                    class="w-60 h-auto m-auto mb-4 mt-5"
                 >
 
                 {% if no_record_msg %}

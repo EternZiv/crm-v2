@@ -2,7 +2,7 @@
     <button
         type="button"
         title="{% trans 'Notifications' %}"
-        aria-label="{% trans 'Notifications' %}"
+        aria-label="{% if unread_notifications.count > 30 %}30+{% else %}{{ unread_notifications.count|default_if_none:'0' }}{% endif %} {% trans 'unread notifications' %}"
         class="flex justify-center items-center group text-primary-600 w-6 h-6 lg:w-10 lg:h-10 bg-primary-100 hover:bg-primary-600 rounded-md transition duration-300 relative"
     >
         <i class="fas fa-bell transition duration-300 group-hover:text-white"></i>
@@ -19,7 +19,7 @@
     </button>
     <div class="dropdown-content w-56 md:w-80 absolute z-10 bg-white border-primary-300 rounded-lg shadow-card right-0">
         <div class="flex justify-between items-center p-3 border-b border-b-dark-50">
-            <h5 class="font-semibold text-sm">{% trans 'Notifications' %}</h5>
+            <h2 class="font-semibold text-sm">{% trans 'Notifications' %}</h2>
             <div class="flex gap-1">
                 <button
                     type="button"

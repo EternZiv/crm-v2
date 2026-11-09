@@ -5,7 +5,7 @@
         {% has_perm "opportunities.view_opportunity" as can_view_forecast %}
         {% has_perm "opportunities.view_own_opportunity" as can_view_own_forecast %}
         {% if can_view_forecast or can_view_own_forecast %}
-            <div id="mainContent" class="flex-[1_0] leftspace transition-all duration-300 ease-in-out pt-0">
+            <main id="mainContent" role="main" class="flex-[1_0] leftspace transition-all duration-300 ease-in-out pt-0">
                 <!-- Load navbar dynamically -->
                 <div
                     id="forecast-navbar"
@@ -45,9 +45,9 @@
                         {% endif %}
                     </div>
                 </div>
-            </div>
+            </main>
         {% else %}
-            <div id="mainContent" class="flex-[1_0] leftspace transition-all duration-300 ease-in-out">
+            <main id="mainContent" role="main" class="flex-[1_0] leftspace transition-all duration-300 ease-in-out">
                 <div class="h-full w-full min-h-full flex flex-col box-border p-4">
                     <div class="bg-white rounded-xl [box-shadow:0px_0px_20px_0px_rgb(0_0_0_/_5%)] w-full max-w-full box-border flex-1 min-h-0 flex items-center justify-center p-5">
                         <div class="error-container flex flex-col items-center justify-center text-center w-full max-w-full">
@@ -64,7 +64,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </main>
         {% endif %}
     </div>
 {% endblock content %}

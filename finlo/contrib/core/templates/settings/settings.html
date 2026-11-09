@@ -2,7 +2,7 @@
 {% block content %}
     <div class="modelcontent settings-page">
         <div class="relative h-full" id="sideMenuContainer"></div>
-        <div id="mainContent" class="p-4">
+        <main id="mainContent" role="main" class="p-4">
             {% if settings_menu %}
                 <h3 class="text-md font-semibold">{% trans 'Settings' %}</h3>
                 <p class="text-xs text-gray-500">{% trans 'Manage your company, users, and system configuration.' %}</p>
@@ -76,7 +76,7 @@
             {% else %}
                 {% include "error/settings_403.html" with embed=True %}
             {% endif %}
-        </div>
+        </main>
     </div>
 
     <script>

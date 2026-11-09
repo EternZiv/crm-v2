@@ -4,8 +4,10 @@
     {% endif %}
     <img
         src="{% static image|default:'assets/img/not-found.svg' %}"
-        alt="{{ alt|default:'' }}"
-        class="w-60 m-auto mb-4 mt-5"
+        alt="{{ alt|default:'No records' }}"
+        width="240"
+        height="173"
+        class="w-60 h-auto m-auto mb-4 mt-5"
     >
     {% if message %}
         <p class="text-sm text-center mb-3">{{ message }}</p>

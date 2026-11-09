@@ -51,7 +51,7 @@
         </div>
         {% else %}
         <div class="flex justify-between items-center {% if table_width %} h-20 {% endif %}"></div>
-        <img src="{% static 'assets/img/not-found.svg' %}" alt="404" class="w-60 m-auto mb-4 mt-5">
+        <img src="{% static 'assets/img/not-found.svg' %}" alt="{% trans 'No records found' %}" width="240" height="173" class="w-60 h-auto m-auto mb-4 mt-5">
         <p class="text-sm text-center mb-3">
             {% if no_record_add_button.message %}
             {{ no_record_add_button.message }}

@@ -84,14 +84,14 @@
             };
         </script>
 
-        <!-- UI Libraries (Non-Blocking) -->
-        <script src="{% static 'assets/js/flowbite/flowbite.min.js' %}"></script>
-        <script src="{% static 'assets/js/sweetalert2.js' %}"></script>
-        <script src="{% static 'assets/js/select2.min.js' %}"></script>
-        <script src="{% static 'assets/js/sortablejs/Sortable.min.js' %}"></script>
+        <!-- UI Libraries (Deferred) -->
+        <script defer src="{% static 'assets/js/flowbite/flowbite.min.js' %}"></script>
+        <script defer src="{% static 'assets/js/sweetalert2.js' %}"></script>
+        <script defer src="{% static 'assets/js/select2.min.js' %}"></script>
+        <script defer src="{% static 'assets/js/sortablejs/Sortable.min.js' %}"></script>
 
-        <!-- Chart Libraries (Apache ECharts) -->
-        <script src="{% static 'assets/js/echart/echarts.min.js' %}"></script>
+        <!-- Chart Libraries (Apache ECharts - Deferred) -->
+        <script defer src="{% static 'assets/js/echart/echarts.min.js' %}"></script>
 
         <!-- Stylesheets -->
         <link rel="stylesheet" href="{% static 'assets/css/flowbite/flowbite.min.css' %}">
@@ -182,9 +182,9 @@
         <script src="{% static 'assets/js/list_view.js' %}"></script>
         <script src="{% static 'assets/js/select2_htmx_cleanup.js' %}"></script>
         <script src="{% static 'assets/js/action_tooltip.js' %}"></script>
-        <script src="{% static 'assets/js/finlo_charts.js' %}"></script>
-        <script src="{% static 'assets/js/calendar.js' %}"></script>
-        <script src="{% static 'assets/js/full_calendar.js' %}"></script>
+        <script defer src="{% static 'assets/js/finlo_charts.js' %}"></script>
+        <script defer src="{% static 'assets/js/calendar.js' %}"></script>
+        <script defer src="{% static 'assets/js/full_calendar.js' %}"></script>
 
         <!-- Dynamically Registered Scripts -->
         {% load_registered_js as register_js %}

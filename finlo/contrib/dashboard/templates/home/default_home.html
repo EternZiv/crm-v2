@@ -7,8 +7,9 @@
         </div>
     </div>
 
-    <div
+    <main
         id="mainContent"
+        role="main"
         class="flex-[1_0] transition-all duration-300 ease-in-out pt-0 overflow-hidden overflow-y-auto h-[90vh]"
     >
         <style>
@@ -81,7 +82,7 @@
                             {% endif %}
                             <a
                                 href="{% url 'dashboard:dashboard_list_view' %}?section=analytics"
-                                class="text-sm px-4 py-2 bg-primary-600 rounded-md transition duration-300 text-[white]"
+                                class="text-sm px-4 py-2 bg-primary-800 hover:bg-primary-900 rounded-md transition duration-300 text-white font-medium shadow-sm"
                             >
                                 {% trans "View All Dashboards" %}
                             </a>
@@ -170,12 +171,14 @@
                             >
                                 <i class="fa-solid fa-grip-vertical"></i>
                             </div>
-                            <h4 class="text-md font-semibold mb-4">{{ block.data.title }}</h4>
+                            <h3 class="text-md font-semibold mb-4">{{ block.data.title }}</h3>
                             {% if block.data.is_empty %}
                                 <img
                                     src="{% static 'assets/img/not-found-chart.svg' %}"
-                                    alt="404"
-                                    class="w-60 m-auto mb-4 mt-5"
+                                    alt="{% trans 'No chart data' %}"
+                                    width="240"
+                                    height="173"
+                                    class="w-60 h-auto m-auto mb-4 mt-5"
                                 >
                                 <p class="text-sm text-center pb-3">
                                     {% if block.data.no_record_msg %}
@@ -589,5 +592,5 @@
                 });
             }
         </script>
-    </div>
+    </main>
 {% endblock %}
