@@ -11,10 +11,19 @@ class Command(BaseCommand):
     help = "Send a test email to verify SMTP host, port, user, and app password."
 
     def add_arguments(self, parser):
-        parser.add_argument("recipient", type=str, help="Recipient email address to test sending to.")
+        parser.add_argument(
+            "recipient",
+            nargs="?",
+            default=None,
+            type=str,
+            help="Recipient email address to test sending to (defaults to EMAIL_HOST_USER).",
+        )
 
     def handle(self, *args, **options):
-        recipient = options["recipient"]
+        recipient = options.get("recipient") or getattr(settings, "EMAIL_HOST_USER", None) or getattr(settings, "DEFAULT_FROM_EMAIL", None)
+        if not recipient:
+            self.stdout.write(self.style.ERROR("No recipient provided and EMAIL_HOST_USER is not configured in settings."))
+            return
         host = getattr(settings, "EMAIL_HOST", "not set")
         port = getattr(settings, "EMAIL_PORT", "not set")
         user = getattr(settings, "EMAIL_HOST_USER", "not set")
