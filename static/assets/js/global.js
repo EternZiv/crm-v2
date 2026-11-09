@@ -610,7 +610,11 @@ function initSidebar() {
         }
     };
 
-    toggleBtn.onclick = () => {
+    toggleBtn.onclick = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         if (isCollapsed) {
             expandMenu();
         } else {
