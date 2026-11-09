@@ -21,7 +21,7 @@
             {{ form.app_label }}
             {{ form.view_type }}
             <div class="mt-4">
-                <label for="" class="text-xs text-color-600">{{ form.field_name.label_tag }}</label>
+                <label for="{{ form.field_name.auto_id }}" class="text-xs text-color-600">{{ form.field_name.label }}</label>
                 <div>
                     <select
                         class="js-example-basic-single w-full"

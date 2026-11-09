@@ -148,8 +148,9 @@
             </div>
 
             <div class="flex flex-col mb-3">
-                <label for="" class="text-xs text-color-600 mb-2"> {% trans 'Owner' %}</label>
+                <label for="id_convert_owner" class="text-xs text-color-600 mb-2"> {% trans 'Owner' %}</label>
                 <select
+                    id="id_convert_owner"
                     name="owner"
                     class="select2-pagination w-full text-sm"
                     data-url="{% url 'generics:model_select2' app_label=user_meta.app_label  model_name=user_meta.model_class_name %}"

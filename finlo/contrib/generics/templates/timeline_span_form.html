@@ -22,7 +22,7 @@
             {{ form.preserve_qs }}
             <div class="mt-4 space-y-4">
                 <div>
-                    <label class="text-xs text-gray-600">{{ form.start_field.label_tag }}</label>
+                    <label for="{{ form.start_field.auto_id }}" class="text-xs text-gray-600">{{ form.start_field.label }}</label>
                     <div>
                         <select
                             class="js-example-basic-single w-full"
@@ -38,7 +38,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-600">{{ form.end_field.label_tag }}</label>
+                    <label for="{{ form.end_field.auto_id }}" class="text-xs text-gray-600">{{ form.end_field.label }}</label>
                     <div>
                         <select
                             class="js-example-basic-single w-full"

@@ -1,8 +1,8 @@
 {% if account_action == 'create_new' %}
     <div class="flex flex-col mb-3">
-        <label for="" class="text-xs text-color-600 mb-2">{% trans 'Account Name' %}</label>
+        <label for="id_account_name" class="text-xs text-color-600 mb-2">{% trans 'Account Name' %}</label>
         <input
-            id="id_existing_account"
+            id="id_account_name"
             type="text"
             name="account_name"
             placeholder="{% trans 'Enter Account Name' %}"
@@ -17,7 +17,7 @@
     </div>
 {% else %}
     <div class="flex flex-col mb-3">
-        <label for="" class="text-xs text-color-600 mb-2">{% trans 'Account Name' %}</label>
+        <label for="id_existing_account" class="text-xs text-color-600 mb-2">{% trans 'Account Name' %}</label>
         <select
             name="existing_account"
             class="select2-pagination w-full text-sm"

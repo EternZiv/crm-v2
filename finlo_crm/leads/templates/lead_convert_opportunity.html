@@ -1,8 +1,8 @@
 {% if opportunity_action == 'create_new' %}
     <div class="flex flex-col mb-3">
-        <label for="" class="text-xs text-color-600 mb-2">{% trans 'Opportunity Name' %}</label>
+        <label for="id_opportunity_name" class="text-xs text-color-600 mb-2">{% trans 'Opportunity Name' %}</label>
         <input
-            id="id_existing_opportunity"
+            id="id_opportunity_name"
             type="text"
             name="opportunity_name"
             placeholder="{% trans 'Enter Opportunity Name' %}"
@@ -17,7 +17,7 @@
     </div>
 {% else %}
     <div class="flex flex-col mb-3">
-        <label for="" class="text-xs text-color-600 mb-2">{% trans 'Opportunity Name' %}</label>
+        <label for="id_existing_opportunity" class="text-xs text-color-600 mb-2">{% trans 'Opportunity Name' %}</label>
         {% if selected_account_id %}
             <select
                 name="existing_opportunity"

@@ -65,8 +65,9 @@
                     <!-- Select Module -->
                     <div class="md:w-1/2">
                         <div class="flex flex-col gap-1 select-module">
-                            <label class="text-xs text-color-600">{% trans "Select Module" %}</label>
+                            <label for="export_module_select" class="text-xs text-color-600">{% trans "Select Module" %}</label>
                             <select
+                                id="export_module_select"
                                 data-placeholder="{% trans 'Choose Module' %}"
                                 name="module"
                                 multiple
@@ -89,8 +90,9 @@
 
                     <!-- Export Format -->
                     <div class="md:w-1/2 flex flex-col justify-between">
-                        <label class="text-xs text-color-600">{% trans "Export Format" %}</label>
+                        <label for="export_format_select" class="text-xs text-color-600">{% trans "Export Format" %}</label>
                         <select
+                            id="export_format_select"
                             data-placeholder="{% trans 'Select Export Format' %}"
                             name="export_format"
                             class="js-example-basic-single headselect w-full"

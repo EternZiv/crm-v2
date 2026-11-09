@@ -14,8 +14,15 @@
  */
 (function () {
     function closeOpenSelect2Dropdowns() {
-        if (window.jQuery) {
-            jQuery(".select2-hidden-accessible").select2("close");
+        if (window.jQuery && jQuery.fn && jQuery.fn.select2) {
+            jQuery(".select2-hidden-accessible").each(function () {
+                var $this = jQuery(this);
+                if ($this.data("select2")) {
+                    try {
+                        $this.select2("close");
+                    } catch (e) {}
+                }
+            });
         }
     }
 

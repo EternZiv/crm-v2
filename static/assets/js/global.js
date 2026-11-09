@@ -2174,7 +2174,11 @@ document.body.addEventListener("htmx:afterSettle", function (event) {
 
     $settledTarget.find(".js-example-basic-single").each(function() {
         if ($(this).hasClass("select2-hidden-accessible")) {
-            $(this).select2("destroy");
+            if ($(this).data('select2')) {
+                try {
+                    $(this).select2("destroy");
+                } catch (e) {}
+            }
             $(this).removeData('select2-initialized');
         }
     });
@@ -2690,7 +2694,11 @@ document.addEventListener('DOMContentLoaded', function () {
             _updateCount();
             // Destroy any Select2 accidentally applied to filter selects
             $('[data-no-select2="true"].select2-hidden-accessible').each(function () {
-                $(this).select2('destroy');
+                if ($(this).data('select2')) {
+                    try {
+                        $(this).select2('destroy');
+                    } catch (e) {}
+                }
             });
         }
     });

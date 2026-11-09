@@ -233,14 +233,14 @@
                                 class="{% if field.name in full_width_fields %}col-span-2{% else %}{% if field.field.widget.input_type == 'checkbox' %}text-sm flex items-center gap-2 relative{% else %}flex flex-col h-[20px] mb-10{% endif %}{% endif %}"
                             >
                                 {% if field.field.widget.input_type == 'checkbox' %}
-                                    <label class="inline-flex items-center cursor-pointer">
+                                    <label for="{{ field.id_for_label }}" class="inline-flex items-center cursor-pointer">
                                         <span class="me-3 text-xs text-color-600">{{ field.label }}</span>
                                         {{ field }}
                                         <div class="relative w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-primary-600 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5">
                                         </div>
                                     </label>
                                 {% elif field.field.widget.input_type == 'file' %}
-                                    <label class="inline-flex items-center cursor-pointer">
+                                    <label for="{{ field.id_for_label }}" class="inline-flex items-center cursor-pointer">
                                         <span class="me-3 text-xs text-color-600">{{ field.label }} </span>
                                     </label>
                                     <div class="w-full">
@@ -324,11 +324,11 @@
 
                 <!-- Condition Fields Section -->
                 {% if condition_fields %}
-                    <label class="text-xs font-semibold text-color-600 pb-2">{% if condition_fields_tiltle %}
+                    <span class="block text-xs font-semibold text-color-600 pb-2">{% if condition_fields_tiltle %}
                             {{ condition_fields_tiltle }}
                         {% else %}
                             {% trans 'Conditions' %}
-                        {% endif %}</label>
+                        {% endif %}</span>
                     <div id="condition-fields-container">
                         <div class="flex items-center gap-2 mb-2 condition-row" data-row-id="0" id="condition-row-0">
                             <div class="grid grid-cols-{{ condition_fields|length }} gap-2 flex-1 h-[20px] mb-7">
