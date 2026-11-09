@@ -154,34 +154,51 @@ function initShortcutKeys() {
 
     $(document).off("keydown.shortcutKeys keyup.shortcutKeys");
 
-    fetchShortcutKeys(function(keys) {
-        window.shortcutKeysCache = keys;
+    function ensureShortcutKeys(callback) {
+        if (window.shortcutKeysCache && window.shortcutKeysCache.length) {
+            if (callback) callback(window.shortcutKeysCache);
+            return;
+        }
+        fetchShortcutKeys(function(keys) {
+            window.shortcutKeysCache = keys;
+            if (callback) callback(keys);
+        });
+    }
 
-        $(document).on("keydown.shortcutKeys", function(e) {
-            if (e.altKey && !window.shortcutKeysState.activeModifier) {
-                window.shortcutKeysState.activeModifier = 'alt';
+    if ("requestIdleCallback" in window) {
+        requestIdleCallback(function() { ensureShortcutKeys(); });
+    } else {
+        setTimeout(function() { ensureShortcutKeys(); }, 2000);
+    }
 
-                if ($("input:focus, textarea:focus, select:focus").length) {
-                    return;
-                }
+    $(document).on("keydown.shortcutKeys", function(e) {
+        if (e.altKey && !window.shortcutKeysState.activeModifier) {
+            window.shortcutKeysState.activeModifier = 'alt';
 
-                if (!window.shortcutKeysState.modalShown && !window.shortcutKeysState.modifierHoldTimer) {
-                    window.shortcutKeysState.modifierHoldTimer = setTimeout(function() {
-                        showShortcutModal(window.shortcutKeysCache);
-                    }, MODIFIER_HOLD_DURATION);
-                }
+            if ($("input:focus, textarea:focus, select:focus").length) {
                 return;
             }
 
-            if (window.shortcutKeysState.activeModifier && e.altKey) {
-                const pressedKey = e.key.toUpperCase();
-
-                if (window.shortcutKeysState.modifierHoldTimer) {
-                    clearTimeout(window.shortcutKeysState.modifierHoldTimer);
-                    window.shortcutKeysState.modifierHoldTimer = null;
+            ensureShortcutKeys(function(keys) {
+                if (!window.shortcutKeysState.modalShown && !window.shortcutKeysState.modifierHoldTimer) {
+                    window.shortcutKeysState.modifierHoldTimer = setTimeout(function() {
+                        showShortcutModal(keys);
+                    }, MODIFIER_HOLD_DURATION);
                 }
+            });
+            return;
+        }
 
-                const match = window.shortcutKeysCache.find(
+        if (window.shortcutKeysState.activeModifier && e.altKey) {
+            const pressedKey = e.key.toUpperCase();
+
+            if (window.shortcutKeysState.modifierHoldTimer) {
+                clearTimeout(window.shortcutKeysState.modifierHoldTimer);
+                window.shortcutKeysState.modifierHoldTimer = null;
+            }
+
+            ensureShortcutKeys(function(keys) {
+                const match = keys.find(
                     sk => sk.key === pressedKey && sk.command.toLowerCase() === 'alt'
                 );
 
@@ -200,8 +217,9 @@ function initShortcutKeys() {
                     }
                     window.location.href = url.toString();
                 }
-            }
-        });
+            });
+        }
+    });
 
         $(document).on("keyup.shortcutKeys", function(e) {
             if (!e.altKey && window.shortcutKeysState.activeModifier === 'alt') {

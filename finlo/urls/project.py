@@ -19,6 +19,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
+from django.views.decorators.cache import cache_page
 from django.views.i18n import JavaScriptCatalog
 
 from finlo import settings
@@ -33,7 +34,7 @@ urlpatterns = [
     path("health/", health_check),
     path("admin/", admin.site.urls),
     path("i18n/", include("django.conf.urls.i18n")),
-    path("jsi18n/", JavaScriptCatalog.as_view(), name="javascript-catalog"),
+    path("jsi18n/", cache_page(86400, key_prefix="jsi18n")(JavaScriptCatalog.as_view()), name="javascript-catalog"),
     path("summernote/", include("django_summernote.urls")),
     path("api/", include("finlo.api_urls")),
 ]
