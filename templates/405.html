@@ -1,15 +1,16 @@
 {% extends "error.html" %}
 {% block content %}
-    <img src="{% static 'assets/img/405.svg' %}" alt="405" width="400" class="max-w-full h-auto mx-auto">
-    <h2 class="error-title">{% trans "Method Not Allowed" %}</h2>
-    <p class="error-description pb-3">{% trans "The request method is not allowed for this resource." %}</p>
-    <a
-        href="/"
-        class="
-            text-sm px-6 py-3 bg-primary-600 rounded-md hover:bg-primary-800
-            transition duration-300 text-white
-        "
-    >
-        {% trans "Go to Dashboard" %}
-    </a>
+    <div class="max-w-md mx-auto my-12 text-center p-8 bg-white dark:bg-[#1f2937] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 mb-4">
+            <span class="text-2xl font-bold">405</span>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">{% trans "Method Not Allowed" %}</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">{% trans "The request method is not allowed for this resource." %}</p>
+        <a
+            href="/"
+            class="inline-block text-sm font-medium px-5 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+        >
+            {% trans "Go to Dashboard" %}
+        </a>
+    </div>
 {% endblock %}
