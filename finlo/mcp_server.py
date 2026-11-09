@@ -449,7 +449,7 @@ def query_crm_table(
     entity = entity_type.lower().strip()
 
     if entity == "leads":
-        qs = _get_scoped_leads(user)
+        qs = _get_scoped_leads(user).order_by("-created_at", "-id")
         if search:
             qs = qs.filter(Q(title__icontains=search) | Q(email__icontains=search) | Q(lead_company__icontains=search))
         total = qs.count()
@@ -469,7 +469,7 @@ def query_crm_table(
         headers = ["ID", "Name / Title", "Company", "Email", "Phone", "Status", "Owner", "Created"]
 
     elif entity == "opportunities":
-        qs = _get_scoped_opportunities(user)
+        qs = _get_scoped_opportunities(user).order_by("-created_at", "-id")
         if search:
             qs = qs.filter(Q(name__icontains=search) | Q(account__name__icontains=search))
         total = qs.count()
@@ -489,7 +489,7 @@ def query_crm_table(
         headers = ["ID", "Deal Name", "Account", "Amount", "Stage", "Prob %", "Close Date", "Owner"]
 
     elif entity == "contacts":
-        qs = _get_scoped_contacts(user)
+        qs = _get_scoped_contacts(user).order_by("-created_at", "-id")
         if search:
             qs = qs.filter(Q(first_name__icontains=search) | Q(last_name__icontains=search) | Q(email__icontains=search))
         total = qs.count()
@@ -507,7 +507,7 @@ def query_crm_table(
         headers = ["ID", "Name", "Email", "Phone", "Title", "Owner"]
 
     elif entity == "accounts":
-        qs = _get_scoped_accounts(user)
+        qs = _get_scoped_accounts(user).order_by("-created_at", "-id")
         if search:
             qs = qs.filter(Q(name__icontains=search))
         total = qs.count()
@@ -525,7 +525,7 @@ def query_crm_table(
         headers = ["ID", "Account Name", "Industry", "Phone", "Website", "Owner"]
 
     elif entity == "campaigns":
-        qs = _get_scoped_campaigns(user)
+        qs = _get_scoped_campaigns(user).order_by("-created_at", "-id")
         if search:
             qs = qs.filter(Q(campaign_name__icontains=search))
         total = qs.count()
@@ -544,7 +544,7 @@ def query_crm_table(
         headers = ["ID", "Campaign Name", "Type", "Status", "Exp. Revenue", "Budget", "Owner"]
 
     elif entity in ("activities", "tasks"):
-        qs = _get_scoped_activities(user)
+        qs = _get_scoped_activities(user).order_by("-created_at", "-id")
         if search:
             qs = qs.filter(Q(title__icontains=search) | Q(subject__icontains=search))
         total = qs.count()
