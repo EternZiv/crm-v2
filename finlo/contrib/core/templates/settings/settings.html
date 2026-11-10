@@ -2,7 +2,7 @@
 {% block content %}
     <div class="modelcontent settings-page">
         <div class="relative h-full" id="sideMenuContainer"></div>
-        <main id="mainContent" role="main" class="p-4">
+        <main id="mainContent" role="main" class="p-4 pt-20 h-[calc(100vh-60px)] overflow-y-auto custom-scroll">
             {% if settings_menu %}
                 <h3 class="text-md font-semibold">{% trans 'Settings' %}</h3>
                 <p class="text-xs text-gray-500">{% trans 'Manage your company, users, and system configuration.' %}</p>
@@ -51,7 +51,7 @@
                     {% has_perm "core.view_company" as can_view_company %}
                     <div class="col-span-12 xl:col-span-10">
                         <div
-                            class="bg-white rounded-xl [box-shadow:0px_0px_20px_0px_rgb(0_0_0_/_5%)] p-5 h-[calc(_100vh_-_140px_)] overflow-y-hidden"
+                            class="bg-white rounded-xl [box-shadow:0px_0px_20px_0px_rgb(0_0_0_/_5%)] p-5 h-[calc(100vh-140px)] overflow-y-auto custom-scroll"
                             id="settings-content"
                         >
                             {% block settings %}

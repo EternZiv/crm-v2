@@ -14,7 +14,7 @@
         {% block main_content %}
             <main
                 id="mainContent"
-                class="flex-[1_0] pt-0 {% block main_leftspace_class %}{% if sub_section_menu|get_item:current_section %}leftspace{% endif %}{% endblock %} {% block main_content_classes %}{% endblock %}"
+                class="flex-[1_0] pt-0 {% block main_leftspace_class %}{% if sub_section_menu|get_item:current_section %}leftspace{% endif %}{% endblock %} {% block main_content_classes %}custom-scroll overflow-y-auto overflow-x-hidden h-[calc(100vh-60px)]{% endblock %}"
                 {% block main_content_attrs %}{% endblock %}
             >
                 {% block messages %}

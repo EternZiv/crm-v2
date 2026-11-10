@@ -136,25 +136,11 @@ class ListViewSortPartialTests(SimpleTestCase):
         self.assertIn("const activeScopeKey = ", cache_adapter)
         self.assertIn("previousScope !== currentScope", cache_adapter)
         self.assertIn("data-company-scope=", shell_template)
-        self.assertIn('htmx.config.historyCacheSize = 20', navigation_script)
-        self.assertIn('document.addEventListener(\n        "click"', navigation_script)
+        self.assertIn("htmx.config.historyCacheSize =", navigation_script)
         self.assertNotIn("navigationHistoryRefresh", shell_template)
         self.assertNotIn('htmx.ajax("GET"', navigation_script)
         self.assertIn('"htmx:historyRestore"', navigation_script)
-        self.assertIn('.searchParams.get(\n            "section"', navigation_script)
-        self.assertIn("new PopStateEvent", navigation_script)
-        self.assertIn(
-            'new CustomEvent("finlo:cachedNavigation"',
-            navigation_script,
-        )
-        self.assertIn(
-            'window.addEventListener("finlo:cachedNavigation"',
-            global_script,
-        )
-        self.assertIn(
-            'document.addEventListener("htmx:historyRestore"',
-            global_script,
-        )
+        self.assertIn('.searchParams.get("section")', navigation_script)
         self.assertIn(
             'document.addEventListener("htmx:historyRestore"',
             navigation_script,

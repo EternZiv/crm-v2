@@ -647,10 +647,45 @@ class FinloKanbanView(FinloListView):
                 order_by_tuple = (
                     order_by if isinstance(order_by, (list, tuple)) else (order_by,)
                 )
+
+                # Batch-fetch all items across columns in ONE query when on page 1 and counts <= paginate_by
+                can_batch = all(
+                    self.request.GET.get(f"page_{k}", "1") == "1"
+                    and group["_total_count"] <= self.paginate_by
+                    for k, group in sorted_items.items()
+                )
+                batched_items = {}
+                if can_batch:
+                    active_keys = [
+                        k for k, g in sorted_items.items()
+                        if g["_total_count"] > 0 and k is not None
+                    ]
+                    if active_keys:
+                        try:
+                            all_qs = queryset.filter(
+                                **{f"{group_by}__in": active_keys}
+                            ).order_by(*order_by_tuple)
+                            for it in all_qs:
+                                it_k = getattr(it, fk_field, None)
+                                if it_k in sorted_items:
+                                    batched_items.setdefault(it_k, []).append(it)
+                        except Exception:
+                            batched_items = {}
+                    if None in sorted_items and sorted_items[None]["_total_count"] > 0:
+                        try:
+                            null_qs = queryset.filter(
+                                **{f"{group_by}__isnull": True}
+                            ).order_by(*order_by_tuple)
+                            batched_items[None] = list(null_qs)
+                        except Exception:
+                            pass
+
                 for key, group in sorted_items.items():
                     total_count = group["_total_count"]
                     if total_count == 0:
                         ordered_items = self.model.objects.none()
+                    elif key in batched_items:
+                        ordered_items = batched_items[key]
                     else:
                         ordered_items = group["items"].order_by(*order_by_tuple)
                     page_obj = self._page_for_column(

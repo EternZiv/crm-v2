@@ -48,6 +48,49 @@ class FinloView(TemplateView):
     view_id: str = ""
     default_layout: str = "chart"
     custom_layouts: dict = {}
+    auto_render_subviews: bool = True
+
+    def _render_subview(self, url_str):
+        """Render a component view server-side for initial consolidated response."""
+        if not url_str or not getattr(self, "auto_render_subviews", True):
+            return ""
+        try:
+            from urllib.parse import parse_qsl, urlparse
+            from django.urls import resolve
+
+            parsed = urlparse(str(url_str))
+            if not parsed.path:
+                return ""
+            match = resolve(parsed.path)
+
+            request = self.request
+            old_hx = request.META.get("HTTP_HX_REQUEST")
+            request.META["HTTP_HX_REQUEST"] = "true"
+
+            orig_get = request.GET
+            if parsed.query:
+                extra = dict(parse_qsl(parsed.query))
+                new_get = orig_get.copy()
+                for k, v in extra.items():
+                    if k not in new_get:
+                        new_get[k] = v
+                request.GET = new_get
+
+            try:
+                response = match.func(request, *match.args, **match.kwargs)
+                if hasattr(response, "render"):
+                    response.render()
+                if getattr(response, "status_code", 0) == 200:
+                    return response.content.decode("utf-8")
+            finally:
+                request.GET = orig_get
+                if old_hx is None:
+                    request.META.pop("HTTP_HX_REQUEST", None)
+                else:
+                    request.META["HTTP_HX_REQUEST"] = old_hx
+        except Exception as e:
+            logger.debug("FinloView subview pre-render fallback for %s: %s", url_str, e)
+        return ""
 
     def _validate_required_urls(self):
         """Ensure nav_url and at least one view URL are configured in child class."""
@@ -130,8 +173,13 @@ class FinloView(TemplateView):
         context["group_by_url"] = ""
         context["timeline_url"] = ""
         context["custom_layouts"] = getattr(self, "custom_layouts", None) or {}
-        context["layout_url"] = self.get_layout_url()
+        layout_url = self.get_layout_url()
+        context["layout_url"] = layout_url
         context["view_id"] = getattr(self, "view_id", "") or ""
+
+        # Consolidate first load: pre-render navbar and default layout
+        context["rendered_navbar"] = self._render_subview(self.nav_url)
+        context["rendered_main_session"] = self._render_subview(layout_url)
         return context
 
 

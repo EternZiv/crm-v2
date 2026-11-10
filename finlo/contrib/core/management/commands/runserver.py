@@ -14,3 +14,4 @@ class Command(DaphneRunserverCommand):
     def add_arguments(self, parser):
         super().add_arguments(parser)
         parser.set_defaults(use_static_handler=False)
+

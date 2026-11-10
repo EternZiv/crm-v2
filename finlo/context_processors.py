@@ -137,8 +137,7 @@ def unread_notifications(request):
         }
 
     if request.user.is_authenticated:
-        cache_key = f"unread_notifs_{request.user.id}"
-        cached = cache.get(cache_key)
+        cached = getattr(request, "_cached_unread_notifications", None)
         if cached is not None:
             return cached
 
@@ -157,7 +156,7 @@ def unread_notifications(request):
             "unread_notifications_count": len(unread_list),
             "notification_sound_muted": sound_muted,
         }
-        cache.set(cache_key, res, timeout=30)
+        request._cached_unread_notifications = res
         return res
     return {}
 

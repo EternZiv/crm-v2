@@ -5,13 +5,12 @@
         <div class="relative h-full" id="sideMenuContainer">
             {% include "messages.html" %}
         </div>
-    </div>
 
-    <main
-        id="mainContent"
-        role="main"
-        class="flex-[1_0] transition-all duration-300 ease-in-out pt-0 overflow-hidden overflow-y-auto h-[100vh]"
-    >
+        <main
+            id="mainContent"
+            role="main"
+            class="flex-[1_0] transition-all duration-300 ease-in-out pt-16 overflow-y-auto custom-scroll h-[calc(100vh-60px)]"
+        >
         <div class="p-2 sm:p-5" id="home-view">
             <div class="pb-6">
                 <div class="flex flex-wrap justify-between gap-2 mb-2 items-center">
@@ -415,4 +414,5 @@
             window.exportChart = exportChart;
         </script>
     </main>
+</div>
 {% endblock %}

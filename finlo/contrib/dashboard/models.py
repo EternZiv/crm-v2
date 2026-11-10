@@ -146,7 +146,7 @@ class Dashboard(FinloCoreModel):
 
     def get_change_owner_url(self):
         """URL to change owner"""
-        return reverse_lazy("dashboard:dashboard_change_owner", kwargs={"pk": self.pk})
+        return reverse_lazy("dashboard:dashboard_update", kwargs={"pk": self.pk})
 
     def get_favourite_toggle_url(self):
         """URL to toggle favourite status"""

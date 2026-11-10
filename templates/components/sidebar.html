@@ -1,7 +1,17 @@
-<div class="fixed inset-y-0 {% if LANGUAGE_BIDI %}right-0 border-l border-l-primary-100{% else %}left-0 border-r border-r-primary-100{% endif %} w-[5rem] bg-white z-40">
+<div id="mobileSidebarBackdrop" class="fixed inset-0 bg-black/50 z-35 hidden transition-opacity duration-300"></div>
+<div id="primarySidebar" class="fixed inset-y-0 {% if LANGUAGE_BIDI %}right-0 border-l border-l-primary-100{% else %}left-0 border-r border-r-primary-100{% endif %} w-[5rem] bg-white z-40">
     <div class="p-4">
-        <div class="flex items-center justify-center gap-2 mb-8">
-            <img src="{% static 'assets/img/finlo-favicon.png' %}" alt="{% trans 'Finlo CRM logo' %}" class="w-8 h-8">
+        <div class="flex items-center justify-between gap-2 mb-8">
+            <img src="{% static 'assets/img/finlo-favicon.png' %}" alt="{% trans 'Finlo CRM logo' %}" class="w-8 h-8 mx-auto">
+            <button
+                type="button"
+                id="closeMobileSidebar"
+                class="mobile-close-btn text-dark-300 hover:text-dark-600 p-1 rounded-md"
+                title="{% trans 'Close menu' %}"
+                aria-label="{% trans 'Close menu' %}"
+            >
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
         </div>
 
         <nav class="relative space-y-2">

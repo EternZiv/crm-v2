@@ -1,4 +1,4 @@
-﻿"""
+"""
 Gregorian date/time formatting used across Finlo template tags and views.
 """
 

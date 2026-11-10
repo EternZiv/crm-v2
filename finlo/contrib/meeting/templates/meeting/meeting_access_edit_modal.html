@@ -11,7 +11,7 @@
     </div>
 
     <form
-        hx-post="{% url 'meeting:meeting_access_edit' %}"
+        hx-post="{% if edit_type == 'roles' %}{% url 'meeting:meeting_access_roles' %}{% else %}{% url 'meeting:meeting_access_users' %}{% endif %}"
         hx-target="#meeting-integration-settings-view"
         hx-select="#meeting-integration-settings-view"
         hx-swap="outerHTML"

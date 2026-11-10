@@ -202,6 +202,27 @@
             document.body.addEventListener("htmx:configRequest", (event) => {
                 event.detail.headers["X-CSRFToken"] = "{{ csrf_token }}";
             });
+
+            function deduplicateNavbars() {
+                const headers = document.querySelectorAll("#header");
+                if (headers.length > 1) {
+                    for (let i = 1; i < headers.length; i++) {
+                        headers[i].remove();
+                    }
+                }
+                const sidebars = document.querySelectorAll("#sidebar, #primarySidebar");
+                if (sidebars.length > 1) {
+                    for (let i = 1; i < sidebars.length; i++) {
+                        if (sidebars[i].closest("#mainContent")) {
+                            sidebars[i].remove();
+                        }
+                    }
+                }
+            }
+            document.addEventListener("DOMContentLoaded", deduplicateNavbars);
+            document.body.addEventListener("htmx:afterSwap", deduplicateNavbars);
+            document.body.addEventListener("htmx:afterSettle", deduplicateNavbars);
+            document.body.addEventListener("htmx:historyRestore", deduplicateNavbars);
         </script>
 
         <!-- Global Scripts (Defer) -->

@@ -145,7 +145,7 @@ class HomePageView(LoginRequiredMixin, TemplateView):
 
             chart_data = generator.generate_chart_data()
             table_data = generator.generate_table_data()
-            cache.set(cache_key, (kpi_data, chart_data, table_data), timeout=1800)
+            cache.set(cache_key, (kpi_data, chart_data, table_data), timeout=60)
 
         user_dashboards = []
         try:

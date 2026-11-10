@@ -5,13 +5,12 @@
         <div class="relative h-full" id="sideMenuContainer">
             {% include "messages.html" %}
         </div>
-    </div>
 
-    <main
-        id="mainContent"
-        role="main"
-        class="flex-[1_0] transition-all duration-300 ease-in-out pt-0 overflow-hidden overflow-y-auto h-[90vh]"
-    >
+        <main
+            id="mainContent"
+            role="main"
+            class="flex-[1_0] transition-all duration-300 ease-in-out pt-16 overflow-y-auto custom-scroll h-[calc(100vh-60px)]"
+        >
         <style>
             #default-home-charts-and-tables {
                 align-items: stretch;
@@ -600,4 +599,5 @@
             }
         </script>
     </main>
+</div>
 {% endblock %}

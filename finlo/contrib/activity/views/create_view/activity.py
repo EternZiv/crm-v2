@@ -33,7 +33,7 @@ class ActivityCreateView(LoginRequiredMixin, FinloSingleFormView):
     model = Activity
     form_class = ActivityCreateForm
     template_name = "activity_create_form.html"
-    success_url = reverse_lazy("activity:activity_list")
+    success_url = reverse_lazy("activity:activity_list_view")
     view_id = "activity-form-view"
     save_and_new = False
     full_width_fields = ["description", "notes"]

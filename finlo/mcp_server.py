@@ -24,7 +24,18 @@ import django
 django.setup()
 
 from django.db.models import Avg, Count, F, Q, Sum
-from mcp.server.mcpserver import MCPServer
+
+try:
+    from mcp.server.mcpserver import MCPServer
+except ImportError:
+    class MCPServer:  # type: ignore
+        """Fallback stub when optional 'mcp' package is not installed."""
+        def __init__(self, *args, **kwargs):
+            pass
+        def tool(self, *args, **kwargs):
+            return lambda fn: fn
+        def run(self, *args, **kwargs):
+            sys.exit("Error: 'mcp' package is required to run the Finlo MCP server. Install with: pip install mcp")
 
 from finlo.auth.models import User
 from finlo.contrib.activity.models import Activity

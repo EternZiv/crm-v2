@@ -677,9 +677,34 @@ class DefaultDashboardGenerator:
 
         try:
             request = getattr(_thread_local, "request", None)
+
+            if table_fields is None:
+                table_fields_func = model_info.get("table_fields_func")
+                if callable(table_fields_func):
+                    table_fields = table_fields_func(model_info["model"])
+                else:
+                    table_fields = None
+
+            if not table_fields:
+                return None
+
             qs = self.get_queryset(model_info["model"])
-            if hasattr(model_info["model"], "company"):
-                qs = qs.select_related("company")
+
+            # Auto-select related ForeignKey fields to eliminate template N+1 queries
+            fk_fields = []
+            for f_info in table_fields:
+                f_name = f_info.get("name")
+                try:
+                    f_obj = model_info["model"]._meta.get_field(f_name)
+                    if f_obj.is_relation and f_obj.many_to_one:
+                        fk_fields.append(f_name)
+                except Exception:
+                    pass
+            if hasattr(model_info["model"], "company") and "company" not in fk_fields:
+                fk_fields.append("company")
+            if fk_fields:
+                qs = qs.select_related(*fk_fields)
+
             if filter_kwargs:
                 qs = qs.filter(**filter_kwargs)
 
@@ -718,16 +743,6 @@ class DefaultDashboardGenerator:
 
             has_next = page_obj.has_next()
             next_page = page_obj.next_page_number() if has_next else None
-
-            if table_fields is None:
-                table_fields_func = model_info.get("table_fields_func")
-                if callable(table_fields_func):
-                    table_fields = table_fields_func(model_info["model"])
-                else:
-                    table_fields = None
-
-            if not table_fields:
-                return None
 
             columns = [(f["verbose_name"], f["name"]) for f in table_fields]
             page_records = list(page_obj.object_list)
