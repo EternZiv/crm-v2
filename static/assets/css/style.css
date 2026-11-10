@@ -25,13 +25,26 @@
   scroll-behavior: auto !important;
 }
 
-/* Neutralize Tailwind & custom animation classes */
-.animate-spin,
+/* Preserve loading spinner feedback so UI does not feel frozen */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  -webkit-animation: spin 1s linear infinite !important;
+  animation: spin 1s linear infinite !important;
+}
+
+/* Neutralize non-critical decorative animations */
 .animate-pulse,
 .animate-bounce,
 .animate-ping,
-.animate-fade-in,
-[class*="animate-"] {
+.animate-fade-in {
   -webkit-animation: none !important;
   animation: none !important;
   transform: none !important;

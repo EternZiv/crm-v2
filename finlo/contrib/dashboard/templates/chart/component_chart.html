@@ -2,7 +2,10 @@
 <script>
     (function() {
         const chartDom = document.getElementById('component-chart-{{ component_id }}');
-        if (chartDom && typeof EChartsConfig !== 'undefined' && typeof echarts !== 'undefined') {
+        if (!chartDom) return;
+
+        function initComponentChart() {
+            if (typeof EChartsConfig === 'undefined' || typeof echarts === 'undefined') return;
             const compKey = 'dashboard-component-{{ component_id }}';
             if (window.chartInstances && window.chartInstances[compKey]) {
                 try { window.chartInstances[compKey].instance.dispose(); } catch (e) {}
@@ -31,5 +34,13 @@
             // width animating in after an htmx swap) when this initializes.
             setTimeout(function() { myChart.resize(); }, 350);
         }
+
+        if (typeof EChartsConfig === 'undefined' || typeof echarts === 'undefined') {
+            if (window.ensureEChartsLoaded) {
+                window.ensureEChartsLoaded(initComponentChart);
+            }
+            return;
+        }
+        initComponentChart();
     })();
 </script>

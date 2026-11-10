@@ -22,6 +22,8 @@ class RecentlyViewedManager(models.Manager):
 
     def add_viewed_item(self, user, obj):
         """Add or update a recently viewed item for a user."""
+        from django.core.cache import cache
+
         content_type = FinloContentType.objects.get_for_model(obj)
         self.filter(user=user, content_type=content_type, object_id=obj.pk).delete()
         self.create(user=user, content_type=content_type, object_id=obj.pk)
@@ -32,6 +34,7 @@ class RecentlyViewedManager(models.Manager):
                 .values_list("id", flat=True)[:20]
             )
             self.filter(user=user).exclude(id__in=recent_ids).delete()
+        cache.delete(f"recently_viewed_user_{user.id}")
 
     def get_recently_viewed(self, user, model_class=None, limit=20):
         """Get recently viewed items for a user, optionally filtered by model class.

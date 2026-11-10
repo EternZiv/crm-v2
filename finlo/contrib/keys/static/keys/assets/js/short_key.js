@@ -159,8 +159,17 @@ function initShortcutKeys() {
             if (callback) callback(window.shortcutKeysCache);
             return;
         }
+        try {
+            const stored = sessionStorage.getItem('finlo_shortcut_keys');
+            if (stored) {
+                window.shortcutKeysCache = JSON.parse(stored);
+                if (callback) callback(window.shortcutKeysCache);
+                return;
+            }
+        } catch(e) {}
         fetchShortcutKeys(function(keys) {
             window.shortcutKeysCache = keys;
+            try { sessionStorage.setItem('finlo_shortcut_keys', JSON.stringify(keys)); } catch(e) {}
             if (callback) callback(keys);
         });
     }
@@ -250,6 +259,7 @@ function refreshShortcutKeys() {
                 description: sk.description || '',
                 page: sk.page
             }));
+            try { sessionStorage.setItem('finlo_shortcut_keys', JSON.stringify(window.shortcutKeysCache)); } catch(e) {}
         },
         error: function(error) {
             console.error('Failed to refresh shortcut keys:', error);

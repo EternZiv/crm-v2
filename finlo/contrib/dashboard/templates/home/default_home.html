@@ -279,7 +279,14 @@
 
             function initializeDefaultChart(chartIndex, chartData, chartType) {
                 const chartDom = document.getElementById('default-chart-' + chartIndex);
-                if (!chartDom || typeof echarts === 'undefined' || typeof EChartsConfig === 'undefined') {
+                if (!chartDom) return;
+                if (typeof echarts === 'undefined' || typeof EChartsConfig === 'undefined') {
+                    if (window.ensureEChartsLoaded) {
+                        window.ensureEChartsLoaded(function() {
+                            initializeDefaultChart(chartIndex, chartData, chartType);
+                        });
+                        return;
+                    }
                     return;
                 }
 

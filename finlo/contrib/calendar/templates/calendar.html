@@ -375,6 +375,14 @@
         }
 
         function initCalendar() {
+            if (typeof FullCalendar === "undefined") {
+                if (window.ensureFullCalendarLoaded) {
+                    window.ensureFullCalendarLoaded(function() {
+                        initCalendar();
+                    });
+                    return;
+                }
+            }
 
             if (window.calendarInitialized) {
                 return;

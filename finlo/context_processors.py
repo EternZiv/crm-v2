@@ -67,10 +67,16 @@ def recently_viewed_items(request):
         return {"recently_viewed_items": []}
 
     if request.user.is_authenticated:
+        cache_key = f"recently_viewed_user_{request.user.id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return {"recently_viewed_items": cached}
+
         rows = list(
             RecentlyViewed.objects.filter(user=request.user).order_by("-viewed_at")[:6]
         )
         if not rows:
+            cache.set(cache_key, [], timeout=300)
             return {"recently_viewed_items": []}
 
         ids_by_content_type = {}
@@ -102,6 +108,7 @@ def recently_viewed_items(request):
         if stale_ids:
             RecentlyViewed.objects.filter(pk__in=stale_ids).delete()
 
+        cache.set(cache_key, items, timeout=300)
         return {"recently_viewed_items": items}
     return {}
 
@@ -130,6 +137,11 @@ def unread_notifications(request):
         }
 
     if request.user.is_authenticated:
+        cache_key = f"unread_notifs_{request.user.id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         try:
             sound_muted = request.user.notification_sound_preference.sound_muted
         except (NotificationSoundPreference.DoesNotExist, AttributeError):
@@ -140,11 +152,13 @@ def unread_notifications(request):
         ).order_by("-created_at")
         unread_list = UnreadNotifications(unread_qs)
 
-        return {
+        res = {
             "unread_notifications": unread_list,
             "unread_notifications_count": len(unread_list),
             "notification_sound_muted": sound_muted,
         }
+        cache.set(cache_key, res, timeout=30)
+        return res
     return {}
 
 

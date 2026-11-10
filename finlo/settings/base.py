@@ -147,6 +147,8 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    # Finlo core must come before daphne to override runserver and ensure WhiteNoise serves static files
+    "finlo.contrib.core",
     # Daphne must come before staticfiles
     "daphne",
     # Core Django static app
@@ -164,7 +166,6 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "drf_yasg",
     # Finlo apps
-    "finlo.contrib.core",
     "finlo.contrib.generics",
     "finlo.contrib.reports",
     "finlo.contrib.dashboard",
@@ -577,6 +578,53 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_KEEP_ONLY_HASHED_FILES = False
+WHITENOISE_MAX_AGE = 0
+
+
+def whitenoise_immutable_file_test(path, url):
+    """
+    Determine whether given URL represents an immutable file.
+    Third-party vendor libraries, webfonts, and static images receive:
+    Cache-Control: max-age=315360000, public, immutable
+    """
+    url_lower = url.lower()
+    vendor_dirs = (
+        "/assets/js/cloudflare/",
+        "/assets/js/flowbite/",
+        "/assets/js/hyperscript/",
+        "/assets/js/sortablejs/",
+        "/assets/js/summernote/",
+        "/assets/js/echart/",
+        "/assets/css/flowbite/",
+        "/assets/fontawesome/",
+        "/assets/css/googlefonts/",
+        "/assets/js/full_calendar.js",
+        "/assets/js/sweetalert2.js",
+    )
+    if any(v in url_lower for v in vendor_dirs):
+        return True
+    if url_lower.endswith(".min.js") or url_lower.endswith(".min.css"):
+        if "tailwind" not in url_lower:
+            return True
+    if any(url_lower.endswith(ext) for ext in (".woff", ".woff2", ".ttf", ".eot", ".ico", ".webp", ".png", ".jpg", ".svg")):
+        return True
+    return False
+
+
+def whitenoise_add_headers(headers, path, url):
+    """
+    For mutable unversioned files (e.g. style.css, dark.css, global.js),
+    ensure Cache-Control: no-cache, public, must-revalidate with ETag & Last-Modified
+    so updates invalidate immediately while unchanged files revalidate with 304 (0 bytes).
+    """
+    if not whitenoise_immutable_file_test(path, url):
+        headers["Cache-Control"] = "no-cache, public, must-revalidate"
+
+
+WHITENOISE_IMMUTABLE_FILE_TEST = whitenoise_immutable_file_test
+WHITENOISE_ADD_HEADERS_FUNCTION = whitenoise_add_headers
 
 
 MEDIA_URL = "/media/"

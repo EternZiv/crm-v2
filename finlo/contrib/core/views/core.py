@@ -147,7 +147,10 @@ class ClearRecentlyViewedView(LoginRequiredMixin, View):
         Delete all recently viewed items for the current user.
         """
 
+        from django.core.cache import cache
+
         RecentlyViewed.objects.filter(user=request.user).delete()
+        cache.delete(f"recently_viewed_user_{request.user.id}")
         return render(
             request, "common/recently_viewed_panel.html", {"recently_viewed_items": []}
         )

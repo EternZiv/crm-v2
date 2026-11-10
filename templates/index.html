@@ -42,6 +42,29 @@
 
         <!-- On-Demand Summernote Loader -->
         <script>
+            window.loadScript = function(src, done) {
+                var existing = document.querySelector('script[src="' + src + '"]');
+                if (existing) {
+                    if (existing.dataset.loaded === 'true') {
+                        if (done) done();
+                    } else if (done) {
+                        existing.addEventListener('load', done, { once: true });
+                    }
+                    return;
+                }
+                var s = document.createElement('script');
+                s.src = src;
+                s.onload = function() {
+                    s.dataset.loaded = 'true';
+                    if (done) done();
+                };
+                s.onerror = function(err) {
+                    console.error('Failed to load script: ' + src, err);
+                    if (done) done();
+                };
+                document.head.appendChild(s);
+            };
+
             window.ensureSummernoteLoaded = function(callback) {
                 if (window.jQuery && typeof window.jQuery.fn.summernote === 'function') {
                     if (callback) callback();
@@ -54,32 +77,39 @@
                     link.href = "{% static 'assets/css/summernote/summernote-lite.min.css' %}";
                     document.head.appendChild(link);
                 }
-                function loadScript(src, done) {
-                    var existing = document.querySelector('script[src="' + src + '"]');
-                    if (existing) {
-                        if (existing.dataset.loaded === 'true') {
-                            done();
-                        } else {
-                            existing.addEventListener('load', done, { once: true });
-                        }
-                        return;
-                    }
-                    var s = document.createElement('script');
-                    s.src = src;
-                    s.onload = function() {
-                        s.dataset.loaded = 'true';
-                        done();
-                    };
-                    s.onerror = function(err) {
-                        console.error('Failed to load script: ' + src, err);
-                        done();
-                    };
-                    document.head.appendChild(s);
-                }
-                loadScript("{% static 'assets/js/summernote/purify.min.js' %}", function() {
-                    loadScript("{% static 'assets/js/summernote/summernote-lite.min.js' %}", function() {
+                window.loadScript("{% static 'assets/js/summernote/purify.min.js' %}", function() {
+                    window.loadScript("{% static 'assets/js/summernote/summernote-lite.min.js' %}", function() {
                         if (callback) callback();
                     });
+                });
+            };
+
+            window.ensureEChartsLoaded = function(callback) {
+                if (window.echarts && window.EChartsConfig) {
+                    if (callback) callback();
+                    return;
+                }
+                window.loadScript("{% static 'assets/js/echart/echarts.min.js' %}", function() {
+                    window.loadScript("{% static 'assets/js/finlo_charts.js' %}", function() {
+                        if (callback) callback();
+                    });
+                });
+            };
+
+            window.ensureFullCalendarLoaded = function(callback) {
+                if (window.FullCalendar) {
+                    if (callback) callback();
+                    return;
+                }
+                if (!document.getElementById('fullcalendar-css')) {
+                    var link = document.createElement('link');
+                    link.id = 'fullcalendar-css';
+                    link.rel = 'stylesheet';
+                    link.href = "{% static 'assets/css/calendar.css' %}";
+                    document.head.appendChild(link);
+                }
+                window.loadScript("{% static 'assets/js/full_calendar.js' %}", function() {
+                    if (callback) callback();
                 });
             };
         </script>
@@ -90,17 +120,17 @@
         <script defer src="{% static 'assets/js/select2.min.js' %}"></script>
         <script defer src="{% static 'assets/js/sortablejs/Sortable.min.js' %}"></script>
 
-        <!-- Chart Libraries (Apache ECharts - Deferred) -->
-        <script defer src="{% static 'assets/js/echart/echarts.min.js' %}"></script>
-
         <!-- Stylesheets -->
         <link rel="stylesheet" href="{% static 'assets/css/flowbite/flowbite.min.css' %}">
         <link rel="stylesheet" href="{% static 'assets/fontawesome/css/all.min.css' %}">
         <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
         <link rel="stylesheet" href="{% static 'assets/css/dark.css' %}">
-        <link rel="stylesheet" href="{% static 'assets/css/calendar.css' %}">
-        <link rel="stylesheet" href="{% static 'assets/css/select2.min.css' %}">
-        <link rel="stylesheet" href="{% static 'assets/css/sweetalert_toast/toast.css' %}">
+        <link rel="stylesheet" href="{% static 'assets/css/select2.min.css' %}" media="print" onload="this.media='all'">
+        <link rel="stylesheet" href="{% static 'assets/css/sweetalert_toast/toast.css' %}" media="print" onload="this.media='all'">
+        <noscript>
+            <link rel="stylesheet" href="{% static 'assets/css/select2.min.css' %}">
+            <link rel="stylesheet" href="{% static 'assets/css/sweetalert_toast/toast.css' %}">
+        </noscript>
 
         {% block extra_css %}{% endblock extra_css %}
 
@@ -182,9 +212,6 @@
         <script src="{% static 'assets/js/list_view.js' %}"></script>
         <script src="{% static 'assets/js/select2_htmx_cleanup.js' %}"></script>
         <script src="{% static 'assets/js/action_tooltip.js' %}"></script>
-        <script defer src="{% static 'assets/js/finlo_charts.js' %}"></script>
-        <script defer src="{% static 'assets/js/calendar.js' %}"></script>
-        <script defer src="{% static 'assets/js/full_calendar.js' %}"></script>
 
         <!-- Dynamically Registered Scripts -->
         {% load_registered_js as register_js %}
