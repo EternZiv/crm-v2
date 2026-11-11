@@ -2430,6 +2430,10 @@ html[data-sidebar-collapsed='true'] .leftspace {
     display: inline-flex !important;
   }
 
+  #mobileSidebarBackdrop {
+    z-index: 55;
+  }
+
   #primarySidebar {
     transform: translateX(-100%);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -2467,6 +2471,17 @@ html[data-sidebar-collapsed='true'] .leftspace {
 
   #sideMenu {
     display: none !important;
+  }
+}
+
+.calendar-filter-panel {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .calendar-filter-panel {
+    width: 200px;
+    flex-shrink: 0;
   }
 }
 

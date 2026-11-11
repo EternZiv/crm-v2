@@ -43,6 +43,11 @@
     </div>
 
     <div id="followup-contents" class="h-[calc(_100vh_-_370px_)] pt-2">
+        {% if role_has_superuser_members %}
+            <div class="mb-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="status">
+                {% trans "Django superuser members bypass role permissions; changes here will not affect those accounts." %}
+            </div>
+        {% endif %}
         <div
             id="tab-fu-open"
             class="fu-tab-content block text-[.8rem] border-[1px] border-[solid] border-[#efefef] rounded-md bg-white"
@@ -76,6 +81,10 @@
                             hx-vals='js:{"checked": event.target.checked}'
                             hx-on::after-request="toggleAllChecked(this)"
                             hx-swap="none"
+                            {% if role.system_key and role.system_key != "SUPER_ADMIN" %}
+                                disabled
+                                title="{% trans 'Built-in roles can only configure supported CRM permissions individually.' %}"
+                            {% endif %}
                         >
                         {% trans "Select All" %}
                     </div>
@@ -93,6 +102,10 @@
                                         class="model-select-all w-4 h-4 bg-[#E9EDF7] rounded-sm accent-[#e54f38] mr-2"
                                         {% if model.select_all_checked %}
                                             checked
+                                        {% endif %}
+                                        {% if not model.has_role_grantable_permissions %}
+                                            disabled
+                                            title="{% trans 'No permissions for this model can be granted by this role.' %}"
                                         {% endif %}
                                         hx-post="{% url 'core:update_role_model_permissions' role.id %}"
                                         hx-trigger="change"
@@ -120,24 +133,48 @@
                                         {% trans model.verbose_name %}
                                     </div>
                                 {% endif %}
+                                {% if role.system_key %}
+                                    <span class="ml-2 text-xs text-gray-500">{% trans "Fixed sales hierarchy" %}</span>
+                                {% else %}
+                                    <select
+                                        class="ml-2 rounded border border-gray-300 px-1 py-1 text-xs"
+                                        aria-label="{% trans 'Data scope' %} - {{ model.verbose_name }}"
+                                        hx-post="{% url 'core:update_role_data_scope' role.id %}"
+                                        hx-trigger="change"
+                                        hx-vals='js:{"app_label": "{{ model.app_label }}", "model_name": "{{ model.model_name }}", "scope": event.target.value}'
+                                        hx-swap="none"
+                                        hx-on::after-request="if (event.detail.failed) { alert('Unable to update data scope'); }"
+                                    >
+                                        {% for scope_value, scope_label in model.data_scope_choices %}
+                                            <option value="{{ scope_value }}" {% if model.data_scope == scope_value %}selected{% endif %}>
+                                                {% trans scope_label %}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                {% endif %}
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 {% if model.has_export %}lg:grid-cols-5{% else %}lg:grid-cols-4{% endif %} gap-x-4 gap-y-3 sm:gap-x-6 lg:gap-x-8 text-xs text-dark-300 w-[calc(100%-15rem)] px-4 sm:px-0">
                                 {% for perm in model.permissions %}
-                                    <label class="flex items-center whitespace-nowrap">
-                                        <input
-                                            type="checkbox"
-                                            name="permissions"
-                                            value="{{ perm.id }}"
-                                            class="individual-perm w-4 h-4 border border-[#cfcfcf] rounded-sm accent-[#e54f38] mr-2"
-                                            {% if perm.has_perm %}
-                                                checked
-                                            {% endif %}
+                                    <label class="flex items-center whitespace-nowrap gap-1">
+                                        <select
+                                            class="individual-perm rounded border border-gray-300 px-1 py-1"
+                                            aria-label="{% trans perm.label %} {{ model.verbose_name }}"
                                             hx-post="{% url 'core:update_role_permissions' role.id %}"
                                             hx-trigger="change"
-                                            hx-vals='js:{"permission_id": "{{ perm.id }}", "checked": event.target.checked}'
-                                            hx-swap="innerHTML"
+                                            hx-vals='js:{"permission_id": "{{ perm.id }}", "decision": event.target.value}'
+                                            hx-swap="none"
+                                            hx-on::after-request="if (event.detail.failed) { alert('Unable to update role permission'); } else { $('#reloadMessagesButton').click(); }"
                                         >
+                                            {% if perm.decision == "blocked" %}
+                                                <option value="blocked" selected disabled>
+                                                    {% trans "Blocked by policy" %}
+                                                </option>
+                                            {% endif %}
+                                            <option value="inherit" {% if perm.decision == "inherit" %}selected{% endif %}>{% trans "Default" %}</option>
+                                            <option value="allow" {% if perm.decision == "allow" %}selected{% endif %} {% if not perm.is_role_grant_allowed %}disabled{% endif %}>{% trans "Allow" %}</option>
+                                            <option value="deny" {% if perm.decision == "deny" %}selected{% endif %} {% if perm.is_recovery_permission %}disabled{% endif %}>{% trans "Deny" %}</option>
+                                        </select>
                                         {% trans perm.label %}
                                     </label>
                                 {% endfor %}
@@ -151,10 +188,6 @@
 </div>
 
 <script>
-    function toggleChecked($elm) {
-        var is_checked = $elm.is(':checked');
-        $elm.closest('.permItem').find('.individual-perm').prop('checked', is_checked);
-    }
     function toggleAllChecked(el) {
         var $elm = $(el);
         var is_checked = $elm.is(':checked');

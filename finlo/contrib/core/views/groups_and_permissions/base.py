@@ -10,12 +10,18 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import FieldDoesNotExist
 from django.core.paginator import Paginator
 
 # First party imports (Finlo)
 from finlo.apps import apps
 from finlo.auth.models import User
 from finlo.contrib.generics.views import FinloListView, FinloTabView
+from finlo.contrib.core.sales_authorization import (
+    ROLE_RECOVERY_PERMISSIONS,
+    role_permission_grant_allowed,
+)
 from finlo.registry.permission_registry import is_permission_exempt
 from finlo.shortcuts import get_object_or_404, redirect, render
 from finlo.urls import reverse_lazy
@@ -29,7 +35,7 @@ from finlo.utils.translation import gettext_lazy as _
 from finlo.views.generic import TemplateView, View
 from finlo.web import HttpResponse, JsonResponse, ScriptResponse
 
-from ...models import FieldPermission, FinloContentType, Role
+from ...models import FieldPermission, FinloContentType, Role, RoleDataScope
 
 # Local imports
 from .permission_utils import PermissionUtils
@@ -250,7 +256,13 @@ class RolePermissionTabView(LoginRequiredMixin, FinloTabView):
     @cached_property
     def tabs(self):
         """Define tabs for groups and permissions."""
-        if self.request.user.has_perm("core.view_company"):
+        from finlo.contrib.core.sales_authorization import (
+            is_super_admin_or_superuser,
+        )
+
+        if is_super_admin_or_superuser(self.request.user) or self.request.user.has_perm(
+            "core.view_company"
+        ):
             return [
                 {
                     "title": _("Roles"),
@@ -342,7 +354,48 @@ class RolePermissionsView(LoginRequiredMixin, TemplateView):
 
         context["role"] = role
         context["role_id"] = role_id
-        context["all_models"] = PermissionUtils.get_all_models_data(role=role)
+        context["role_has_superuser_members"] = role.users.filter(
+            is_superuser=True
+        ).exists()
+        all_models = PermissionUtils.get_all_models_data(role=role)
+        configured_scopes = {
+            (scope.content_type.app_label, scope.content_type.model): scope.scope
+            for scope in RoleDataScope.all_objects.filter(role=role, is_active=True)
+            .select_related("content_type")
+        }
+        for model in all_models:
+            model["data_scope"] = configured_scopes.get(
+                (model["app_label"], model["model_name"].lower()),
+                RoleDataScope.DENY_ALL,
+            )
+            model_class = apps.get_model(
+                model["app_label"], model["model_name"]
+            )
+            scope_labels = dict(RoleDataScope.SCOPE_CHOICES)
+            scope_choices = [
+                (RoleDataScope.DENY_ALL, scope_labels[RoleDataScope.DENY_ALL])
+            ]
+            if getattr(model_class, "OWNER_FIELDS", ()):
+                scope_choices.append(
+                    (RoleDataScope.OWNED, scope_labels[RoleDataScope.OWNED])
+                )
+                scope_choices.append(
+                    (RoleDataScope.ASSIGNED, scope_labels[RoleDataScope.ASSIGNED])
+                )
+            elif callable(getattr(model_class, "granted_access_filter", None)):
+                scope_choices.append(
+                    (RoleDataScope.ASSIGNED, scope_labels[RoleDataScope.ASSIGNED])
+                )
+            try:
+                model_class._meta.get_field("company")
+            except FieldDoesNotExist:
+                pass
+            else:
+                scope_choices.append(
+                    (RoleDataScope.COMPANY, scope_labels[RoleDataScope.COMPANY])
+                )
+            model["data_scope_choices"] = scope_choices
+        context["all_models"] = all_models
 
         return context
 
@@ -494,15 +547,9 @@ class PermissionTab(LoginRequiredMixin, TemplateView):
         return context
 
 
+@method_decorator(htmx_required, name="dispatch")
 @method_decorator(
-    permission_required_or_denied(
-        [
-            "auth.view_permission",
-            "auth.view_group",
-            "auth.change_permission",
-            "auth.change_group",
-        ]
-    ),
+    permission_required_or_denied("auth.change_permission"),
     name="dispatch",
 )
 class UpdateRolePermissionsView(LoginRequiredMixin, View):
@@ -514,26 +561,148 @@ class UpdateRolePermissionsView(LoginRequiredMixin, View):
         """Toggle permission for a specific role."""
         role = get_object_or_404(Role, id=role_id)
         perm_id = request.POST.get("permission_id")
-        checked = request.POST.get("checked") == "true"
+        decision = request.POST.get("decision")
+        if decision is None:
+            decision = (
+                "allow" if request.POST.get("checked") == "true" else "deny"
+            )
+        if decision not in {"allow", "deny", "inherit"}:
+            return JsonResponse(
+                {"success": False, "message": "Invalid permission decision"},
+                status=400,
+            )
 
         try:
-            permission = Permission.objects.get(id=perm_id)
+            permission = Permission.objects.select_related("content_type").get(
+                id=perm_id
+            )
         except Permission.DoesNotExist:
             return JsonResponse({"success": False, "message": "Permission not found"})
 
-        members = User.objects.filter(role=role)
-        if checked:
+        permission_key = (
+            f"{permission.content_type.app_label}.{permission.codename}"
+        )
+        if decision == "deny" and permission_key in ROLE_RECOVERY_PERMISSIONS:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Recovery permissions cannot be denied",
+                },
+                status=400,
+            )
+        if decision == "allow" and not role_permission_grant_allowed(
+            role, permission
+        ):
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "This role cannot grant the selected permission",
+                },
+                status=400,
+            )
+        if decision == "allow":
             role.permissions.add(permission)
-            for member in members:
-                member.user_permissions.add(permission)
+            role.denied_permissions.remove(permission)
             messages.success(request, _("Permission added successfully."))
+        elif decision == "deny":
+            role.permissions.remove(permission)
+            role.denied_permissions.add(permission)
+            messages.success(request, _("Permission denied for this role."))
         else:
             role.permissions.remove(permission)
-            for member in members:
-                member.user_permissions.remove(permission)
-            messages.success(request, _("Permission removed successfully."))
+            role.denied_permissions.remove(permission)
+            messages.success(request, _("Role permission override cleared."))
 
         return ScriptResponse(msgs=True)
+
+
+@method_decorator(htmx_required, name="dispatch")
+@method_decorator(
+    permission_required_or_denied("auth.change_permission"),
+    name="dispatch",
+)
+class UpdateRoleDataScopeView(LoginRequiredMixin, View):
+    """Set an explicit, supported data scope for a custom role and model."""
+
+    def post(self, request, role_id):
+        role = get_object_or_404(Role, id=role_id)
+        if role.system_key:
+            return JsonResponse(
+                {"success": False, "message": "Built-in role scopes are fixed"},
+                status=400,
+            )
+
+        app_label = request.POST.get("app_label")
+        model_name = request.POST.get("model_name")
+        scope = request.POST.get("scope")
+        if scope not in {choice[0] for choice in RoleDataScope.SCOPE_CHOICES}:
+            return JsonResponse(
+                {"success": False, "message": "Invalid data scope"},
+                status=400,
+            )
+        try:
+            model = apps.get_model(app_label, model_name)
+        except (LookupError, ValueError):
+            return JsonResponse(
+                {"success": False, "message": "Model not found"}, status=400
+            )
+        if not model or is_permission_exempt(model):
+            return JsonResponse(
+                {"success": False, "message": "Model is not configurable"},
+                status=400,
+            )
+
+        owner_fields = getattr(model, "OWNER_FIELDS", ())
+        if scope == RoleDataScope.COMPANY:
+            try:
+                model._meta.get_field("company")
+            except FieldDoesNotExist:
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": "This model has no company boundary",
+                    },
+                    status=400,
+                )
+        elif scope == RoleDataScope.OWNED and not owner_fields:
+            return JsonResponse(
+                {"success": False, "message": "This model has no owner fields"},
+                status=400,
+            )
+        elif scope == RoleDataScope.ASSIGNED and not (
+            owner_fields or callable(getattr(model, "granted_access_filter", None))
+        ):
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "This model has no supported assignment filter",
+                },
+                status=400,
+            )
+
+        content_type = ContentType.objects.get_for_model(model)
+        role_scope, created = RoleDataScope.all_objects.get_or_create(
+            role=role,
+            content_type=content_type,
+            defaults={
+                "scope": scope,
+                "is_active": True,
+                "created_by": request.user,
+                "updated_by": request.user,
+            },
+        )
+        if not created:
+            role_scope.scope = scope
+            role_scope.is_active = True
+            role_scope.updated_by = request.user
+            role_scope.save()
+        return JsonResponse(
+            {
+                "success": True,
+                "scope": role_scope.scope,
+                "message": "Data scope updated",
+            }
+        )
 
 
 @method_decorator(htmx_required, name="dispatch")
@@ -616,12 +785,7 @@ class AssignUsersView(LoginRequiredMixin, View):
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(
     permission_required_or_denied(
-        [
-            "auth.view_permission",
-            "auth.view_group",
-            "auth.change_permission",
-            "auth.change_group",
-        ]
+        ["auth.change_permission", "auth.change_group"]
     ),
     name="dispatch",
 )
@@ -656,19 +820,38 @@ class UpdateRoleModelPermissionsView(LoginRequiredMixin, View):
 
             permission_objects = Permission.objects.filter(
                 id__in=[p["id"] for p in permissions]
-            )
-            members = User.objects.filter(role=role)
-
+            ).select_related("content_type")
+            grantable_permissions = [
+                permission
+                for permission in permission_objects
+                if role_permission_grant_allowed(role, permission)
+            ]
+            if not checked:
+                permission_objects = [
+                    permission
+                    for permission in permission_objects
+                    if f"{permission.content_type.app_label}.{permission.codename}"
+                    not in ROLE_RECOVERY_PERMISSIONS
+                ]
             if checked:
-                role.permissions.add(*permission_objects)
-                for member in members:
-                    member.user_permissions.add(*permission_objects)
-                messages.success(request, f"All permissions added for {model_name}.")
+                if not grantable_permissions:
+                    return JsonResponse(
+                        {
+                            "success": False,
+                            "message": "No permissions for this model can be granted by this role",
+                        },
+                        status=400,
+                    )
+                role.permissions.add(*grantable_permissions)
+                role.denied_permissions.remove(*grantable_permissions)
+                messages.success(
+                    request,
+                    f"Granted {len(grantable_permissions)} configurable permission(s) for {model_name}.",
+                )
             else:
                 role.permissions.remove(*permission_objects)
-                for member in members:
-                    member.user_permissions.remove(*permission_objects)
-                messages.success(request, f"All permissions removed for {model_name}.")
+                role.denied_permissions.add(*permission_objects)
+                messages.success(request, f"All permissions denied for {model_name}.")
 
             return ScriptResponse(msgs=True)
 
@@ -681,12 +864,7 @@ class UpdateRoleModelPermissionsView(LoginRequiredMixin, View):
 @method_decorator(htmx_required, name="dispatch")
 @method_decorator(
     permission_required_or_denied(
-        [
-            "auth.view_permission",
-            "auth.view_group",
-            "auth.change_permission",
-            "auth.change_group",
-        ]
+        ["auth.change_permission", "auth.change_group"]
     ),
     name="dispatch",
 )
@@ -714,7 +892,9 @@ class UpdateRoleAllPermissionsView(LoginRequiredMixin, View):
                     model._meta.app_label, model_name
                 )
                 all_permissions.extend(
-                    Permission.objects.filter(id__in=[p["id"] for p in permissions])
+                    Permission.objects.filter(
+                        id__in=[p["id"] for p in permissions]
+                    ).select_related("content_type")
                 )
 
             if not all_permissions:
@@ -722,20 +902,30 @@ class UpdateRoleAllPermissionsView(LoginRequiredMixin, View):
                     {"success": False, "message": "No permissions found"}
                 )
 
-            members = User.objects.filter(role=role)
+            grantable_permissions = [
+                permission
+                for permission in all_permissions
+                if role_permission_grant_allowed(role, permission)
+            ]
+            if not checked:
+                all_permissions = [
+                    permission
+                    for permission in all_permissions
+                    if f"{permission.content_type.app_label}.{permission.codename}"
+                    not in ROLE_RECOVERY_PERMISSIONS
+                ]
             if checked:
-                role.permissions.add(*all_permissions)
-                for member in members:
-                    member.user_permissions.add(*all_permissions)
+                role.permissions.add(*grantable_permissions)
+                role.denied_permissions.remove(*grantable_permissions)
                 messages.success(
-                    request, f"All permissions granted to {role.role_name} role."
+                    request,
+                    f"Granted {len(grantable_permissions)} configurable permission(s) to {role.role_name}.",
                 )
             else:
                 role.permissions.remove(*all_permissions)
-                for member in members:
-                    member.user_permissions.remove(*all_permissions)
+                role.denied_permissions.add(*all_permissions)
                 messages.success(
-                    request, f"All permissions revoked from {role.role_name} role."
+                    request, f"All permissions denied to {role.role_name} role."
                 )
 
             return ScriptResponse(msgs=True)

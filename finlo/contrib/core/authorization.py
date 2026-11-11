@@ -20,8 +20,15 @@ def get_company_scope(user, request=None):
     if not user or not user.is_authenticated:
         return CompanyScope(company_id=None)
 
-    if user.is_superuser or getattr(getattr(user, "role", None), "system_key", None) == "SUPER_ADMIN":
+    role = getattr(user, "role", None)
+    if user.is_superuser:
         return CompanyScope(company_id=None, all_companies=True)
+    if role and not role.is_active:
+        return CompanyScope(company_id=None)
+    if getattr(role, "system_key", None) == "SUPER_ADMIN":
+        return CompanyScope(company_id=None, all_companies=True)
+    if role and not role.system_key:
+        return CompanyScope(company_id=getattr(user, "company_id", None))
 
     can_switch_company = has_effective_permission(user, "core.can_switch_company")
     session = getattr(request, "session", None)
@@ -40,23 +47,27 @@ def get_company_scope(user, request=None):
 
 
 def scope_queryset_to_company(queryset, user, request=None):
-    """Apply the user's company boundary to models with a ``company`` field."""
+    """Apply tenant, sales-hierarchy, and custom-role data-scope boundaries."""
     try:
         queryset.model._meta.get_field("company")
     except FieldDoesNotExist:
-        return queryset
-
-    scope = get_company_scope(user, request)
-    if scope.all_companies:
         scoped_queryset = queryset
-    elif scope.company_id is None:
-        scoped_queryset = queryset.none()
     else:
-        scoped_queryset = queryset.filter(company_id=scope.company_id)
+        scope = get_company_scope(user, request)
+        if scope.all_companies:
+            scoped_queryset = queryset
+        elif scope.company_id is None:
+            scoped_queryset = queryset.none()
+        else:
+            scoped_queryset = queryset.filter(company_id=scope.company_id)
 
-    from .sales_authorization import scope_queryset_to_sales_hierarchy
+    from .sales_authorization import (
+        scope_queryset_to_custom_role,
+        scope_queryset_to_sales_hierarchy,
+    )
 
-    return scope_queryset_to_sales_hierarchy(scoped_queryset, user)
+    scoped_queryset = scope_queryset_to_sales_hierarchy(scoped_queryset, user)
+    return scope_queryset_to_custom_role(scoped_queryset, user)
 
 
 def can_access_company_record(user, record, request=None):
@@ -73,6 +84,11 @@ def can_access_company_record(user, record, request=None):
     if not company_access:
         return False
 
-    from .sales_authorization import can_access_sales_record
+    from .sales_authorization import (
+        can_access_custom_role_record,
+        can_access_sales_record,
+    )
 
-    return can_access_sales_record(user, record)
+    return can_access_sales_record(user, record) and can_access_custom_role_record(
+        user, record
+    )

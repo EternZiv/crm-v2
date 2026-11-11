@@ -3,22 +3,37 @@
     <button
         id="reloadButton"
         style="display: none"
-        hx-get="{% url 'calendar:calendar_view' %}{% if request.GET.display_only %}?display_only={{ request.GET.display_only }}{% endif %}"
-        hx-target="#mainContent"
-        hx-select="#mainContent"
+        hx-get="{% url 'calendar:calendar_view' %}?section=schedule{% if request.GET.display_only %}&display_only={{ request.GET.display_only }}{% endif %}"
+        hx-target="#calendarContainer"
+        hx-select="#calendarContainer"
+        hx-select-oob="#messages-container"
         hx-swap="outerHTML"
+        hx-sync="#calendarContainer:replace"
     >
         Reload Content
     </button>
     <button
         id="reloadMainContent"
         style="display: none"
-        hx-get="{% url 'calendar:calendar_view' %}{% if request.GET.display_only %}?display_only={{ request.GET.display_only }}{% endif %}"
-        hx-target="#mainContent"
-        hx-select="#mainContent"
+        hx-get="{% url 'calendar:calendar_view' %}?section=schedule{% if request.GET.display_only %}&display_only={{ request.GET.display_only }}{% endif %}"
+        hx-target="#calendarContainer"
+        hx-select="#calendarContainer"
+        hx-select-oob="#messages-container"
         hx-swap="outerHTML"
+        hx-sync="#calendarContainer:replace"
     >
         Reload Main Content
+    </button>
+    <button
+        id="reloadCalendarClean"
+        style="display: none"
+        hx-get="{% url 'calendar:calendar_view' %}?section=schedule"
+        hx-target="#calendarContainer"
+        hx-select="#calendarContainer"
+        hx-swap="outerHTML"
+        hx-sync="#calendarContainer:replace"
+    >
+        Reload Calendar Clean
     </button>
     <div class="bg-white px-5 border-b border-b-dark-50 fixed w-fill-available z-10">
         <div class="flex flex-nowrap overflow-hidden overflow-x-auto items-center gap-2 justify-between">
@@ -334,14 +349,17 @@
             if (window.hideDetailPopup) window.hideDetailPopup(); else $("#calendarPopup").addClass("hidden");
         }
 
-        document.addEventListener('htmx:afterRequest', function(event) {
-            const elId = event.detail.elt.id;
-            if (event.detail.xhr.status === 200 && (elId === 'markUnavailableBtn' || elId === 'newActivityBtn')) {
-                if (typeof openModal === 'function') {
-                    openModal();
+        if (!window._finloCalendarAfterReqBound) {
+            document.addEventListener('htmx:afterRequest', function(event) {
+                const elId = event.detail && event.detail.elt ? event.detail.elt.id : '';
+                if (event.detail.xhr.status === 200 && (elId === 'markUnavailableBtn' || elId === 'newActivityBtn')) {
+                    if (typeof openModal === 'function') {
+                        openModal();
+                    }
                 }
-            }
-        });
+            });
+            window._finloCalendarAfterReqBound = true;
+        }
 
 
 
@@ -420,6 +438,13 @@
             } catch (e) {}
             initTeamMembersFilter();
             setCalendarScope(savedScope);
+
+            if (window._finloActiveCalendar && typeof window._finloActiveCalendar.destroy === "function") {
+                try {
+                    window._finloActiveCalendar.destroy();
+                } catch (e) {}
+            }
+            calendarEl.innerHTML = "";
 
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 height: "100%",
@@ -1155,14 +1180,16 @@
                                 calendar.getEventSources().forEach(source => source.remove());
                                 calendar.addEventSource(data.events);
 
-                                const calendarUrl = '{% url "calendar:calendar_view" %}';
                                 const url = new URL(window.location.href);
                                 url.searchParams.delete('display_only');
                                 if (window.history.replaceState) {
                                     window.history.replaceState(null, '', url.toString());
                                 }
                                 window.currentDisplayOnly = '';
-                                htmx.ajax('GET', calendarUrl, { target: '#mainContent', swap: 'outerHTML', select: '#mainContent' });
+                                const reloadCleanBtn = document.getElementById('reloadCalendarClean');
+                                if (reloadCleanBtn && document.getElementById('calendarContainer')) {
+                                    htmx.trigger(reloadCleanBtn, 'click');
+                                }
                             } else {
                                 console.error('Error fetching events:', data.message);
                             }
@@ -1224,14 +1251,16 @@
                                         if (data.status === 'success') {
                                             calendar.addEventSource(data.events);
                                             // Reload without display_only; clear URL so checkboxes stay in sync
-                                            const calendarUrl = '{% url "calendar:calendar_view" %}';
                                             const url = new URL(window.location.href);
                                             url.searchParams.delete('display_only');
                                             if (window.history.replaceState) {
                                                 window.history.replaceState(null, '', url.toString());
                                             }
                                             window.currentDisplayOnly = '';
-                                            htmx.ajax('GET', calendarUrl, { target: '#mainContent', swap: 'outerHTML', select: '#mainContent' });
+                                            const reloadCleanBtn = document.getElementById('reloadCalendarClean');
+                                            if (reloadCleanBtn && document.getElementById('calendarContainer')) {
+                                                htmx.trigger(reloadCleanBtn, 'click');
+                                            }
                                         } else {
                                             console.error('Error fetching events:', data.message);
                                         }
@@ -1272,25 +1301,8 @@
                 }
             }
 
-            // Sync checkbox state with "Display This Only" after HTMX settle.
-            $(document).on('htmx:afterSettle', function() {
-                const displayOnly = new URLSearchParams(window.location.search).get('display_only') || '';
-                if (displayOnly) {
-                    $('.calendar-checkbox').each(function() {
-                        const type = this.dataset.calendarType;
-                        this.checked = (type === displayOnly);
-                        this.style.accentColor = this.style.borderColor;
-                        this.style.color = this.style.borderColor;
-                        if (this.checked) {
-                            this.style.setProperty('background-color', this.style.borderColor, 'important');
-                        } else {
-                            this.style.setProperty('background-color', 'transparent', 'important');
-                        }
-                    });
-                    calendar.refetchEvents();
-                }
-                syncMasterCheckbox();
-            });
+            window._finloActiveCalendar = calendar;
+            window._finloSyncMasterCheckbox = syncMasterCheckbox;
 
             // Popup functions
             function showPopup(content, x, y) {
@@ -1327,41 +1339,88 @@
             });
 
             // Use capture phase so we run before FullCalendar removes the list popover from DOM
-            document.addEventListener("click", function (e) {
-                if ($(popup).hasClass("hidden")) return;
-                if ($(popup).has(e.target).length) return;
+            if (window._finloCalendarPopupDocClick) {
+                document.removeEventListener("click", window._finloCalendarPopupDocClick, true);
+            }
+            window._finloCalendarPopupDocClick = function (e) {
+                const popupEl = document.getElementById("calendarPopup");
+                if (!popupEl || $(popupEl).hasClass("hidden")) return;
+                if ($(popupEl).has(e.target).length) return;
                 if ($(e.target).closest(".fc-event").length) return;
                 if ($(e.target).closest(".fc-popover").length) return;
                 hideDetailPopup();
-            }, true);
+            };
+            document.addEventListener("click", window._finloCalendarPopupDocClick, true);
 
             window.showPopup = showPopup;
             window.hideDetailPopup = hideDetailPopup;
         }
 
 
-        $(document).on("htmx:beforeRequest", function(event) {
-            if (event.detail.target.id === "mainContent") {
+        $(document).off("htmx:beforeRequest.finloCalendar").on("htmx:beforeRequest.finloCalendar", function(event) {
+            const targetId = event.detail && event.detail.target ? event.detail.target.id : "";
+            if (targetId === "mainContent" || targetId === "calendarContainer") {
                 window.calendarInitialized = false;
             }
         });
 
-        $(document).on("htmx:afterSettle", function(event) {
-            const urlParams = new URLSearchParams(window.location.search);
-            window.currentDisplayOnly = urlParams.get('display_only') || '';
+        $(document).off("htmx:beforeSwap.finloCalendar").on("htmx:beforeSwap.finloCalendar", function(event) {
+            const tgt = event.detail && event.detail.target;
+            if (tgt && tgt.id === "calendarContainer" && (!tgt.isConnected || !tgt.parentNode)) {
+                event.detail.shouldSwap = false;
+            }
+        });
 
+        $(document).off("htmx:afterSettle.finloCalendar").on("htmx:afterSettle.finloCalendar", function(event) {
+            if (!document.getElementById("calendarGrid") || !document.getElementById("calendarContainer")) {
+                window.calendarInitialized = false;
+                if (window._finloActiveCalendar && typeof window._finloActiveCalendar.destroy === "function") {
+                    try {
+                        window._finloActiveCalendar.destroy();
+                    } catch (e) {}
+                    window._finloActiveCalendar = null;
+                }
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const displayOnly = urlParams.get('display_only') || '';
+            window.currentDisplayOnly = displayOnly;
+
+            const wasInitialized = Boolean(window.calendarInitialized);
             if (!window.calendarInitialized) {
                 initCalendar();
             }
-            let activeLinkId = "#" + localStorage.getItem("activeSidebarLinkId");
+
+            if (displayOnly) {
+                $('.calendar-checkbox').each(function() {
+                    const type = this.dataset.calendarType;
+                    this.checked = (type === displayOnly);
+                    this.style.accentColor = this.style.borderColor;
+                    this.style.color = this.style.borderColor;
+                    if (this.checked) {
+                        this.style.setProperty('background-color', this.style.borderColor, 'important');
+                    } else {
+                        this.style.setProperty('background-color', 'transparent', 'important');
+                    }
+                });
+                if (wasInitialized && window._finloActiveCalendar) {
+                    window._finloActiveCalendar.refetchEvents();
+                }
+            }
+            if (typeof window._finloSyncMasterCheckbox === "function") {
+                window._finloSyncMasterCheckbox();
+            }
+
+            const activeLinkId = localStorage.getItem("activeSidebarLinkId");
             if (activeLinkId) {
-                $(activeLinkId).addClass("bg-primary-600 text-white").find("img").css("filter", "brightness(0) invert(1)");
+                $("#" + activeLinkId).addClass("bg-primary-600 text-white").find("img").css("filter", "brightness(0) invert(1)");
             }
         });
     </script>
-    <div class="p-5 pt-24">
-        <div class="block lg:grid grid-cols-12 grid-rows-1 gap-3">
-            <div class="col-span-6 lg:col-span-10">
+    <div id="calendarContainer" hx-sync="this:replace" class="p-5 pt-24">
+        <div class="flex flex-col lg:flex-row gap-3">
+            <div class="flex-1 min-w-0">
                 <div class="h-full [box-shadow:0px_0px_20px_0px_rgb(0_0_0_/_5%)] bg-white rounded-lg z-0 p-4">
                     <div id="calendar-container" class="relative">
                         <div id="calendarGrid"></div>
@@ -1380,8 +1439,8 @@
                     </div>
                 </div>
             </div>
-            <div class="col-span-6 lg:col-span-2">
-                <div class="h-full shadow-[0px_0px_20px_0px_rgba(0,0,0,0.05)] bg-white rounded-lg z-0 p-4 w-[200px]">
+            <div class="calendar-filter-panel">
+                <div class="h-full shadow-[0px_0px_20px_0px_rgba(0,0,0,0.05)] bg-white rounded-lg z-0 p-4 w-full">
                     {% if team_scope_available %}
                         <div class="pb-3 mb-3 border-b border-primary-300">
                             <span class="block text-sm mb-2">{% trans 'Show' %}</span>
@@ -1514,10 +1573,11 @@
                                             <li>
                                                 <button
                                                     class="px-4 py-1.5 hover:text-primary-600 transition duration-300 text-sm w-full text-left"
-                                                    hx-get="{% url 'calendar:calendar_view' %}?display_only={{ calendar.id }}"
-                                                    hx-target="#mainContent"
-                                                    hx-select="#mainContent"
+                                                    hx-get="{% url 'calendar:calendar_view' %}?section=schedule&display_only={{ calendar.id }}"
+                                                    hx-target="#calendarContainer"
+                                                    hx-select="#calendarContainer"
                                                     hx-swap="outerHTML"
+                                                    hx-push-url="true"
                                                 >
                                                     {% trans 'Display This Only' %}
                                                 </button>
@@ -1583,10 +1643,11 @@
                                                 <button
                                                     type="button"
                                                     class="px-4 py-1.5 hover:text-primary-600 transition duration-300 text-sm w-full text-left"
-                                                    hx-get="{% url 'calendar:calendar_view' %}?display_only=custom_{{ cc.id }}"
-                                                    hx-target="#mainContent"
-                                                    hx-select="#mainContent"
+                                                    hx-get="{% url 'calendar:calendar_view' %}?section=schedule&display_only=custom_{{ cc.id }}"
+                                                    hx-target="#calendarContainer"
+                                                    hx-select="#calendarContainer"
                                                     hx-swap="outerHTML"
+                                                    hx-push-url="true"
                                                 >
                                                     {% trans 'Display This Only' %}
                                                 </button>

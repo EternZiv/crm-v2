@@ -132,6 +132,9 @@
             mainContent.innerHTML = htmlToApply;
             if (window.htmx) htmx.process(mainContent);
             reexecuteScripts(mainContent);
+            if (typeof window.bootstrapFinloUI === "function") {
+                window.bootstrapFinloUI(mainContent);
+            }
             setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
         }
     }
@@ -526,6 +529,9 @@
                     mainContent.innerHTML = freshMainHtml;
                     if (window.htmx) htmx.process(mainContent);
                     reexecuteScripts(mainContent);
+                    if (typeof window.bootstrapFinloUI === "function") {
+                        window.bootstrapFinloUI(mainContent);
+                    }
                     setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
                 }
             }
@@ -627,8 +633,12 @@
     }
 
     document.body.addEventListener("htmx:afterSwap", function (event) {
-        setActiveSectionFromUrl(window.location.href);
-        scheduleSnapshot();
+        const target = event.detail?.target;
+        const targetId = target && target.id;
+        if (targetId === "mainContent" || targetId === "calendarContainer" || (target && target.closest && target.closest("#mainContent"))) {
+            setActiveSectionFromUrl(window.location.href);
+            scheduleSnapshot();
+        }
     });
 
     document.body.addEventListener("htmx:afterSettle", function (event) {

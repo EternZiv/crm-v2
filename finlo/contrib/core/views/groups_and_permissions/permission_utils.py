@@ -90,18 +90,26 @@ class PermissionUtils:
     @staticmethod
     def get_all_models_data(user=None, role=None, search_query=None):
         """Retrieve all models with their permissions, optionally checking user or role permissions."""
+        from finlo.contrib.core.sales_authorization import (
+            ROLE_RECOVERY_PERMISSIONS,
+            role_permission_grant_allowed,
+        )
+
 
         all_permissions = list(Permission.objects.select_related("content_type").all())
+        permissions_by_id = {permission.pk: permission for permission in all_permissions}
         permissions_by_model = {}
         for perm in all_permissions:
             key = (perm.content_type.app_label, perm.content_type.model)
             permissions_by_model.setdefault(key, []).append(perm)
 
         granted_ids = None
+        denied_ids = set()
         if user is not None:
             granted_ids = set(user.user_permissions.values_list("id", flat=True))
         elif role is not None:
             granted_ids = set(role.permissions.values_list("id", flat=True))
+            denied_ids = set(role.denied_permissions.values_list("id", flat=True))
 
         all_models = []
         for model in apps.get_models():
@@ -131,6 +139,17 @@ class PermissionUtils:
                 app_label, model_name, permissions=model_permissions
             )
             if permissions:
+                for permission in permissions:
+                    role_permission = permissions_by_id[permission["id"]]
+                    permission["is_recovery_permission"] = (
+                        f"{app_label}.{permission['codename']}"
+                        in ROLE_RECOVERY_PERMISSIONS
+                    )
+                    permission["is_role_grant_allowed"] = (
+                        role_permission_grant_allowed(role, role_permission)
+                        if role is not None
+                        else True
+                    )
                 has_export = any(
                     perm["codename"] == f"export_{model_name.lower()}"
                     for perm in permissions
@@ -145,19 +164,28 @@ class PermissionUtils:
                     "has_export": has_export,
                 }
                 if granted_ids is not None:
-                    all_permissions_checked = True
-                    has_any_permission = False
                     for perm in permissions:
                         has_perm = perm["id"] in granted_ids
                         perm["has_perm"] = has_perm
-                        if has_perm:
-                            has_any_permission = True
-                        else:
-                            all_permissions_checked = False
-                    model_data["select_all_checked"] = (
-                        all_permissions_checked
-                        and has_any_permission
-                        and len(permissions) > 0
+                        perm["decision"] = (
+                            "allow"
+                            if has_perm and perm["is_role_grant_allowed"]
+                            else "blocked"
+                            if has_perm and not perm["is_role_grant_allowed"]
+                            else "deny"
+                            if perm["id"] in denied_ids
+                            and not perm["is_recovery_permission"]
+                            else "inherit"
+                        )
+                    model_data["has_role_grantable_permissions"] = any(
+                        perm["is_role_grant_allowed"] for perm in permissions
+                    )
+                    grantable_permissions = [
+                        perm for perm in permissions if perm["is_role_grant_allowed"]
+                    ]
+                    model_data["select_all_checked"] = bool(
+                        grantable_permissions
+                        and all(perm["has_perm"] for perm in grantable_permissions)
                     )
                 all_models.append(model_data)
         return sorted(

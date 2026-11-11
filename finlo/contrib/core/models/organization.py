@@ -9,6 +9,7 @@ import logging
 # Third-party imports (Django)
 from django.conf import settings
 from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 
 # First party imports (Finlo)
 from finlo.core.exceptions import ValidationError
@@ -17,7 +18,7 @@ from finlo.urls import reverse_lazy
 from finlo.utils.translation import gettext_lazy as _
 
 # Local imports
-from .base import FinloCoreModel
+from .base import CompanyFilteredManager, FinloCoreModel
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,37 @@ class Department(FinloCoreModel):
         return reverse_lazy("core:department_delete_view", kwargs={"pk": self.pk})
 
 
+class RoleQuerySet(models.QuerySet):
+    """Keep immutable role identity fields protected through bulk ORM methods."""
+
+    def update(self, **kwargs):
+        if {"system_key", "parent_role", "parent_role_id"}.intersection(kwargs):
+            raise ValidationError(
+                _("Role identity and hierarchy must be changed through validated saves.")
+            )
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs, fields, batch_size=None):
+        if {"system_key", "parent_role", "parent_role_id"}.intersection(fields):
+            raise ValidationError(
+                _("Role identity and hierarchy cannot be changed in bulk.")
+            )
+        return super().bulk_update(objs, fields, batch_size=batch_size)
+
+    def delete(self):
+        if self.filter(system_key__isnull=False).exists():
+            raise ValidationError(_("Canonical sales roles cannot be deleted."))
+        return super().delete()
+
+
+class RoleManager(CompanyFilteredManager.from_queryset(RoleQuerySet)):
+    pass
+
+
+class RoleAllObjectsManager(models.Manager.from_queryset(RoleQuerySet)):
+    pass
+
+
 class Role(FinloCoreModel):
     """
     Role model
@@ -92,6 +124,14 @@ class Role(FinloCoreModel):
     permissions = models.ManyToManyField(
         Permission, blank=True, related_name="roles", verbose_name=_("Permissions")
     )
+    denied_permissions = models.ManyToManyField(
+        Permission,
+        blank=True,
+        related_name="denied_roles",
+        verbose_name=_("Denied Permissions"),
+    )
+    objects = RoleManager()
+    all_objects = RoleAllObjectsManager()
 
     class Meta:
         """
@@ -157,10 +197,37 @@ class Role(FinloCoreModel):
             parent = parent.parent_role
 
     def delete(self, *args, **kwargs):
-        """Protect canonical sales roles from cascading deletion of their users."""
+        """Protect canonical roles and reject deletion while users are assigned."""
         if self.system_key:
-                raise ValidationError(_("Canonical sales roles cannot be deleted."))
+            raise ValidationError(_("Canonical sales roles cannot be deleted."))
+        if type(self).all_objects.filter(users__pk__isnull=False, pk=self.pk).exists():
+            raise ValidationError(
+                _("A role with assigned users cannot be deleted.")
+            )
         return super().delete(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        """Keep existing role identities and built-in reporting links immutable."""
+        if self.pk:
+            previous = (
+                type(self)
+                .all_objects.filter(pk=self.pk)
+                .values("system_key", "parent_role_id")
+                .first()
+            )
+            if previous:
+                if previous["system_key"] != self.system_key:
+                    raise ValidationError(
+                        _("A role's system identity cannot be changed.")
+                    )
+                if previous["system_key"] and previous["parent_role_id"] != self.parent_role_id:
+                    raise ValidationError(
+                        _("The built-in sales hierarchy cannot be changed.")
+                    )
+
+        if self.system_key:
+            self.clean()
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return str(self.role_name)
@@ -176,6 +243,67 @@ class Role(FinloCoreModel):
         This method to get edit url
         """
         return reverse_lazy("core:edit_roles_view", kwargs={"pk": self.pk})
+
+
+class RoleDataScope(FinloCoreModel):
+    """A typed, per-model data-access scope for a configurable role."""
+
+    DENY_ALL = "deny_all"
+    OWNED = "owned"
+    ASSIGNED = "assigned"
+    COMPANY = "company"
+    SCOPE_CHOICES = [
+        (DENY_ALL, _("No records")),
+        (OWNED, _("Owned records")),
+        (ASSIGNED, _("Assigned records")),
+        (COMPANY, _("Company records")),
+    ]
+
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.CASCADE,
+        related_name="data_scopes",
+        verbose_name=_("Role"),
+    )
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        related_name="role_data_scopes",
+        verbose_name=_("Model"),
+    )
+    scope = models.CharField(
+        max_length=16,
+        choices=SCOPE_CHOICES,
+        default=DENY_ALL,
+        verbose_name=_("Data Scope"),
+    )
+
+    class Meta:
+        verbose_name = _("Role Data Scope")
+        verbose_name_plural = _("Role Data Scopes")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("role", "content_type"),
+                name="core_role_scope_role_content_type_unique",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.role_id and self.role.system_key:
+            raise ValidationError(
+                _("Built-in sales roles use their fixed hierarchy scope.")
+            )
+        if self.role_id and self.company_id != self.role.company_id:
+            raise ValidationError(
+                {"company": _("A role scope must use the role's company.")}
+            )
+
+    def save(self, *args, **kwargs):
+        if self.role_id:
+            self.company_id = self.role.company_id
+        self.full_clean(exclude=["created_by", "updated_by"])
+        return super().save(*args, **kwargs)
 
 
 class TeamRole(FinloCoreModel):

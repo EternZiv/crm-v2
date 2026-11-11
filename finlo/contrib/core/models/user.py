@@ -83,7 +83,7 @@ class FinloUser(AbstractUser):
     )
     role = models.ForeignKey(
         Role,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="users",
@@ -270,8 +270,11 @@ class FinloUser(AbstractUser):
         Check if user has any permission from the given list.
         If perm_list is empty, return True (no restrictions).
         """
+        from finlo.contrib.core.sales_authorization import (
+            is_super_admin_or_superuser,
+        )
 
-        if self.is_superuser:
+        if is_super_admin_or_superuser(self):
             return True
 
         if not perm_list:
@@ -281,6 +284,16 @@ class FinloUser(AbstractUser):
             raise ValueError("perm_list must be an iterable of permissions.")
 
         return any(self.has_perm(perm, obj) for perm in perm_list)
+
+    def has_perm(self, perm, obj=None):
+        """Resolve every permission check through the shared role policy."""
+        from finlo.contrib.core.sales_authorization import has_effective_permission
+
+        return has_effective_permission(self, perm, obj)
+
+    def _has_base_permission(self, perm, obj=None):
+        """Evaluate Django's configured permission backends without role recursion."""
+        return super().has_perm(perm, obj)
 
     def save(self, *args, **kwargs):
         """Set username from email and password from contact_number if missing; then save."""

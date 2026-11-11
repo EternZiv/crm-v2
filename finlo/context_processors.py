@@ -182,12 +182,23 @@ def menu_context_processor(request):
     )
 
     if is_partial:
+        keep_lazy_settings = target_clean == "mainContent" and not getattr(
+            request, "_skip_header_context", False
+        )
         return {
             "main_section_menu": [],
             "sub_section_menu": SimpleLazyObject(lambda: get_sub_section_menu(request)),
-            "settings_menu": [],
+            "settings_menu": (
+                SimpleLazyObject(lambda: get_settings_menu(request))
+                if keep_lazy_settings
+                else []
+            ),
             "floating_menu": [],
-            "my_settings_menu": [],
+            "my_settings_menu": (
+                SimpleLazyObject(lambda: get_my_settings_menu(request))
+                if keep_lazy_settings
+                else []
+            ),
             "current_section": section_param,
             "current_app_label": current_app_label,
         }

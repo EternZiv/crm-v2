@@ -88,9 +88,11 @@ def get_sub_section_menu(request=None) -> Dict[str, List[Dict]]:
     static_data = _get_static_sub_section_data(request=request)
     sections = defaultdict(list)
 
+    from finlo.contrib.core.sales_authorization import is_super_admin_or_superuser
+
     user = getattr(request, "user", None) if request else None
     is_auth = user and user.is_authenticated
-    is_super = is_auth and getattr(user, "is_superuser", False)
+    is_super = is_auth and is_super_admin_or_superuser(user)
 
     for entry in static_data:
         perm = entry["perm"]

@@ -58,7 +58,12 @@ class RoleSerializer(CompanyScopedSerializerMixin, serializers.ModelSerializer):
 
         model = Role
         fields = "__all__"
-        read_only_fields = ["system_key"]
+        read_only_fields = [
+            "system_key",
+            "parent_role",
+            "permissions",
+            "denied_permissions",
+        ]
 
 
 class SalesRegionSerializer(

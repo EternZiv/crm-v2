@@ -3,9 +3,32 @@
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from django.conf import settings
+from django.contrib.auth import login
 from django.contrib.auth.models import Permission
-from django.test import RequestFactory, TestCase
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
+from django.db.models.deletion import ProtectedError
+from django.http import HttpRequest
+from django.test import Client, RequestFactory, TestCase
+from django.utils.module_loading import import_module
 from rest_framework.test import APIRequestFactory, force_authenticate
+
+
+class UserAgentClient(Client):
+    """Provide realistic request metadata for login_history signal receivers."""
+
+    def _login(self, user, backend=None):
+        request = HttpRequest()
+        if self.session:
+            request.session = self.session
+        else:
+            engine = import_module(settings.SESSION_ENGINE)
+            request.session = engine.SessionStore()
+        request.META["HTTP_USER_AGENT"] = "Mozilla/5.0"
+        login(request, user, backend)
+        request.session.save()
+        self._set_login_cookies(request)
 
 from finlo.api.mixins import scope_queryset_to_permission
 from finlo.auth.models import User
@@ -14,7 +37,12 @@ from finlo.contrib.core.authorization import (
     can_access_company_record,
     scope_queryset_to_company,
 )
-from finlo.contrib.core.models import Company, Department, Role
+from finlo.contrib.core.models import (
+    Company,
+    Department,
+    Role,
+    RoleDataScope,
+)
 from finlo.contrib.utils.middlewares import _thread_local
 from finlo.contrib.core.views.export_data import get_export_queryset
 from finlo.contrib.core.views.users import ChangeUserCompanyView, UserDetailView
@@ -394,30 +422,18 @@ class CompanyAuthorizationTests(TestCase):
             },
         )
 
-    def test_owner_api_scope_includes_subordinate_role_users(self):
-        parent_role = Role.all_objects.create(
-            role_name="Parent", company=self.company
-        )
-        child_role = Role.all_objects.create(
-            role_name="Child", parent_role=parent_role, company=self.company
-        )
-        self.actor.role = parent_role
-        self.actor.save(update_fields=["role"])
-        self.colleague.role = child_role
-        self.colleague.save(update_fields=["role"])
+    def test_owner_api_scope_uses_allowed_user_ids(self):
         request = SimpleNamespace(
             user=self.actor, session={}, active_company=self.company
         )
-        owner_permission = (
-            f"{Lead._meta.app_label}.view_own_{Lead._meta.model_name}"
+        self.actor.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label=Lead._meta.app_label,
+                codename=f"view_own_{Lead._meta.model_name}",
+            )
         )
 
         with (
-            patch.object(
-                self.actor,
-                "has_perm",
-                side_effect=lambda permission: permission == owner_permission,
-            ),
             patch(
                 "finlo.api.mixins.get_granted_access_filter", return_value=None
             ),
@@ -434,3 +450,516 @@ class CompanyAuthorizationTests(TestCase):
         self.assertIn(self.company.pk, params)
         self.assertIn(self.actor.pk, params)
         self.assertIn(self.colleague.pk, params)
+
+    def test_super_admin_role_has_full_settings_menu_and_tag_access_without_is_superuser(self):
+        from finlo.contrib.generics.templatetags.finlo_tags.permission_tags import (
+            has_perm,
+            has_super_user,
+        )
+        from finlo.menu.settings_menu import get_settings_menu
+
+        super_admin_role = Role.all_objects.create(
+            role_name="Super Admin",
+            system_key="SUPER_ADMIN",
+            company=self.company,
+        )
+        self.actor.role = super_admin_role
+        self.actor.save(update_fields=["role"])
+        self.assertFalse(self.actor.is_superuser)
+
+        request = RequestFactory().get("/settings-view/")
+        request.user = self.actor
+        request.active_company = self.company
+
+        menu = get_settings_menu(request)
+        self.assertTrue(len(menu) > 0)
+        self.assertTrue(self.actor.has_any_perms(["core.can_view_finlo_settings"]))
+        self.assertTrue(has_perm({"request": request}, "core.can_view_finlo_settings"))
+        self.assertTrue(has_super_user(self.actor, "core.view_finlouser"))
+
+    def test_role_maker_toggle_updates_live_role_grants_without_copying(self):
+        custom_role = Role.all_objects.create(
+            role_name="Custom Analyst",
+            company=self.company,
+        )
+        self.colleague.role = custom_role
+        self.colleague.save(update_fields=["role"])
+
+        perm = Permission.objects.get(
+            content_type__app_label="leads",
+            codename="view_lead",
+        )
+        custom_role.permissions.remove(perm)
+        self.colleague.user_permissions.remove(perm)
+
+        admin = User.objects.create_superuser(
+            username="rm-admin",
+            email="rm-admin@example.test",
+            password="test-password",
+            company=self.company,
+            country="US",
+        )
+        client = UserAgentClient()
+        client.force_login(admin)
+        response = client.post(
+            f"/roles-update-permissions/{custom_role.pk}/",
+            {"permission_id": str(perm.pk), "checked": "true"},
+            HTTP_HX_REQUEST="true",
+            HTTP_HOST="localhost:8000",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(custom_role.permissions.filter(pk=perm.pk).exists())
+        self.assertFalse(self.colleague.user_permissions.filter(pk=perm.pk).exists())
+        self.assertTrue(self.colleague.has_perm("leads.view_lead"))
+
+    def test_custom_role_permissions_support_explicit_deny_and_recovery(self):
+        custom_role = Role.all_objects.create(
+            role_name="Restricted Analyst",
+            company=self.company,
+        )
+        self.actor.role = custom_role
+        self.actor.save(update_fields=["role"])
+        view_permission = Permission.objects.get(
+            content_type__app_label="leads",
+            codename="view_lead",
+        )
+        recovery_permission = Permission.objects.get(
+            content_type__app_label="auth",
+            codename="change_permission",
+        )
+        self.actor.user_permissions.add(view_permission, recovery_permission)
+        custom_role.denied_permissions.add(view_permission, recovery_permission)
+
+        self.assertFalse(self.actor.has_perm("leads.view_lead"))
+        self.assertTrue(self.actor.has_perm("auth.change_permission"))
+
+    def test_role_permission_mutation_requires_write_permission(self):
+        custom_role = Role.all_objects.create(
+            role_name="View-only role",
+            company=self.company,
+        )
+        view_permission = Permission.objects.get(
+            content_type__app_label="auth",
+            codename="view_permission",
+        )
+        self.actor.user_permissions.add(view_permission)
+        self.assertFalse(self.actor.is_superuser)
+        self.assertFalse(self.actor.has_perm("auth.change_permission"))
+        client = UserAgentClient()
+        client.force_login(self.actor)
+
+        response = client.post(
+            f"/roles-update-permissions/{custom_role.pk}/",
+            {"permission_id": str(view_permission.pk), "decision": "allow"},
+            HTTP_HX_REQUEST="true",
+            HTTP_HOST="localhost:8000",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["permissions"], ["auth.change_permission"])
+        self.assertFalse(custom_role.permissions.filter(pk=view_permission.pk).exists())
+
+    def test_role_assignment_endpoint_requires_change_role_permission(self):
+        custom_role = Role.all_objects.create(
+            role_name="Protected assignment role",
+            company=self.company,
+        )
+        client = UserAgentClient()
+        client.force_login(self.actor)
+
+        response = client.post(
+            "/add-user-to-roles-view/",
+            {"role": custom_role.pk, "users": [self.colleague.pk]},
+            HTTP_HX_REQUEST="true",
+            HTTP_HOST="localhost:8000",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["permissions"], ["core.change_role"])
+        self.colleague.refresh_from_db()
+        self.assertIsNone(self.colleague.role_id)
+
+    def test_role_data_scope_endpoint_validates_role_and_supported_scope(self):
+        custom_role = Role.all_objects.create(
+            role_name="Scope editor role",
+            company=self.company,
+        )
+        admin = User.objects.create_superuser(
+            username="scope-admin",
+            email="scope-admin@example.test",
+            password="Test-only-RoleScope-Password-987!",
+            company=self.company,
+            country="US",
+        )
+        client = UserAgentClient()
+        client.force_login(admin)
+
+        valid_response = client.post(
+            f"/roles-update-data-scope/{custom_role.pk}/",
+            {
+                "app_label": "core",
+                "model_name": "role",
+                "scope": RoleDataScope.COMPANY,
+            },
+            HTTP_HX_REQUEST="true",
+            HTTP_HOST="localhost:8000",
+        )
+        invalid_response = client.post(
+            f"/roles-update-data-scope/{custom_role.pk}/",
+            {
+                "app_label": "core",
+                "model_name": "role",
+                "scope": RoleDataScope.OWNED,
+            },
+            HTTP_HX_REQUEST="true",
+            HTTP_HOST="localhost:8000",
+        )
+
+        self.assertEqual(valid_response.status_code, 200)
+        self.assertEqual(invalid_response.status_code, 400)
+        self.assertEqual(
+            RoleDataScope.all_objects.get(
+                role=custom_role,
+                content_type=ContentType.objects.get_for_model(Role),
+            ).scope,
+            RoleDataScope.COMPANY,
+        )
+
+        super_admin_role = Role.all_objects.create(
+            role_name="Super Admin",
+            system_key="SUPER_ADMIN",
+            company=self.company,
+        )
+        protected_response = client.post(
+            f"/roles-update-data-scope/{super_admin_role.pk}/",
+            {
+                "app_label": "core",
+                "model_name": "role",
+                "scope": RoleDataScope.COMPANY,
+            },
+            HTTP_HX_REQUEST="true",
+            HTTP_HOST="localhost:8000",
+        )
+        self.assertEqual(protected_response.status_code, 400)
+
+    def test_role_manager_page_renders_permission_decisions_and_custom_scopes(self):
+        custom_role = Role.all_objects.create(
+            role_name="Role page analyst",
+            company=self.company,
+        )
+        admin = User.objects.create_superuser(
+            username="role-page-admin",
+            email="role-page-admin@example.test",
+            password="Test-only-RolePage-Password-987!",
+            company=self.company,
+            country="US",
+        )
+        admin.role = custom_role
+        admin.save(update_fields=["role"])
+        client = UserAgentClient()
+        client.force_login(admin)
+
+        response = client.get(
+            f"/roles-permissions/{custom_role.pk}/",
+            HTTP_HX_REQUEST="true",
+            HTTP_HOST="localhost:8000",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Default")
+        self.assertContains(response, "Allow")
+        self.assertContains(response, "Deny")
+        self.assertContains(response, "No records")
+        self.assertContains(response, "roles-update-data-scope/")
+        self.assertContains(
+            response,
+            "Django superuser members bypass role permissions",
+        )
+
+    def test_custom_role_data_scope_defaults_to_deny_and_company_scope_is_tenant_bound(self):
+        custom_role = Role.all_objects.create(
+            role_name="Scoped Analyst",
+            company=self.company,
+        )
+        self.actor.role = custom_role
+        self.actor.save(update_fields=["role"])
+        model_type = ContentType.objects.get_for_model(User)
+        self.assertFalse(
+            scope_queryset_to_company(
+                User.objects.all(), self.actor
+            ).exists()
+        )
+
+        RoleDataScope.all_objects.create(
+            role=custom_role,
+            content_type=model_type,
+            scope=RoleDataScope.COMPANY,
+        )
+        request = SimpleNamespace(
+            user=self.actor,
+            session={"show_all_companies": True},
+            active_company=self.other_company,
+        )
+        scoped_ids = set(
+            scope_queryset_to_company(User.objects.all(), self.actor, request)
+            .values_list("pk", flat=True)
+        )
+        self.assertEqual(scoped_ids, {self.actor.pk, self.colleague.pk})
+        self.assertFalse(
+            can_access_company_record(self.actor, self.foreign_user, request)
+        )
+
+    def test_custom_role_owned_scope_filters_querysets_and_object_access(self):
+        custom_role = Role.all_objects.create(
+            role_name="Owner Analyst",
+            company=self.company,
+        )
+        self.actor.role = custom_role
+        self.actor.save(update_fields=["role"])
+        actor_department = Department.objects.create(
+            department_name="Actor department",
+            company=self.company,
+            created_by=self.actor,
+        )
+        colleague_department = Department.objects.create(
+            department_name="Colleague department",
+            company=self.company,
+            created_by=self.colleague,
+        )
+        RoleDataScope.all_objects.create(
+            role=custom_role,
+            content_type=ContentType.objects.get_for_model(Department),
+            scope=RoleDataScope.OWNED,
+        )
+
+        with patch.object(Department, "OWNER_FIELDS", ["created_by"], create=True):
+            queryset = scope_queryset_to_company(
+                Department.objects.all(), self.actor
+            )
+            returned_ids = set(queryset.values_list("pk", flat=True))
+            own_access = can_access_company_record(self.actor, actor_department)
+            colleague_access = can_access_company_record(
+                self.actor, colleague_department
+            )
+
+        self.assertEqual(returned_ids, {actor_department.pk})
+        self.assertTrue(own_access)
+        self.assertFalse(colleague_access)
+
+    def test_fixed_sales_role_permission_ceilings_remain_in_order(self):
+        parent = None
+        roles = []
+        for system_key, role_name in Role.SALES_ROLE_CHOICES:
+            role = Role.all_objects.create(
+                role_name=role_name,
+                system_key=system_key,
+                parent_role=parent,
+                company=self.company,
+            )
+            roles.append(role)
+            parent = role
+
+        view_permission = Permission.objects.get(
+            content_type__app_label="leads",
+            codename="view_lead",
+        )
+        add_permission = Permission.objects.get(
+            content_type__app_label="leads",
+            codename="add_lead",
+        )
+        change_permission = Permission.objects.get(
+            content_type__app_label="leads",
+            codename="change_lead",
+        )
+        delete_permission = Permission.objects.get(
+            content_type__app_label="leads",
+            codename="delete_lead",
+        )
+        other_module_add = Permission.objects.get(
+            content_type__app_label="accounts",
+            codename="add_account",
+        )
+        self.actor.user_permissions.add(
+            view_permission,
+            add_permission,
+            change_permission,
+            delete_permission,
+            other_module_add,
+        )
+
+        for role in roles:
+            self.actor.role = role
+            self.actor.save(update_fields=["role"])
+            if role.system_key == "SUPER_ADMIN":
+                self.assertTrue(self.actor.has_perm("leads.delete_lead"))
+                self.assertTrue(self.actor.has_perm("accounts.add_account"))
+                continue
+            self.assertTrue(self.actor.has_perm("leads.view_lead"))
+            self.assertTrue(self.actor.has_perm("leads.add_lead"))
+            self.assertFalse(self.actor.has_perm("leads.delete_lead"))
+            self.assertFalse(self.actor.has_perm("accounts.add_account"))
+            self.assertEqual(
+                self.actor.has_perm("leads.change_lead"),
+                role.system_key in {"RSM", "SSM", "ASM", "BDO"},
+            )
+
+        self.actor.role = roles[2]
+        self.actor.save(update_fields=["role"])
+        roles[2].denied_permissions.add(view_permission)
+        self.assertFalse(self.actor.has_perm("leads.view_lead"))
+
+        self.actor.user_permissions.remove(add_permission)
+        roles[2].permissions.add(add_permission)
+        roles[2].denied_permissions.remove(view_permission)
+        self.assertTrue(self.actor.has_perm("leads.add_lead"))
+
+        head_role = roles[1]
+        head_role.parent_role = None
+        with self.assertRaises(ValidationError):
+            head_role.save()
+        with self.assertRaises(ValidationError):
+            Role.all_objects.filter(pk=head_role.pk).update(parent_role=None)
+        with self.assertRaises(ValidationError):
+            Role.all_objects.filter(pk=head_role.pk).delete()
+
+    def test_explicit_role_grants_and_denials_apply_to_all_six_builtin_roles(self):
+        parent = None
+        roles = []
+        for system_key, role_name in Role.SALES_ROLE_CHOICES:
+            role = Role.all_objects.create(
+                role_name=role_name,
+                system_key=system_key,
+                parent_role=parent,
+                company=self.company,
+            )
+            roles.append(role)
+            parent = role
+
+        permission = Permission.objects.get(
+            content_type__app_label="leads",
+            codename="delete_lead",
+        )
+        for role in roles:
+            self.actor.role = role
+            self.actor.save(update_fields=["role"])
+            role.denied_permissions.add(permission)
+            self.assertFalse(self.actor.has_perm("leads.delete_lead"))
+
+            role.denied_permissions.remove(permission)
+            role.permissions.add(permission)
+            self.assertTrue(self.actor.has_perm("leads.delete_lead"))
+
+    def test_builtin_role_grants_cannot_expand_protected_admin_or_hierarchy_access(self):
+        parent = Role.all_objects.create(
+            role_name="Super Admin",
+            system_key="SUPER_ADMIN",
+            company=self.company,
+        )
+        head_role = Role.all_objects.create(
+            role_name="Head of Sales",
+            system_key="HEAD_OF_SALES",
+            parent_role=parent,
+            company=self.company,
+        )
+        self.actor.role = head_role
+        self.actor.save(update_fields=["role"])
+
+        protected_permissions = Permission.objects.filter(
+            content_type__app_label="auth",
+            codename="change_permission",
+        ) | Permission.objects.filter(
+            content_type__app_label="core",
+            codename="change_salesassignment",
+        )
+        head_role.permissions.add(*protected_permissions)
+
+        self.assertFalse(self.actor.has_perm("auth.change_permission"))
+        self.assertFalse(self.actor.has_perm("core.change_salesassignment"))
+
+        custom_role = Role.all_objects.create(
+            role_name="Protected custom role",
+            company=self.company,
+        )
+        self.actor.role = custom_role
+        self.actor.save(update_fields=["role"])
+        custom_role.permissions.add(*protected_permissions)
+
+        self.assertFalse(self.actor.has_perm("auth.change_permission"))
+        self.assertFalse(self.actor.has_perm("core.change_salesassignment"))
+
+    def test_role_manager_rejects_builtin_allow_blocked_by_role_policy(self):
+        parent = Role.all_objects.create(
+            role_name="Super Admin",
+            system_key="SUPER_ADMIN",
+            company=self.company,
+        )
+        head_role = Role.all_objects.create(
+            role_name="Head of Sales",
+            system_key="HEAD_OF_SALES",
+            parent_role=parent,
+            company=self.company,
+        )
+        admin = User.objects.create_superuser(
+            username="policy-admin",
+            email="policy-admin@example.test",
+            password="Test-only-Policy-Password-987!",
+            company=self.company,
+            country="US",
+        )
+        permission = Permission.objects.get(
+            content_type__app_label="auth",
+            codename="change_permission",
+        )
+        client = UserAgentClient()
+        client.force_login(admin)
+
+        response = client.post(
+            f"/roles-update-permissions/{head_role.pk}/",
+            {"permission_id": str(permission.pk), "decision": "allow"},
+            HTTP_HX_REQUEST="true",
+            HTTP_HOST="localhost:8000",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(head_role.permissions.filter(pk=permission.pk).exists())
+
+    def test_role_permission_changes_are_visible_to_other_loaded_users(self):
+        role = Role.all_objects.create(
+            role_name="Live permission role",
+            company=self.company,
+        )
+        member = User.objects.create_user(
+            username="live-permission-member",
+            password="Test-only-Live-Permission-Password-987!",
+            company=self.company,
+            country="US",
+            role=role,
+        )
+        permission = Permission.objects.get(
+            content_type__app_label="leads",
+            codename="view_lead",
+        )
+
+        self.assertFalse(member.has_perm("leads.view_lead"))
+        role.permissions.add(permission)
+        self.assertTrue(member.has_perm("leads.view_lead"))
+
+        role.denied_permissions.add(permission)
+        self.assertFalse(member.has_perm("leads.view_lead"))
+        role.denied_permissions.remove(permission)
+        role.permissions.remove(permission)
+        self.assertFalse(member.has_perm("leads.view_lead"))
+
+    def test_assigned_custom_role_cannot_be_deleted(self):
+        role = Role.all_objects.create(
+            role_name="Assigned role",
+            company=self.company,
+        )
+        self.actor.role = role
+        self.actor.save(update_fields=["role"])
+
+        with self.assertRaises(ValidationError):
+            role.delete()
+        with self.assertRaises(ProtectedError):
+            Role.all_objects.filter(pk=role.pk).delete()

@@ -348,10 +348,14 @@ urlpatterns = [
         name="roles_hierarchy_view",
     ),
     path("roles-list-view/", views.RoleListView.as_view(), name="role_list_view"),
-    path("create-roles-view/", views.AddRole.as_view(), name="create_roles_view"),
+    path(
+        "create-roles-view/",
+        views.CreateRoleView.as_view(),
+        name="create_roles_view",
+    ),
     path(
         "edit-roles-view/<int:pk>/",
-        views.AddRole.as_view(),
+        views.EditRoleView.as_view(),
         name="edit_roles_view",
     ),
     path(
@@ -792,6 +796,11 @@ urlpatterns = [
         "roles-update-permissions/<int:role_id>/",
         views.UpdateRolePermissionsView.as_view(),
         name="update_role_permissions",
+    ),
+    path(
+        "roles-update-data-scope/<int:role_id>/",
+        views.UpdateRoleDataScopeView.as_view(),
+        name="update_role_data_scope",
     ),
     path(
         "load-more-users/",

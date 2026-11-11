@@ -16,6 +16,7 @@ from finlo.contrib.core.models.base import (
 from finlo.contrib.core.models.organization import (
     Department,
     Role,
+    RoleDataScope,
     TeamRole,
     CustomerRole,
     PartnerRole,
@@ -82,6 +83,7 @@ __all__ = [
     "FinloCoreModel",
     "Department",
     "Role",
+    "RoleDataScope",
     "TeamRole",
     "CustomerRole",
     "PartnerRole",

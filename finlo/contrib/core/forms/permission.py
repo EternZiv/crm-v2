@@ -78,6 +78,10 @@ class AddUsersToRoleForm(forms.Form):
                 raise ValidationError(
                     _("The following user(s) are already assigned to this role")
                 )
+            if any(user.company_id != role.company_id for user in users):
+                raise ValidationError(
+                    _("Users and their role must belong to the same company.")
+                )
 
         return cleaned_data
 
@@ -86,12 +90,9 @@ class AddUsersToRoleForm(forms.Form):
         role = self.cleaned_data["role"]
         users = self.cleaned_data["users"]
         if commit:
-            role_permissions = list(role.permissions.all())
             for user in users:
                 user.role = role
                 user.save()
-                if role_permissions:
-                    user.user_permissions.add(*role_permissions)
         return users
 
 

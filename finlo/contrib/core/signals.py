@@ -629,7 +629,7 @@ def _bulk_provision_role_permissions(role_pks):
 
 
 def _bulk_provision_user_permissions(user_pks):
-    """Bulk-assign role + view_own + field permissions to fixture-loaded users."""
+    """Bulk-assign default view_own and field permissions to fixture-loaded users."""
     users = list(User.objects.filter(pk__in=user_pks))
     if not users:
         return
@@ -643,19 +643,6 @@ def _bulk_provision_user_permissions(user_pks):
     for uid in non_superuser_ids:
         for p in view_own_perms:
             pairs.add((uid, p.pk))
-
-    role_ids = {u.role_id for u in users if u.role_id}
-    if role_ids:
-        role_perm_map = {
-            role.pk: [p.pk for p in role.permissions.all()]
-            for role in Role.objects.filter(pk__in=role_ids).prefetch_related(
-                "permissions"
-            )
-        }
-        for u in users:
-            if u.role_id:
-                for perm_id in role_perm_map.get(u.role_id, []):
-                    pairs.add((u.pk, perm_id))
 
     if pairs:
         existing = set(
@@ -675,78 +662,6 @@ def _bulk_provision_user_permissions(user_pks):
 
 
 @receiver(post_save, sender=User)
-def sync_role_permissions_on_role_change(sender, instance, created, **kwargs):
-    """
-    When a user's role changes (via any code path), sync user_permissions:
-    - Remove permissions that came from the old role (excluding view_own defaults).
-    - Add all permissions from the new role.
-    For newly created users with a role, add all role permissions immediately.
-    """
-    new_role = instance.role
-
-    if created:
-        if kwargs.get("raw", False):
-            # Defer to the bulk path; it covers role, view_own, and field
-            # permissions for this user regardless of whether it has a role.
-            _queue_raw_permission_provisioning(user_pk=instance.pk)
-            return
-
-        if new_role is None:
-            return
-
-        def assign_role_permissions_on_create():
-            try:
-                role_perms = list(new_role.permissions.all())
-                if role_perms:
-                    instance.user_permissions.add(*role_perms)
-            except Exception as e:
-                logger.error(
-                    "Error assigning role permissions for new user %s: %s",
-                    instance.pk,
-                    e,
-                )
-
-        transaction.on_commit(assign_role_permissions_on_create)
-        return
-
-    old_role = getattr(instance, "_previous_role", None)
-
-    if old_role == new_role:
-        return
-
-    def sync_permissions():
-        try:
-            view_own_perm_ids = set(
-                Permission.objects.filter(codename__startswith="view_own_").values_list(
-                    "id", flat=True
-                )
-            )
-
-            if old_role is not None:
-                old_role_perm_ids = set(
-                    old_role.permissions.values_list("id", flat=True)
-                )
-                to_remove_ids = old_role_perm_ids - view_own_perm_ids
-                if to_remove_ids:
-                    perms_to_remove = Permission.objects.filter(id__in=to_remove_ids)
-                    instance.user_permissions.remove(*perms_to_remove)
-
-            if new_role is not None:
-                new_role_perms = list(new_role.permissions.all())
-                if new_role_perms:
-                    instance.user_permissions.add(*new_role_perms)
-
-        except Exception as e:
-            logger.error(
-                "Error syncing permissions for user %s on role change: %s",
-                instance.pk,
-                e,
-            )
-
-    transaction.on_commit(sync_permissions)
-
-
-@receiver(post_save, sender=User)
 def ensure_view_own_permissions(sender, instance, created, **kwargs):
     """
     Assign view_own permissions to newly created non-superuser users.
@@ -755,7 +670,7 @@ def ensure_view_own_permissions(sender, instance, created, **kwargs):
         return
 
     if kwargs.get("raw", False):
-        # Handled in bulk by sync_role_permissions_on_role_change's queuing.
+        # Handled in bulk by the raw fixture permission provisioner.
         return
 
     def assign_permissions():
@@ -773,7 +688,6 @@ def ensure_view_own_permissions(sender, instance, created, **kwargs):
 def ensure_role_view_own_permissions(sender, instance, created, **kwargs):
     """
     Assign view_own permissions to newly created or updated roles.
-    Also assign these permissions to all members of the role.
     """
     if kwargs.get("raw", False):
         _queue_raw_permission_provisioning(role_pk=instance.pk)
@@ -798,10 +712,6 @@ def ensure_role_view_own_permissions(sender, instance, created, **kwargs):
 
                 instance.permissions.add(*missing_perms)
 
-                members = instance.users.all()
-                for member in members:
-                    member.user_permissions.add(*missing_perms)
-
                 if created:
                     print(
                         f"✓ Assigned {len(missing_perm_ids)} view_own permissions to new role '{instance.role_name}'"
@@ -809,11 +719,6 @@ def ensure_role_view_own_permissions(sender, instance, created, **kwargs):
                 else:
                     print(
                         f"✓ Updated {len(missing_perm_ids)} view_own permissions for role '{instance.role_name}'"
-                    )
-
-                if members.exists():
-                    print(
-                        f"  ✓ Updated {members.count()} members of role '{instance.role_name}'"
                     )
 
         except Exception as e:
@@ -861,7 +766,6 @@ def user_default_field_permissions(sender, instance, created, **kwargs):
 def role_default_field_permissions(sender, instance, created, **kwargs):
     """
     Assign default field permissions to newly created roles.
-    Also assign these permissions to all members of the role.
     """
     if kwargs.get("raw", False):
         # Handled in bulk by ensure_role_view_own_permissions's queuing.

@@ -3,6 +3,8 @@
 from functools import reduce
 from operator import or_
 
+from django.core.exceptions import FieldDoesNotExist
+
 from finlo.db.models import Q
 
 
@@ -13,6 +15,20 @@ SALES_ROLE_KEYS = {
     "SSM",
     "ASM",
     "BDO",
+}
+ROLE_RECOVERY_PERMISSIONS = {
+    "core.view_role",
+    "core.add_role",
+    "core.change_role",
+    "core.delete_role",
+    "auth.view_permission",
+    "auth.add_permission",
+    "auth.change_permission",
+    "auth.delete_permission",
+    "auth.view_group",
+    "auth.add_group",
+    "auth.change_group",
+    "auth.delete_group",
 }
 
 _SALES_MODULES = {"accounts", "contacts", "leads", "opportunities", "activity"}
@@ -25,11 +41,24 @@ def _role_key(user):
     return getattr(role, "system_key", None)
 
 
+def is_super_admin_or_superuser(user):
+    """Return True for active Django superusers with the unconditional bypass."""
+    if (
+        not user
+        or not getattr(user, "is_authenticated", False)
+        or not getattr(user, "is_active", False)
+    ):
+        return False
+    return bool(getattr(user, "is_superuser", False))
+
+
 def sales_role_permission_decision(user, permission):
     """Return a sales-role permission ceiling, or ``None`` for other users."""
     role_key = _role_key(user)
     if role_key not in SALES_ROLE_KEYS:
         return None
+    if not getattr(getattr(user, "role", None), "is_active", False):
+        return False
     if getattr(user, "is_superuser", False) or role_key == "SUPER_ADMIN":
         return True
 
@@ -54,7 +83,11 @@ def sales_role_permission_decision(user, permission):
         model_name = model_name[4:]
 
     if app_label == "core":
-        if model_name == "finlouser" or model_name in _HIERARCHY_MODELS:
+        if model_name in {
+            "finlouser",
+            "company",
+            *_HIERARCHY_MODELS,
+        }:
             return action == "view"
         return False
 
@@ -73,14 +106,238 @@ def sales_role_permission_decision(user, permission):
     return False
 
 
-def has_effective_permission(user, permission):
-    """Check the user's assigned permission without exceeding the sales-role ceiling."""
-    decision = sales_role_permission_decision(user, permission)
-    if getattr(user, "is_superuser", False) or _role_key(user) == "SUPER_ADMIN":
+def role_permission_grant_allowed(role, permission):
+    """Return whether a role may explicitly grant this permission."""
+    permission_key = (
+        f"{permission.content_type.app_label}.{permission.codename}"
+    )
+    if permission_key in ROLE_RECOVERY_PERMISSIONS:
+        return role.system_key == "SUPER_ADMIN"
+    if role.system_key == "SUPER_ADMIN":
         return True
-    if decision is False:
+    app_label = permission.content_type.app_label
+    model_name = permission.content_type.model
+    codename = permission.codename
+    if app_label == "auth":
         return False
-    return user.has_perm(permission)
+    if app_label == "core":
+        if model_name in {
+            "company",
+            "finlouser",
+            *_HIERARCHY_MODELS,
+        }:
+            return codename.startswith("view_")
+        if model_name in {"role", "role_datascope", "fieldpermission"}:
+            return False
+    if role.system_key not in SALES_ROLE_KEYS:
+        return True
+    if app_label not in _SALES_MODULES:
+        return False
+    model = permission.content_type.model_class()
+    return bool(model and getattr(model, "OWNER_FIELDS", ()))
+
+
+def has_effective_permission(user, permission, obj=None):
+    """Apply role denials and grants before the existing user permission fallback."""
+    if not getattr(user, "is_authenticated", False) or not getattr(
+        user, "is_active", False
+    ):
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
+
+    role = getattr(user, "role", None)
+    if role and not role.is_active:
+        return False
+
+    role_key = _role_key(user)
+    if role:
+        try:
+            app_label, codename = permission.split(".", 1)
+        except (AttributeError, ValueError):
+            return False
+
+        denied = role.denied_permissions.filter(
+            content_type__app_label=app_label, codename=codename
+        ).exists()
+        if denied and permission not in ROLE_RECOVERY_PERMISSIONS:
+            return False
+
+    role_grant = False
+    if role:
+        try:
+            app_label, codename = permission.split(".", 1)
+        except (AttributeError, ValueError):
+            return False
+        role_permission = role.permissions.filter(
+            content_type__app_label=app_label, codename=codename
+        ).first()
+        role_grant = bool(
+            role_permission
+            and role_permission_grant_allowed(role, role_permission)
+        )
+
+    decision = sales_role_permission_decision(user, permission)
+    if decision is False and not role_grant:
+        return False
+    if role_key == "SUPER_ADMIN":
+        return True
+
+    if role_grant:
+        if obj is None:
+            return True
+        if not getattr(obj, "pk", None):
+            return False
+        from finlo.contrib.core.authorization import can_access_company_record
+
+        return can_access_company_record(user, obj)
+
+    base_permission_checker = getattr(user, "_has_base_permission", None)
+    if base_permission_checker:
+        return base_permission_checker(permission, obj)
+    return user.has_perm(permission, obj)
+
+
+def _custom_role_scope(user, model):
+    """Return a configured scope for a custom role, defaulting to deny."""
+    role = getattr(user, "role", None)
+    if (
+        not role
+        or role.system_key
+        or getattr(user, "is_superuser", False)
+        or not getattr(user, "is_authenticated", False)
+    ):
+        return None
+    if not role.is_active:
+        return "deny_all"
+
+    from django.contrib.contenttypes.models import ContentType
+    from finlo.contrib.core.models import RoleDataScope
+
+    content_type = ContentType.objects.get_for_model(model)
+    return (
+        RoleDataScope.all_objects.filter(
+            role=role, content_type=content_type, is_active=True
+        )
+        .values_list("scope", flat=True)
+        .first()
+        or RoleDataScope.DENY_ALL
+    )
+
+
+def _owned_record_filter(model, user):
+    owner_fields = getattr(model, "OWNER_FIELDS", ())
+    if not owner_fields:
+        return None
+    return reduce(
+        or_,
+        (Q(**{f"{field}__in": [user.pk]}) for field in owner_fields),
+    )
+
+
+def scope_queryset_to_custom_role(queryset, user):
+    """Apply the explicit per-model scope for a configurable role."""
+    scope = _custom_role_scope(user, queryset.model)
+    if scope is None:
+        return queryset
+    if scope == "deny_all":
+        return queryset.none()
+    if scope == "company":
+        try:
+            queryset.model._meta.get_field("company")
+        except FieldDoesNotExist:
+            return queryset.none()
+        if not getattr(user, "company_id", None):
+            return queryset.none()
+        return queryset.filter(company_id=user.company_id)
+
+    owned_filter = _owned_record_filter(queryset.model, user)
+    if scope == "owned":
+        return queryset.filter(owned_filter).distinct() if owned_filter else queryset.none()
+    if scope == "assigned":
+        filters = [item for item in (owned_filter,) if item is not None]
+        from finlo.contrib.generics.views.helpers.queryset_utils import (
+            get_granted_access_filter,
+        )
+
+        granted_filter = get_granted_access_filter(queryset.model, user, "view")
+        if granted_filter is not None:
+            filters.append(granted_filter)
+        if not filters:
+            return queryset.none()
+        access_filter = reduce(or_, filters)
+        try:
+            queryset.model._meta.get_field("company")
+        except FieldDoesNotExist:
+            pass
+        else:
+            if not getattr(user, "company_id", None):
+                return queryset.none()
+            access_filter &= Q(company_id=user.company_id)
+        return queryset.filter(access_filter).distinct()
+    return queryset.none()
+
+
+def can_access_custom_role_record(user, record):
+    """Check whether a custom role's configured model scope includes a record."""
+    scope = _custom_role_scope(user, record.__class__)
+    if scope is None:
+        return True
+    if scope == "deny_all":
+        return False
+    if scope == "company":
+        try:
+            record._meta.get_field("company")
+        except FieldDoesNotExist:
+            return False
+        return bool(
+            getattr(user, "company_id", None)
+            and getattr(record, "company_id", None) == user.company_id
+        )
+
+    if scope == "owned":
+        owner_filter = _owned_record_filter(record.__class__, user)
+        if owner_filter is None:
+            return False
+        return record.__class__._base_manager.filter(pk=record.pk).filter(
+            owner_filter
+        ).exists()
+
+    if scope == "assigned":
+        if _record_matches_owner_filter(user, record):
+            return True
+        from finlo.contrib.generics.views.helpers.queryset_utils import (
+            get_granted_access_filter,
+        )
+
+        granted_filter = get_granted_access_filter(
+            record.__class__, user, "view"
+        )
+        if granted_filter is None:
+            return False
+        queryset = record.__class__._base_manager.filter(pk=record.pk).filter(
+            granted_filter
+        )
+        try:
+            record._meta.get_field("company")
+        except FieldDoesNotExist:
+            pass
+        else:
+            if not getattr(user, "company_id", None):
+                return False
+            queryset = queryset.filter(company_id=user.company_id)
+        return queryset.exists()
+    return False
+
+
+def _record_matches_owner_filter(user, record):
+    owner_filter = _owned_record_filter(record.__class__, user)
+    return bool(
+        owner_filter is not None
+        and record.__class__._base_manager.filter(pk=record.pk)
+        .filter(owner_filter)
+        .exists()
+    )
 
 
 def get_sales_scope_user_ids(user):
@@ -228,6 +485,8 @@ def scope_queryset_to_sales_hierarchy(queryset, user):
     role_key = _role_key(user)
     if role_key not in SALES_ROLE_KEYS:
         return queryset
+    if not getattr(getattr(user, "role", None), "is_active", False):
+        return queryset.none()
     if role_key == "SUPER_ADMIN" or getattr(user, "is_superuser", False):
         return queryset
 
@@ -253,7 +512,11 @@ def scope_queryset_to_sales_hierarchy(queryset, user):
 
 def can_access_sales_record(user, record):
     """Return whether a sales-role user may access this record's hierarchy scope."""
-    if _role_key(user) not in SALES_ROLE_KEYS or _role_key(user) == "SUPER_ADMIN":
+    if _role_key(user) not in SALES_ROLE_KEYS:
+        return True
+    if not getattr(getattr(user, "role", None), "is_active", False):
+        return False
+    if _role_key(user) == "SUPER_ADMIN" or getattr(user, "is_superuser", False):
         return True
 
     model = record._meta

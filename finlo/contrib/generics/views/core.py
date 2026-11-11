@@ -65,6 +65,8 @@ class FinloView(TemplateView):
 
             request = self.request
             old_hx = request.META.get("HTTP_HX_REQUEST")
+            had_skip = hasattr(request, "_skip_header_context")
+            old_skip = getattr(request, "_skip_header_context", False)
             request.META["HTTP_HX_REQUEST"] = "true"
 
             orig_get = request.GET
@@ -84,6 +86,10 @@ class FinloView(TemplateView):
                     return response.content.decode("utf-8")
             finally:
                 request.GET = orig_get
+                if had_skip:
+                    request._skip_header_context = old_skip
+                elif hasattr(request, "_skip_header_context"):
+                    delattr(request, "_skip_header_context")
                 if old_hx is None:
                     request.META.pop("HTTP_HX_REQUEST", None)
                 else:

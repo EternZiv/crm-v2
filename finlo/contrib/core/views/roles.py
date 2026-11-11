@@ -9,7 +9,6 @@ from urllib.parse import urlencode
 # Third-party imports (Django)
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.models import Permission
 from django.db.models import Count
 from django.template.loader import render_to_string
 
@@ -21,6 +20,7 @@ from finlo.contrib.generics.views import (
     FinloSingleFormView,
 )
 from finlo.contrib.generics.views.core import FinloView
+from finlo.contrib.core.authorization import get_company_scope
 from finlo.contrib.utils.middlewares import _thread_local
 from finlo.shortcuts import get_object_or_404
 from finlo.urls import reverse_lazy
@@ -86,6 +86,15 @@ class AddRole(LoginRequiredMixin, FinloSingleFormView):
         if role_id or role_count == 0:
             self.hidden_fields = ["parent_role"]
 
+    def dispatch(self, request, *args, **kwargs):
+        role_id = kwargs.get("pk") or request.GET.get("id")
+        if role_id:
+            role = Role.objects.filter(pk=role_id).first()
+            if role and role.system_key:
+                messages.error(request, _("Built-in sales roles cannot be edited."))
+                return ScriptResponse(reload=True)
+        return super().dispatch(request, *args, **kwargs)
+
     @cached_property
     def form_url(self):
         """
@@ -122,7 +131,27 @@ class AddRole(LoginRequiredMixin, FinloSingleFormView):
         return initial
 
 
+@method_decorator(
+    permission_required_or_denied("core.add_role", modal=True),
+    name="dispatch",
+)
+class CreateRoleView(AddRole):
+    """Create a configurable role."""
+
+
+@method_decorator(
+    permission_required_or_denied("core.change_role", modal=True),
+    name="dispatch",
+)
+class EditRoleView(AddRole):
+    """Edit a configurable role."""
+
+
 @method_decorator(htmx_required, name="dispatch")
+@method_decorator(
+    permission_required_or_denied("core.change_role", modal=True),
+    name="dispatch",
+)
 class AddUserToRole(LoginRequiredMixin, FinloSingleFormView):
     """
     View to add users to a Role
@@ -183,7 +212,7 @@ class RoleUsersListView(LoginRequiredMixin, FinloListView):
     search_url = reverse_lazy("core:view_user_in_role_list_view")
     main_url = reverse_lazy("core:view_user_in_role")
     bulk_delete_enabled = False
-    bulk_update_fields = ["role"]
+    bulk_update_option = False
     save_to_list_option = False
     filter_url_push = False
     main_session_id = "role-user-list"
@@ -252,7 +281,7 @@ class RoleUsersListView(LoginRequiredMixin, FinloListView):
                 "action": "Delete",
                 "src": "assets/icons/a4.svg",
                 "img_class": "w-4 h-4",
-                "permission": "core.delete_role",
+                "permission": "core.change_role",
                 "attrs": f"""
                 hx-post="{{get_delete_user_from_role}}"
                 hx-target="#deleteModeBox"
@@ -402,19 +431,6 @@ class DeleteUserFromRole(LoginRequiredMixin, View):
                 reload=True, extra="closeDeleteModeModal();closeContentModal();"
             )
 
-        role = user.role
-        if role is not None:
-            default_perm_ids = set(
-                Permission.objects.filter(codename__startswith="view_own_").values_list(
-                    "id", flat=True
-                )
-            )
-            role_perm_ids = set(role.permissions.values_list("id", flat=True))
-            perms_to_remove_ids = role_perm_ids - default_perm_ids
-            if perms_to_remove_ids:
-                perms_to_remove = Permission.objects.filter(id__in=perms_to_remove_ids)
-                user.user_permissions.remove(*perms_to_remove)
-
         user.role = None
         user.save()
 
@@ -434,6 +450,13 @@ class RoleDeleteView(LoginRequiredMixin, FinloSingleDeleteView):
     """
 
     model = Role
+
+    def post(self, request, *args, **kwargs):
+        role = get_object_or_404(Role, pk=kwargs.get("pk"))
+        if role.system_key:
+            messages.error(request, _("Built-in sales roles cannot be deleted."))
+            return ScriptResponse(reload=True)
+        return super().post(request, *args, **kwargs)
 
     def get_post_delete_response(self):
         """
@@ -507,7 +530,10 @@ class RolesHierarchyView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         """Add role tree, companies, and show_all_companies to context."""
         context = super().get_context_data(**kwargs)
-        show_all_companies = self.request.session.get("show_all_companies", False)
+        show_all_companies = (
+            self.request.session.get("show_all_companies", False)
+            and get_company_scope(self.request.user, self.request).all_companies
+        )
 
         def build_role_tree(roles_by_parent, parent_id):
             """Build role hierarchy in-memory from a preloaded, pre-annotated role list."""
@@ -605,7 +631,7 @@ class RolesHierarchyView(LoginRequiredMixin, TemplateView):
 
 
 @method_decorator(htmx_required, name="dispatch")
-@method_decorator(permission_required_or_denied("core.view_teamrole"), name="dispatch")
+@method_decorator(permission_required_or_denied("core.view_role"), name="dispatch")
 class RoleListView(LoginRequiredMixin, FinloListView):
     """
     List view of team role

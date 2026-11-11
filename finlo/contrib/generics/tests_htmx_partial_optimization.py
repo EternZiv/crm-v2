@@ -147,3 +147,25 @@ class HTMXContextProcessorOptimizationTests(TestCase):
         req.user = self.user
         view(req)
         self.assertFalse(getattr(req, "_skip_header_context", False))
+
+    def test_finlo_view_render_subview_restores_skip_header_context_flag(self):
+        """Pre-rendering FinloNavView over HTMX must not leak _skip_header_context onto the parent request."""
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from django.http import HttpResponse
+
+        class ProbeNavView(FinloNavView):
+            def get(self, request, *args, **kwargs):
+                return HttpResponse("nav")
+
+        view = FinloView()
+        req = self.factory.get("/settings-probe/", HTTP_HX_REQUEST="true")
+        req.user = self.user
+        view.request = req
+
+        match = SimpleNamespace(func=ProbeNavView.as_view(), args=(), kwargs={})
+        with patch("django.urls.resolve", return_value=match):
+            html = view._render_subview("/probe-nav/")
+
+        self.assertEqual(html, "nav")
+        self.assertFalse(getattr(req, "_skip_header_context", False))

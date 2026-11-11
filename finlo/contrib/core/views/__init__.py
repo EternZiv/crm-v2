@@ -55,6 +55,8 @@ from finlo.contrib.core.views.multiple_currency import (
 from finlo.contrib.core.views.roles import (
     RolesView,
     AddRole,
+    CreateRoleView,
+    EditRoleView,
     AddUserToRole,
     RoleUsersListView,
     UsersInRoleView,
@@ -109,6 +111,7 @@ from finlo.contrib.core.views.groups_and_permissions import (
     LoadUserPermissionsView,
     LoadMoreUsersView,
     UpdateRolePermissionsView,
+    UpdateRoleDataScopeView,
     AssignUsersView,
     UpdateRoleModelPermissionsView,
     UpdateRoleAllPermissionsView,
@@ -328,6 +331,8 @@ __all__ = [
     # roles.py
     "RolesView",
     "AddRole",
+    "CreateRoleView",
+    "EditRoleView",
     "AddUserToRole",
     "RoleUsersListView",
     "UsersInRoleView",

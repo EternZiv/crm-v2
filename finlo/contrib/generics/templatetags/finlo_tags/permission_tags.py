@@ -1,6 +1,7 @@
 """Template tags for permission checks."""
 
 # First party imports (Finlo)
+from finlo.contrib.core.sales_authorization import is_super_admin_or_superuser
 from finlo.menu.sub_section_menu import get_sub_section_menu
 
 # Local imports
@@ -12,7 +13,12 @@ def has_perm(context, perm_name):
     """
     Usage: {% has_perm "core.view_finlouser" as can_view_finlouser %}
     """
-    return not perm_name or context["request"].user.has_perm(perm_name)
+    user = context["request"].user
+    return (
+        not perm_name
+        or is_super_admin_or_superuser(user)
+        or user.has_perm(perm_name)
+    )
 
 
 @register.filter
@@ -32,7 +38,7 @@ def has_super_user(user, perm_data):
     if not user or not user.is_authenticated:
         return False
 
-    if user.is_superuser:
+    if is_super_admin_or_superuser(user):
         return True
 
     if isinstance(perm_data, str):
@@ -68,6 +74,9 @@ def has_section_perm_url(context, user, section_name):
     sub_section_items = get_sub_section_menu(request=request).get(section_name, [])
     if not sub_section_items:
         return "/"
+
+    if is_super_admin_or_superuser(user):
+        return sub_section_items[0].get("url")
 
     for item in sub_section_items:
         perm_data = item.get("perm", {})

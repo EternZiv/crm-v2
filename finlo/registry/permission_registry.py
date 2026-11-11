@@ -13,6 +13,7 @@ PERMISSION_EXEMPT_MODELS = {
     "Permission",
     "ContentType",
     "Attachment",
+    "RoleDataScope",
 }
 
 
