@@ -28,7 +28,13 @@ from finlo.contrib.utils.middlewares import _thread_local
 # First party imports (Finlo)
 from finlo.db import transaction
 from finlo.db.models import Q
-from finlo.db.models.signals import post_delete, post_migrate, post_save, pre_save
+from finlo.db.models.signals import (
+    m2m_changed,
+    post_delete,
+    post_migrate,
+    post_save,
+    pre_save,
+)
 from finlo.utils import timezone
 
 from .models import (
@@ -45,6 +51,15 @@ from .services.fiscal_year_service import FiscalYearService
 from .utils import fetch_exchange_rates_bulk, get_user_field_permission
 
 logger = logging.getLogger(__name__)
+
+
+@receiver(m2m_changed, sender=Role.permissions.through)
+@receiver(m2m_changed, sender=Role.denied_permissions.through)
+def invalidate_role_permission_snapshots(**kwargs):
+    """Make already-loaded users see Dynamic Role Manager changes immediately."""
+    from .sales_authorization import invalidate_role_permission_cache
+
+    invalidate_role_permission_cache(**kwargs)
 
 
 # Fired after a company default currency changes; listeners bulk-update MoneyField amounts.

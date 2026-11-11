@@ -13,14 +13,9 @@
 {% with query=request.GET.urlencode %}
 <div class="p-5 h-full pt-24 flex flex-col min-h-0" style="position: relative" id="mainSession"{% if not rendered_main_session %}
     hx-get="{{ layout_url }}{% if query %}{% if '?' in layout_url %}&{% else %}?{% endif %}{{ query }}{% if filter_form %}&hx_trigger={{ filter_form }}{% endif %}{% elif filter_form %}{% if '?' in layout_url %}&{% else %}?{% endif %}hx_trigger={{ filter_form }}{% endif %}"
-    hx-trigger="load" hx-indicator="#loading-indicator" hx-disinherit="*"{% endif %}>
+    hx-trigger="load" hx-disinherit="*"{% endif %}>
     {% if rendered_main_session %}
         {{ rendered_main_session|safe }}
-    {% else %}
-        <div id="loading-indicator" class="htmx-indicator"
-            style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: none; align-items: center; justify-content: center">
-            <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
-        </div>
     {% endif %}
 </div>
 {% endwith %}

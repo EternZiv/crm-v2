@@ -236,39 +236,16 @@
 
     // --- Visual Progress Bar (<2px top indicator) ---
     function ensureProgressBar() {
-        let bar = document.getElementById("finlo-nav-progress");
-        if (!bar) {
-            bar = document.createElement("div");
-            bar.id = "finlo-nav-progress";
-            bar.style.cssText = "position:fixed;top:0;left:0;height:2.5px;width:0%;background:linear-gradient(90deg,#E54F38,#FF7865);z-index:99999;transition:width 0.2s ease, opacity 0.3s ease;pointer-events:none;opacity:0;";
-            document.body.appendChild(bar);
-        }
-        return bar;
+        return null;
     }
 
-    function showProgressBar() {
-        const bar = ensureProgressBar();
-        bar.style.transition = "width 0.2s ease, opacity 0.1s ease";
-        bar.style.opacity = "1";
-        bar.style.width = "40%";
-        setTimeout(() => {
-            if (bar.style.opacity === "1") bar.style.width = "75%";
-        }, 150);
-    }
+    function showProgressBar() {}
 
-    function hideProgressBar() {
-        const bar = document.getElementById("finlo-nav-progress");
-        if (!bar) return;
-        bar.style.width = "100%";
-        setTimeout(() => {
-            bar.style.opacity = "0";
-            setTimeout(() => { bar.style.width = "0%"; }, 250);
-        }, 100);
-    }
+    function hideProgressBar() {}
 
     // --- Lightweight Skeleton Generator for Uncached Navigation ---
     function renderImmediateSkeleton(mainContent) {
-        if (!mainContent) return;
+        return;
         mainContent.innerHTML = `
             <div class="p-5 h-full flex flex-col gap-6 animate-pulse" id="finlo-skeleton-loader">
                 <!-- Top Nav Bar Skeleton -->
@@ -430,9 +407,7 @@
         reexecuteScripts(mainContent);
 
         // 7. Trigger responsive resize for charts
-        setTimeout(() => {
-            window.dispatchEvent(new Event("resize"));
-        }, 50);
+        window.dispatchEvent(new Event("resize"));
 
         // 8. Custom restoration event for extension hooks
         document.dispatchEvent(new CustomEvent("finlo:viewRestored", { detail: { url: url } }));
@@ -532,7 +507,7 @@
                     if (typeof window.bootstrapFinloUI === "function") {
                         window.bootstrapFinloUI(mainContent);
                     }
-                    setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
+                    window.dispatchEvent(new Event("resize"));
                 }
             }
 
@@ -629,7 +604,7 @@
                 sideMenuHtml: sideMenuContainer ? sideMenuContainer.innerHTML : ""
             });
             hideProgressBar();
-        }, 150);
+        }, 0);
     }
 
     document.body.addEventListener("htmx:afterSwap", function (event) {

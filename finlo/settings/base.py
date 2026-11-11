@@ -372,7 +372,7 @@ if not _ISOLATED_SECURITY_TEST_SETTINGS and any(
 
 # Connection persistence for better performance
 DATABASES["default"]["CONN_MAX_AGE"] = env.int(
-    "DB_CONN_MAX_AGE", default=0 if IS_VERCEL else 60
+    "DB_CONN_MAX_AGE", default=0 if (IS_VERCEL or not IS_PRODUCTION) else 60
 )
 DATABASES["default"]["CONN_HEALTH_CHECKS"] = env.bool(
     "DB_CONN_HEALTH_CHECKS", default=True

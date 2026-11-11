@@ -202,9 +202,7 @@ const ModalManager = {
 
         // Show modal
         $modal.removeClass("hidden").addClass("flex");
-        setTimeout(() => {
-            $modalBox.removeClass("opacity-0 scale-95").addClass("opacity-100 scale-100");
-        }, 10);
+        $modalBox.removeClass("opacity-0 scale-95").addClass("opacity-100 scale-100");
 
         // Lock body scroll if first modal
         if (this.stack.length === 1) {
@@ -219,11 +217,9 @@ const ModalManager = {
         if (clearContent) $modalBox.html("");
         $modalBox.removeClass("opacity-100 scale-100").addClass("opacity-0 scale-95");
 
-        setTimeout(() => {
-            $modal.removeClass("flex").addClass("hidden");
-            // Reset z-index when closing
-            $modal.css('z-index', '');
-        }, 300);
+        $modal.removeClass("flex").addClass("hidden");
+        // Reset z-index when closing
+        $modal.css('z-index', '');
 
         // Remove from stack
         this.stack = this.stack.filter(m => m.id !== modalId);
@@ -3216,8 +3212,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let socket = null;
         let reconnectAttempts = 0;
-        const maxReconnectAttempts = 5;
-        const reconnectInterval = 3000;
+        let reconnectTimer = null;
+        // A failed notification socket must never create a long retry chain
+        // that competes with HTMX navigation. The old exponential schedule
+        // (3+6+12+24+48s) kept retrying for ~93 seconds on local runserver.
+        const maxReconnectAttempts = 1;
+        const reconnectInterval = 1500;
 
         function connectWebSocket() {
         const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -3225,19 +3225,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         socket.onopen = () => {
             reconnectAttempts = 0;
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
         };
 
         socket.onerror = (error) => {
-            console.error("WebSocket error:", error);
+            // Notifications are optional; do not surface repeated errors or
+            // block the main page navigation when the WS endpoint is absent.
+            console.debug("Notification WebSocket unavailable", error);
         };
 
         socket.onclose = (event) => {
             if (reconnectAttempts < maxReconnectAttempts) {
             reconnectAttempts++;
-            const delay = reconnectInterval * Math.pow(2, reconnectAttempts - 1);
-            setTimeout(connectWebSocket, delay);
+            reconnectTimer = setTimeout(connectWebSocket, reconnectInterval);
             } else {
-            console.error("Max reconnection attempts reached");
+            console.debug("Notification WebSocket disabled until page reload");
             }
         };
 

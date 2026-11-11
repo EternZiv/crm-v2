@@ -19,6 +19,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.staticfiles.storage import staticfiles_storage
 from django.core.cache import cache
+from django.db import OperationalError
 from django.test import RequestFactory
 from django.utils._os import safe_join
 from django.utils.safestring import mark_safe
@@ -195,6 +196,25 @@ class LoginUserView(View):
     """
     Class-based view to handle user login.
     """
+
+    def dispatch(self, request, *args, **kwargs):
+        """Keep database outages separate from invalid login attempts."""
+        try:
+            return super().dispatch(request, *args, **kwargs)
+        except OperationalError:
+            # Do not render templates: context processors may query the database.
+            # Do not log the exception text, which can contain connection details.
+            logger.warning("Database unavailable while serving the login page")
+            response = HttpResponse(
+                "Sign-in is temporarily unavailable because the database cannot "
+                "be reached. Please try again shortly. If this continues, "
+                "contact your administrator to check database connectivity.",
+                status=503,
+                content_type="text/plain; charset=utf-8",
+            )
+            response["Retry-After"] = "30"
+            response["Cache-Control"] = "no-store"
+            return response
 
     def get(self, request):
         """

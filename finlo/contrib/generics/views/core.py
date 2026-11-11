@@ -183,9 +183,21 @@ class FinloView(TemplateView):
         context["layout_url"] = layout_url
         context["view_id"] = getattr(self, "view_id", "") or ""
 
-        # Consolidate first load: pre-render navbar and default layout
-        context["rendered_navbar"] = self._render_subview(self.nav_url)
-        context["rendered_main_session"] = self._render_subview(layout_url)
+        # Full document loads benefit from one consolidated render. Boosted
+        # sidebar navigation, however, only needs the shell immediately; the
+        # existing hx-trigger="load" fragments can fetch navbar/layout in
+        # parallel after #mainContent is swapped. Rendering both subviews
+        # synchronously here made a single click wait for all chart/list work
+        # and left Daphne holding an aborted request during slow responses.
+        is_boosted_navigation = (
+            self.request.headers.get("HX-Boosted", "").lower() == "true"
+        )
+        if is_boosted_navigation:
+            context["rendered_navbar"] = ""
+            context["rendered_main_session"] = ""
+        else:
+            context["rendered_navbar"] = self._render_subview(self.nav_url)
+            context["rendered_main_session"] = self._render_subview(layout_url)
         return context
 
 

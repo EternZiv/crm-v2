@@ -34,6 +34,13 @@ ROLE_RECOVERY_PERMISSIONS = {
 _SALES_MODULES = {"accounts", "contacts", "leads", "opportunities", "activity"}
 _READ_ONLY_MODULES = {"dashboard", "reports"}
 _HIERARCHY_MODELS = {"salesregion", "salesteam", "salesassignment"}
+_ROLE_PERMISSION_VERSION = 0
+
+
+def invalidate_role_permission_cache(**_kwargs):
+    """Invalidate request-local role permission snapshots after M2M changes."""
+    global _ROLE_PERMISSION_VERSION
+    _ROLE_PERMISSION_VERSION += 1
 
 
 def _role_key(user):
@@ -42,14 +49,21 @@ def _role_key(user):
 
 
 def is_super_admin_or_superuser(user):
-    """Return True for active Django superusers with the unconditional bypass."""
+    """Return True for active Django or protected application Super Admins."""
     if (
         not user
         or not getattr(user, "is_authenticated", False)
         or not getattr(user, "is_active", False)
     ):
         return False
-    return bool(getattr(user, "is_superuser", False))
+    if getattr(user, "is_superuser", False):
+        return True
+    role = getattr(user, "role", None)
+    return bool(
+        role
+        and getattr(role, "is_active", False)
+        and getattr(role, "system_key", None) == "SUPER_ADMIN"
+    )
 
 
 def sales_role_permission_decision(user, permission):
@@ -137,6 +151,32 @@ def role_permission_grant_allowed(role, permission):
     return bool(model and getattr(model, "OWNER_FIELDS", ()))
 
 
+def _get_role_permission_sets(user, role):
+    """Load role grants and denials once for the lifetime of this request."""
+    cache_key = getattr(role, "pk", None)
+    cached = getattr(user, "_finlo_role_permission_sets", None)
+    if cached and cached[0] == cache_key and cached[1] == _ROLE_PERMISSION_VERSION:
+        return cached[2], cached[3]
+
+    denied_permissions = {
+        f"{permission.content_type.app_label}.{permission.codename}"
+        for permission in role.denied_permissions.select_related("content_type").all()
+    }
+    granted_permissions = set()
+    for permission in role.permissions.select_related("content_type").all():
+        permission_key = f"{permission.content_type.app_label}.{permission.codename}"
+        if role_permission_grant_allowed(role, permission):
+            granted_permissions.add(permission_key)
+
+    user._finlo_role_permission_sets = (
+        cache_key,
+        _ROLE_PERMISSION_VERSION,
+        denied_permissions,
+        granted_permissions,
+    )
+    return denied_permissions, granted_permissions
+
+
 def has_effective_permission(user, permission, obj=None):
     """Apply role denials and grants before the existing user permission fallback."""
     if not getattr(user, "is_authenticated", False) or not getattr(
@@ -151,31 +191,19 @@ def has_effective_permission(user, permission, obj=None):
         return False
 
     role_key = _role_key(user)
-    if role:
-        try:
-            app_label, codename = permission.split(".", 1)
-        except (AttributeError, ValueError):
-            return False
-
-        denied = role.denied_permissions.filter(
-            content_type__app_label=app_label, codename=codename
-        ).exists()
-        if denied and permission not in ROLE_RECOVERY_PERMISSIONS:
-            return False
-
     role_grant = False
     if role:
-        try:
-            app_label, codename = permission.split(".", 1)
-        except (AttributeError, ValueError):
+        if not isinstance(permission, str) or "." not in permission:
             return False
-        role_permission = role.permissions.filter(
-            content_type__app_label=app_label, codename=codename
-        ).first()
-        role_grant = bool(
-            role_permission
-            and role_permission_grant_allowed(role, role_permission)
+        denied_permissions, granted_permissions = _get_role_permission_sets(
+            user, role
         )
+        if (
+            permission in denied_permissions
+            and permission not in ROLE_RECOVERY_PERMISSIONS
+        ):
+            return False
+        role_grant = permission in granted_permissions
 
     decision = sales_role_permission_decision(user, permission)
     if decision is False and not role_grant:

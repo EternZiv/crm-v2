@@ -25,21 +25,6 @@
   scroll-behavior: auto !important;
 }
 
-/* Preserve loading spinner feedback so UI does not feel frozen */
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-spin {
-  -webkit-animation: spin 1s linear infinite !important;
-  animation: spin 1s linear infinite !important;
-}
-
 /* Neutralize non-critical decorative animations */
 .animate-pulse,
 .animate-bounce,
@@ -2208,17 +2193,6 @@ input::placeholder {
 .pagination-indicator {
   display: none !important;
   pointer-events: none;
-}
-
-.htmx-request.htmx-indicator,
-.htmx-request .htmx-indicator {
-  display: flex !important;
-  pointer-events: none;
-}
-
-.htmx-request.pagination-indicator,
-.htmx-request .pagination-indicator {
-  display: block !important;
 }
 
 .progress li.active .sec::before {

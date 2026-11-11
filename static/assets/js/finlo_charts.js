@@ -1288,7 +1288,7 @@ var EChartsConfig = {
                     }
                 },
                 progressive: 0,
-                animation: true
+                animation: false
             }])
         };
     },
@@ -1797,18 +1797,15 @@ var EChartsConfig = {
         };
     },
 
-    // Animation configurations (delay fns reused to avoid per-chart allocations)
-    _animationDelayByIndex: function(idx) { return idx * 10; },
+    // Charts render immediately without animation or staged delays.
     getAnimationConfig: function() {
         return {
-            animation: true,
+            animation: false,
             animationThreshold: 2000,
-            animationDuration: 1000,
-            animationEasing: 'cubicOut',
-            animationDelay: this._animationDelayByIndex,
-            animationDurationUpdate: 300,
-            animationEasingUpdate: 'cubicOut',
-            animationDelayUpdate: this._animationDelayByIndex
+            animationDuration: 0,
+            animationDurationUpdate: 0,
+            animationDelay: 0,
+            animationDelayUpdate: 0
         };
     },
 
