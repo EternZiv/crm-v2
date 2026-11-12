@@ -27,6 +27,8 @@ COMPANY_LIST_CACHE_KEY = "available_companies"
 
 def company_list(request):
     """Return all available companies, cached to avoid a query on every request."""
+    if not request.user.is_authenticated:
+        return {"available_companies": []}
     if getattr(request, "_skip_header_context", False) or request.headers.get("HX-Request") == "true":
         return {"available_companies": []}
     companies = cache.get(COMPANY_LIST_CACHE_KEY)
@@ -141,11 +143,6 @@ def unread_notifications(request):
         if cached is not None:
             return cached
 
-        try:
-            sound_muted = request.user.notification_sound_preference.sound_muted
-        except (NotificationSoundPreference.DoesNotExist, AttributeError):
-            sound_muted = False
-
         unread_qs = Notification.objects.filter(
             user=request.user, read=False
         ).order_by("-created_at")
@@ -154,7 +151,6 @@ def unread_notifications(request):
         res = {
             "unread_notifications": unread_list,
             "unread_notifications_count": len(unread_list),
-            "notification_sound_muted": sound_muted,
         }
         request._cached_unread_notifications = res
         return res

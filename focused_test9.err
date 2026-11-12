@@ -1,0 +1,9 @@
+test_available_models_does_not_build_fields (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_available_models_does_not_build_fields) ... ok
+test_field_endpoint_filters_unauthorized_modules (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_field_endpoint_filters_unauthorized_modules) ... ok
+test_field_endpoint_returns_authorized_exportable_metadata (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_field_endpoint_returns_authorized_exportable_metadata) ... ok
+test_post_still_rejects_missing_module_or_format (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_post_still_rejects_missing_module_or_format) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.030s
+
+OK

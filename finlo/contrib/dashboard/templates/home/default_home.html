@@ -362,6 +362,24 @@
 
             function initializeCharts() {
                 var configs = getDefaultHomeChartConfigs();
+                if (defaultHomeChartObserver) defaultHomeChartObserver.disconnect();
+                if (typeof IntersectionObserver !== 'undefined') {
+                    defaultHomeChartObserver = new IntersectionObserver(function(entries, observer) {
+                        entries.forEach(function(entry) {
+                            if (!entry.isIntersecting) return;
+                            var cfg = configs.find(function(item) {
+                                return entry.target.id === 'default-chart-' + item.index;
+                            });
+                            if (cfg) initializeDefaultChart(cfg.index, cfg.data, cfg.type);
+                            observer.unobserve(entry.target);
+                        });
+                    }, { rootMargin: '150px' });
+                    configs.forEach(function(cfg) {
+                        var node = document.getElementById('default-chart-' + cfg.index);
+                        if (node) defaultHomeChartObserver.observe(node);
+                    });
+                    return;
+                }
                 configs.forEach(function(cfg) {
                     initializeDefaultChart(cfg.index, cfg.data, cfg.type);
                 });
@@ -478,7 +496,8 @@
             }
 
             function initDefaultHomeSortables() {
-                if (typeof Sortable === 'undefined') return;
+                if (!document.querySelector('#default-home-view.edit-mode')) return;
+                if (typeof Sortable === 'undefined') { window.ensureSortableLoaded(initDefaultHomeSortables); return; }
                 var opts = window.getFinloDashboardSortableOptions
                     ? window.getFinloDashboardSortableOptions({ dataIdAttr: "data-id" })
                     : { handle: '.edit-drag-handle', animation: 150, ghostClass: 'opacity-50', dataIdAttr: 'data-id' };

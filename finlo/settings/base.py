@@ -256,7 +256,6 @@ CONTEXT_PROCESSORS = [
     "django.contrib.messages.context_processors.messages",
     "finlo.context_processors.company_list",
     "finlo.context_processors.allowed_languages",
-    "finlo.context_processors.recently_viewed_items",
     "finlo.context_processors.unread_notifications",
     "finlo.context_processors.menu_context_processor",
     "finlo.context_processors.currency_context",

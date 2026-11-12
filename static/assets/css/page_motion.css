@@ -1,0 +1,26 @@
+html, .custom-scroll { scroll-behavior: smooth !important; }
+.finlo-welcome {
+  position: fixed; inset: 0; z-index: 2147483000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 20px; background: #f8f9fc; color: #35446f; font: 600 20px system-ui, sans-serif;
+}
+.finlo-motion-spinner {
+  width: 42px; height: 42px; border: 4px solid #dfe3f2;
+  border-top-color: #7c87c2; border-radius: 50%;
+  animation: finlo-motion-spin .8s linear infinite !important;
+}
+.finlo-request-motion {
+  display: none; position: fixed; inset: 0 0 auto; height: 3px;
+  z-index: 2147482000; pointer-events: none; overflow: hidden;
+}
+.finlo-request-motion.is-loading { display: block; }
+.finlo-request-motion::after {
+  content: ''; display: block; width: 35%; height: 100%; background: #7c87c2;
+  animation: finlo-motion-progress 1s linear infinite !important;
+}
+@keyframes finlo-motion-spin { to { transform: rotate(360deg); } }
+@keyframes finlo-motion-progress { from { transform: translateX(-100%); } to { transform: translateX(390%); } }
+@media (prefers-reduced-motion: reduce) {
+  html, .custom-scroll { scroll-behavior: auto !important; }
+  .finlo-motion-spinner, .finlo-request-motion::after { animation: none !important; }
+}

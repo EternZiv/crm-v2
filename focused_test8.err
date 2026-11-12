@@ -1,0 +1,24 @@
+test_available_models_does_not_build_fields (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_available_models_does_not_build_fields) ... ok
+test_field_endpoint_filters_unauthorized_modules (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_field_endpoint_filters_unauthorized_modules) ... ok
+test_field_endpoint_returns_authorized_exportable_metadata (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_field_endpoint_returns_authorized_exportable_metadata) ... ok
+test_post_still_rejects_missing_module_or_format (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_post_still_rejects_missing_module_or_format) ... ERROR
+
+======================================================================
+ERROR: test_post_still_rejects_missing_module_or_format (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_post_still_rejects_missing_module_or_format)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\izhar\Desktop\crm-v2\finlo\contrib\core\test_export_optimization.py", line 71, in test_post_still_rejects_missing_module_or_format
+    self.assertEqual(view.post(request), "validation-response")
+                     ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\izhar\Desktop\crm-v2\finlo\contrib\core\views\export_data.py", line 247, in post
+    return self.render_to_response(self.get_context_data())
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\izhar\Desktop\crm-v2\finlo\contrib\core\views\export_data.py", line 178, in get_context_data
+    ).order_by("-created_at")
+      ^^^^^^^^
+AttributeError: 'list' object has no attribute 'order_by'
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.035s
+
+FAILED (errors=1)

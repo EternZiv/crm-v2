@@ -2440,10 +2440,19 @@ html[data-sidebar-collapsed='true'] .leftspace {
   }
 
   #toggleSideMenu {
-    display: none !important;
+    display: block !important;
+    z-index: 62;
   }
 
   #sideMenu {
+    display: block !important;
+    z-index: 61;
+    max-width: calc(100vw - 5rem);
+    overflow-y: auto;
+  }
+
+  html:not(.finlo-mobile-navigation-open) #sideMenu,
+  html:not(.finlo-mobile-navigation-open) #toggleSideMenu {
     display: none !important;
   }
 }

@@ -124,6 +124,9 @@
             }
 
             function initializeSortable(container) {
+                if (!container.isConnected) return;
+                if (typeof Sortable === 'undefined') { window.ensureSortableLoaded(function() { initializeSortable(container); }); return; }
+                if (Sortable.get(container)) return;
                 try {
                     new Sortable(container, {
                         animation: 150,

@@ -7,6 +7,8 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="{% static 'assets/css/page_motion.css' %}">
+        <script defer src="{% static 'assets/js/page_motion.js' %}"></script>
         <title>{{ TITLE }}</title>
         <link rel="shortcut icon" href="{% static 'assets/img/finlo-favicon.ico' %}" type="image/x-icon">
 
@@ -118,7 +120,27 @@
         <script defer src="{% static 'assets/js/flowbite/flowbite.min.js' %}"></script>
         <script defer src="{% static 'assets/js/sweetalert2.js' %}"></script>
         <script defer src="{% static 'assets/js/select2.min.js' %}"></script>
-        <script defer src="{% static 'assets/js/sortablejs/Sortable.min.js' %}"></script>
+        <script>
+            window.finloChartExportScriptUrl = "{% static 'assets/js/finlo_chart_exports.js' %}";
+            window.finloJsPDFScriptUrl = "{% static 'assets/js/jspdf/jspdf.umd.min.js' %}";
+            window.ensureSortableLoaded = function(callback) {
+                if (window.Sortable) { callback(); return; }
+                if (!window._finloSortablePromise) {
+                    window._finloSortablePromise = new Promise(function(resolve, reject) {
+                        var script = document.createElement('script');
+                        script.src = "{% static 'assets/js/sortablejs/Sortable.min.js' %}";
+                        script.onload = resolve;
+                        script.onerror = function() {
+                            script.remove();
+                            window._finloSortablePromise = null;
+                            reject(new Error('Unable to load drag-and-drop controls'));
+                        };
+                        document.head.appendChild(script);
+                    });
+                }
+                window._finloSortablePromise.then(callback).catch(function(error) { console.error(error); });
+            };
+        </script>
 
         <!-- Stylesheets -->
         <link rel="stylesheet" href="{% static 'assets/css/flowbite/flowbite.min.css' %}">

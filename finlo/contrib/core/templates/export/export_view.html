@@ -198,20 +198,7 @@
                                 </div>
                                 <div class="accordion-content text-sm text-dark-500 bg-white">
                                     <div class="grid grid-cols-3 gap-4 p-4">
-                                        {% for field in module.fields %}
-                                            <label class="flex items-center gap-2 text-sm">
-                                                <input
-                                                    type="checkbox"
-                                                    class="export-field-checkbox w-4 h-4 bg-[#E9EDF7] rounded-sm accent-[#e54f38]"
-                                                    form="exportform"
-                                                    name="expo_{{ module.name }}_field"
-                                                    value="{{ field.name }}"
-                                                    checked
-                                                    onchange="syncModuleSelectAllState(this)"
-                                                >
-                                                {{ field.label }}
-                                            </label>
-                                        {% endfor %}
+                                        <p class="export-fields-loading text-xs text-gray-400">{% trans "Select this module to load its fields." %}</p>
                                     </div>
                                 </div>
                                 <div
@@ -358,6 +345,34 @@
                         syncGlobalExportToggleState();
                     }
 
+                    function loadExportFields(modules) {
+                        var params = new URLSearchParams({ fields: '1' });
+                        modules.forEach(function(module) { params.append('module', module); });
+                        return fetch('{% url "core:export_view" %}?' + params.toString(), {
+                            headers: { 'HX-Request': 'true' },
+                            credentials: 'same-origin'
+                        }).then(function(response) {
+                            if (!response.ok) throw new Error('Unable to load export fields');
+                            return response.json();
+                        }).then(function(payload) {
+                            Object.keys(payload.modules || {}).forEach(function(moduleName) {
+                                var block = $('.export-fields-block[data-export-fields="' + moduleName + '"]');
+                                var fields = payload.modules[moduleName] || [];
+                                var grid = block.find('.accordion-content > div');
+                                grid.empty();
+                                fields.forEach(function(field) {
+                                    grid.append($('<label>', { class: 'flex items-center gap-2 text-sm' }).append(
+                                        $('<input>', { type: 'checkbox', class: 'export-field-checkbox w-4 h-4 bg-[#E9EDF7] rounded-sm accent-[#e54f38]', form: 'exportform', name: 'expo_' + moduleName + '_field', value: field.name, checked: true }).on('change', function() { syncModuleSelectAllState(this); }),
+                                        document.createTextNode(' ' + field.label)
+                                    ));
+                                });
+                                block.find('.export-fields-loading').remove();
+                                block.find('.module-select-all').prop('checked', fields.length > 0);
+                            });
+                            syncGlobalExportToggleState();
+                        });
+                    }
+
                     $(document).off('.exportView');
 
                     $(document).on('change.exportView', 'select[name="module"]', updateExportFieldsVisibility);
@@ -370,9 +385,14 @@
                             $('#exportform')[0].reportValidity();
                             return;
                         }
-                        updateExportFieldsVisibility();
-                        $('.export-fields-error').addClass('hidden');
-                        ModalManager.open("exportColumnsModal", "exportColumnsBox", false);
+                        loadExportFields(modules).then(function() {
+                            updateExportFieldsVisibility();
+                            $('.export-fields-error').addClass('hidden');
+                            ModalManager.open("exportColumnsModal", "exportColumnsBox", false);
+                        }).catch(function(error) {
+                            console.error(error);
+                            alert('{% trans "Unable to load export fields. Please try again." %}');
+                        });
                     });
 
                     $(document).on('click.exportView', '#submitExportColumnsBtn', function() {

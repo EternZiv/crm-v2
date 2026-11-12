@@ -341,11 +341,8 @@ class FinloListView(FinloListViewMixin, ListView):
             )
 
         if view_type == "recently_viewed":
-            recently_viewed_items = RecentlyViewed.objects.get_recently_viewed(
-                user=self.request.user, model_class=self.model
-            )
-            pks = [item.pk for item in recently_viewed_items if item]
-            queryset = queryset.filter(pk__in=pks)
+            # Old bookmarked/pinned views fall back without consulting history.
+            view_type = "all"
 
         elif view_type in ("recently_created", "recently_modified"):
             sort_field = (

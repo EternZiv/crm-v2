@@ -1,0 +1,7 @@
+test_available_models_does_not_build_fields (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_available_models_does_not_build_fields) ... ok
+test_field_endpoint_filters_unauthorized_modules (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_field_endpoint_filters_unauthorized_modules) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.019s
+
+OK

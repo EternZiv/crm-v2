@@ -1,0 +1,17 @@
+test_available_models_does_not_build_fields (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_available_models_does_not_build_fields) ... ok
+test_field_endpoint_filters_unauthorized_modules (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_field_endpoint_filters_unauthorized_modules) ... ok
+test_field_endpoint_returns_authorized_exportable_metadata (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_field_endpoint_returns_authorized_exportable_metadata) ... ERROR
+
+======================================================================
+ERROR: test_field_endpoint_returns_authorized_exportable_metadata (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_field_endpoint_returns_authorized_exportable_metadata)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\izhar\Desktop\crm-v2\finlo\contrib\core\test_export_optimization.py", line 60, in test_field_endpoint_returns_authorized_exportable_metadata
+    self.assertEqual(json.loads(response.content)["modules"]["Lead"], [{"name": "email", "label": "Email"}])
+                     ^^^^
+NameError: name 'json' is not defined. Did you forget to import 'json'
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.033s
+
+FAILED (errors=1)

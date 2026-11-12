@@ -1,0 +1,26 @@
+test_available_models_does_not_build_fields (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_available_models_does_not_build_fields) ... 'types.SimpleNamespace' object has no attribute '__module__'
+ERROR
+test_field_endpoint_filters_unauthorized_modules (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_field_endpoint_filters_unauthorized_modules) ... ERROR
+
+======================================================================
+ERROR: test_available_models_does_not_build_fields (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_available_models_does_not_build_fields)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\izhar\Desktop\crm-v2\finlo\contrib\core\test_export_optimization.py", line 25, in test_available_models_does_not_build_fields
+    self.assertEqual(result[0]["fields"], [])
+                     ~~~~~~^^^
+IndexError: list index out of range
+
+======================================================================
+ERROR: test_field_endpoint_filters_unauthorized_modules (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_field_endpoint_filters_unauthorized_modules)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\izhar\Desktop\crm-v2\finlo\contrib\core\test_export_optimization.py", line 37, in test_field_endpoint_filters_unauthorized_modules
+    self.assertEqual(response.json()["modules"]["Secret"], [])
+                     ^^^^^^^^^^^^^
+AttributeError: 'JsonResponse' object has no attribute 'json'
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.022s
+
+FAILED (errors=2)

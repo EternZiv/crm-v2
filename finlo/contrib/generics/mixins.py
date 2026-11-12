@@ -28,14 +28,10 @@ from finlo.web import HttpResponse, QueryDict
 
 
 class RecentlyViewedMixin(LoginRequiredMixin):
-    """Mixin for automatically tracking recently viewed objects for authenticated users."""
+    """Compatibility mixin retaining login protection without history tracking."""
 
     def dispatch(self, request, *args, **kwargs):
-        """Dispatch request and record the viewed object in RecentlyViewed for the user."""
-        response = super().dispatch(request, *args, **kwargs)
-        if hasattr(self, "object") and self.object and request.user.is_authenticated:
-            RecentlyViewed.objects.add_viewed_item(request.user, self.object)
-        return response
+        return super().dispatch(request, *args, **kwargs)
 
 
 class FinloListColumnMixin:

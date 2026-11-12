@@ -164,3 +164,7 @@ load_tests/reports/
 
 .init_password
 .encryption_key
+
+# Disposable performance experiments and linter caches
+/.pool-eval-deps/
+/.ruff_cache/

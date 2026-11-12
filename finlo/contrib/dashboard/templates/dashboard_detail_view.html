@@ -367,7 +367,8 @@
             }
 
             function initDragSortables() {
-                if (typeof Sortable === "undefined") return;
+                if (!document.querySelector('.edit-mode')) return;
+                if (typeof Sortable === "undefined") { window.ensureSortableLoaded(initDragSortables); return; }
                 var kpiList = document.getElementById("reorderable-kpis");
                 var compList = document.getElementById("reorderable-components");
                 var opts = window.getFinloDashboardSortableOptions

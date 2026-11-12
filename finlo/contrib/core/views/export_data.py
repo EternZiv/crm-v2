@@ -51,7 +51,7 @@ from finlo.utils.functional import cached_property
 from finlo.utils.text import slugify
 from finlo.utils.translation import gettext_lazy as _
 from finlo.views.generic import TemplateView, View
-from finlo.web import HttpResponse, ScriptResponse
+from finlo.web import HttpResponse, JsonResponse, ScriptResponse
 
 # Local imports
 from ..models import ExportSchedule
@@ -178,6 +178,32 @@ class ExportView(LoginRequiredMixin, TemplateView):
         ).order_by("-created_at")
         return context
 
+    def get(self, request, *args, **kwargs):
+        """Return field metadata on demand for selected export modules."""
+        if request.GET.get("fields") == "1":
+            return JsonResponse(
+                {
+                    "modules": {
+                        model_name: self.get_model_fields(model_name)
+                        for model_name in request.GET.getlist("module")
+                    }
+                }
+            )
+        return super().get(request, *args, **kwargs)
+
+    def get_model_fields(self, model_name):
+        """Return exportable fields only after the module is explicitly selected."""
+        model = self.get_model_by_name(model_name)
+        if model is None or get_export_queryset(
+            self.request.user, model, request=self.request
+        ) is None:
+            return []
+        return [
+            {"name": field.name, "label": str(field.verbose_name)}
+            for field in model._meta.fields
+            if is_exportable_field(field)
+        ]
+
     def get_available_models(self):
         """Return registered export models the user has export permission for."""
         models = []
@@ -190,21 +216,13 @@ class ExportView(LoginRequiredMixin, TemplateView):
                     )
                     is not None
                 ):
-                    fields = [
-                        field
-                        for field in model._meta.fields
-                        if is_exportable_field(field)
-                    ]
                     models.append(
                         {
                             "name": model.__name__,
                             "label": model._meta.verbose_name,
                             "app_label": model._meta.app_label,
                             "module": model.__module__,
-                            "fields": [
-                                {"name": field.name, "label": str(field.verbose_name)}
-                                for field in fields
-                            ],
+                            "fields": [],
                         }
                     )
         except Exception as e:

@@ -1,0 +1,14 @@
+.env
+.env.*
+.venv/
+.pool-eval-deps/
+.git/
+media/
+*.log
+*_profile.py
+pool_*.py
+bounded_pool_diagnostic.py
+windows-installer/
+debian/
+.init_password
+.encryption_key

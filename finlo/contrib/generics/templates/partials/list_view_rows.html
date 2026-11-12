@@ -179,9 +179,10 @@
 
         const $tableBody = $('[id^="data-container"]');
 
-        if ($tableBody.length) {
+        if ($tableBody.length && $tableBody.find('.drag-handle').length && $tableBody.find('[data-sort-url]').length) {
             const sortUrl = $tableBody.find('[data-sort-url]').first().attr('data-sort-url');
-
+            window.ensureSortableLoaded(function() {
+            if (!$tableBody[0].isConnected || Sortable.get($tableBody[0])) return;
             new Sortable($tableBody[0], {
                 animation: 150,
                 handle: '.drag-handle',
@@ -227,6 +228,7 @@
                         }
                     });
                 }
+            });
             });
         }
     });

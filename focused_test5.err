@@ -1,0 +1,24 @@
+test_available_models_does_not_build_fields (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_available_models_does_not_build_fields) ... ok
+test_field_endpoint_filters_unauthorized_modules (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_field_endpoint_filters_unauthorized_modules) ... ok
+test_field_endpoint_returns_authorized_exportable_metadata (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_field_endpoint_returns_authorized_exportable_metadata) ... ok
+test_post_still_rejects_empty_selected_field_list (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_post_still_rejects_empty_selected_field_list) ... ERROR
+
+======================================================================
+ERROR: test_post_still_rejects_empty_selected_field_list (finlo.contrib.core.test_export_optimization.ExportMetadataDeferralTests.test_post_still_rejects_empty_selected_field_list)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\izhar\Desktop\crm-v2\finlo\contrib\core\test_export_optimization.py", line 73, in test_post_still_rejects_empty_selected_field_list
+    self.assertEqual(view.post(request), "validation-response")
+                     ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\izhar\Desktop\crm-v2\finlo\contrib\core\views\export_data.py", line 270, in post
+    queryset = get_export_queryset(request.user, model, request=request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\izhar\Desktop\crm-v2\finlo\contrib\core\views\export_data.py", line 89, in get_export_queryset
+    app_label = model._meta.app_label
+                ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'types.SimpleNamespace' object has no attribute 'app_label'
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.033s
+
+FAILED (errors=1)

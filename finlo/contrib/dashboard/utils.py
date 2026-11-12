@@ -388,6 +388,8 @@ class DefaultDashboardGenerator:
             logger.warning("Finlo models not found, using empty model list")
             self.models = []
         self._model_count_cache = {}
+        self._scoped_queryset_cache = {}
+        self._model_permission_cache = {}
 
     @staticmethod
     def is_clear_range(date_range):
@@ -430,8 +432,12 @@ class DefaultDashboardGenerator:
             get_queryset_for_module,
         )
 
-        queryset = get_queryset_for_module(self.user, model_class)
-        return self.apply_date_range_filter(queryset, model_class)
+        if model_class not in self._scoped_queryset_cache:
+            queryset = get_queryset_for_module(self.user, model_class)
+            self._scoped_queryset_cache[model_class] = self.apply_date_range_filter(queryset, model_class)
+        # Clone before callers add filters/order/joins. Never share evaluated
+        # record caches or widen the original company/ownership scope.
+        return self._scoped_queryset_cache[model_class].all()
 
     def get_model_count(self, model_class, **filter_kwargs):
         """Count a model's scoped queryset once per dashboard generation."""
@@ -452,13 +458,17 @@ class DefaultDashboardGenerator:
 
     def has_model_permission(self, model_class):
         """Check if user has either view or view_own permission for a model"""
+        if model_class in self._model_permission_cache:
+            return self._model_permission_cache[model_class]
         app_label = model_class._meta.app_label
         model_name = model_class._meta.model_name
 
         has_view_all = self.user.has_perm(f"{app_label}.view_{model_name}")
         has_view_own = self.user.has_perm(f"{app_label}.view_own_{model_name}")
 
-        return has_view_all or has_view_own
+        allowed = has_view_all or has_view_own
+        self._model_permission_cache[model_class] = allowed
+        return allowed
 
     def generate_kpi_data(self):
         """Generate KPIs from ``kpi_func`` and/or legacy ``include_kpi``."""

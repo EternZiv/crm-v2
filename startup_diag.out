@@ -1,0 +1,61 @@
+BEGIN python_import_django
+DONE python_import_django 0.06
+BEGIN django_setup
+DONE django_setup 11.779
+BEGIN import_export_tests
+DONE import_export_tests 0.013
+BEGIN get_runner
+DONE get_runner 0.037
+BEGIN test_runner_setup
+DONE test_runner_setup 0.003
+BEGIN setup_databases
+Operations to perform:
+  Synchronize unmigrated apps: channels, colorfield, django_filters, djmoney, drf_yasg, messages, rest_framework, rest_framework_simplejwt, runserver_nostatic, staticfiles
+  Apply all migrations: accounts, activity, admin, approvals, auditlog, auth, automations, booking, cadences, calendar, calls, campaigns, contacts, contenttypes, core, custom_fields, dashboard, django_summernote, duplicates, field_requirements, forecast, form_layouts, keys, leads, login_history, mail, meeting, notifications, opportunities, reports, reviews, scoring_rules, sessions, theme, workflow
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0001_initial... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying core.0001_initial... OK
+  Applying accounts.0001_initial... OK
+  Applying accounts.0002_initial... OK
+  Applying accounts.0003_alter_account_account_source... OK
+  Applying accounts.0004_remove_account_phone_account_contact_number... OK
+  Applying accounts.0005_alter_account_additional_info_and_more... OK
+  Applying accounts.0006_alter_account_created_at_alter_account_is_active_and_more... OK
+  Applying accounts.0007_alter_account_annual_revenue... OK
+  Applying mail.0001_initial... OK
+  Applying mail.0002_horillamail_bounced_at_horillamail_delivered_at_and_more... OK
+  Applying activity.0001_initial... OK
+  Applying activity.0002_initial... OK
+  Applying activity.0003_activity_external_participants_activity_is_online_and_more... OK
+  Applying activity.0004_activity_mail_template... OK
+  Applying activity.0005_alter_activity_meeting_provider... OK
+  Applying activity.0006_alter_activity_meeting_provider... OK
+  Applying activity.0007_alter_activity_meeting_provider... OK
+  Applying activity.0008_alter_activity_additional_info_and_more... OK
+  Applying activity.0009_alter_activity_created_at_alter_activity_is_active... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying approvals.0001_initial... OK
+  Applying approvals.0002_initial... OK
+  Applying approvals.0003_remove_approvalrule_process_config... OK
+  Applying approvals.0004_approvalinstance_delegated_approver... OK
+  Applying approvals.0005_alter_approvaldecision_options_and_more... OK
+  Applying approvals.0006_alter_approvalcondition_created_at_and_more... OK
+  Applying approvals.0007_alter_approvaldecision_comment_and_more...

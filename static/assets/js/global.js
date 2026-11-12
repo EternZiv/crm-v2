@@ -545,7 +545,7 @@ function syncSidebarSpace() {
     if (saved !== null) {
         isCollapsed = saved === "true";
     } else {
-        isCollapsed = window.innerWidth < 992;
+        isCollapsed = false;
     }
     const isSubMenuMissing = !sideMenu || !sideMenuContainer || sideMenuContainer.classList.contains("hidden");
     if (isSubMenuMissing) {
@@ -606,6 +606,8 @@ let sidebarDelegationBound = false;
 let mobileSidebarDelegationBound = false;
 
 function openMobileSidebar() {
+    localStorage.setItem("finloMobileSidebarClosed", "false");
+    document.documentElement.classList.add("finlo-mobile-navigation-open");
     const primarySidebar = document.getElementById("primarySidebar");
     const backdrop = document.getElementById("mobileSidebarBackdrop");
     if (primarySidebar) primarySidebar.classList.add("mobile-open");
@@ -613,6 +615,8 @@ function openMobileSidebar() {
 }
 
 function closeMobileSidebar() {
+    localStorage.setItem("finloMobileSidebarClosed", "true");
+    document.documentElement.classList.remove("finlo-mobile-navigation-open");
     const primarySidebar = document.getElementById("primarySidebar");
     const backdrop = document.getElementById("mobileSidebarBackdrop");
     if (primarySidebar) primarySidebar.classList.remove("mobile-open");
@@ -620,9 +624,7 @@ function closeMobileSidebar() {
 }
 
 function handleGlobalSidebarResize() {
-    if (window.innerWidth >= 768) {
-        closeMobileSidebar();
-    }
+    initMobileSidebar();
     syncSidebarSpace();
 }
 
@@ -680,9 +682,6 @@ function initMobileSidebar() {
                 closeMobileSidebar();
                 return;
             }
-            if (target.closest("#primarySidebar a") && window.innerWidth < 768) {
-                closeMobileSidebar();
-            }
         });
 
         document.addEventListener("keydown", function (e) {
@@ -697,9 +696,12 @@ function initMobileSidebar() {
         mobileSidebarDelegationBound = true;
     }
 
-    if (window.innerWidth >= 768) {
-        closeMobileSidebar();
-    }
+    const primarySidebar = document.getElementById("primarySidebar");
+    const backdrop = document.getElementById("mobileSidebarBackdrop");
+    const isOpen = window.innerWidth < 768 && localStorage.getItem("finloMobileSidebarClosed") !== "true";
+    if (primarySidebar) primarySidebar.classList.toggle("mobile-open", isOpen);
+    if (backdrop) backdrop.classList.toggle("hidden", !isOpen);
+    document.documentElement.classList.toggle("finlo-mobile-navigation-open", isOpen);
 }
 window.initMobileSidebar = initMobileSidebar;
 
@@ -3014,58 +3016,16 @@ document.addEventListener('DOMContentLoaded', function () {
         return div.innerHTML;
     }
 
-    let _notifAudioBuffer = null;
-    let _notifAudioCtx = null;
-    let _notifAudioLoading = false;
-
-    function ensureNotificationAudio() {
-        if (_notifAudioCtx || _notifAudioLoading) return;
-        _notifAudioLoading = true;
-        try {
-            const AudioCtx = window.AudioContext || window.webkitAudioContext;
-            if (!AudioCtx) return;
-            _notifAudioCtx = new AudioCtx();
-            fetch("/static/audio/notification-sound.wav")
-                .then(function(r) { return r.arrayBuffer(); })
-                .then(function(buf) { return _notifAudioCtx.decodeAudioData(buf); })
-                .then(function(decoded) { _notifAudioBuffer = decoded; })
-                .catch(function(e) { console.warn("Could not load notification sound:", e); });
-        } catch (e) {
-            console.warn("Could not create AudioContext:", e);
-        }
-    }
-
-    document.addEventListener("click", function() {
-        ensureNotificationAudio();
-        if (_notifAudioCtx && _notifAudioCtx.state === "suspended") {
-            _notifAudioCtx.resume();
-        }
-    }, { once: true });
-
-    function playNotificationSound() {
-        const btn = document.getElementById("notificationSoundToggle");
-        if (btn && btn.getAttribute("data-muted") === "true") return;
-        ensureNotificationAudio();
-        if (!_notifAudioBuffer || !_notifAudioCtx) return;
-        if (_notifAudioCtx.state === "suspended") { _notifAudioCtx.resume(); }
-        try {
-            const source = _notifAudioCtx.createBufferSource();
-            source.buffer = _notifAudioBuffer;
-            source.connect(_notifAudioCtx.destination);
-            source.start(0);
-        } catch (e) {}
-    }
-
     window.handleNewNotification = function handleNewNotification(data) {
         const timesince = "Just now";
 
         addToDropdownList(data, timesince);
         addToSidebarList(data, timesince);
         updateNotificationCount(1);
-        playNotificationSound();
 
         if ("Notification" in window && Notification.permission === "granted") {
         new Notification("New Notification", {
+            silent: true,
             body: data.message,
             icon: "/static/favicon.ico"
         });
@@ -3517,12 +3477,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         container.classList.add("finlo-dashboard-sortable");
+        var ids = getDirectSortableItems(container).map(getSortableItemId);
+        container.dataset.finloSortableOriginal = JSON.stringify(ids);
         if (!isRtlDocument()) {
             container.classList.add("is-edit-sortable");
             return;
         }
-        var ids = getDirectSortableItems(container).map(getSortableItemId);
-        container.dataset.finloSortableOriginal = JSON.stringify(ids);
         container.dataset.finloSortableRtlPrepared = "1";
         mirrorRtlGridRowsForLtrEdit(container);
         container.setAttribute("dir", "ltr");
@@ -3536,22 +3496,23 @@ document.addEventListener('DOMContentLoaded', function () {
         if (restoreOriginal === undefined) {
             restoreOriginal = true;
         }
+        if (restoreOriginal && container.dataset.finloSortableOriginal) {
+            restoreDirectSortableOrder(
+                container,
+                JSON.parse(container.dataset.finloSortableOriginal)
+            );
+        }
         if (container.dataset.finloSortableRtlPrepared) {
-            if (restoreOriginal) {
-                restoreDirectSortableOrder(
-                    container,
-                    JSON.parse(container.dataset.finloSortableOriginal || "[]")
-                );
-            } else {
+            if (!restoreOriginal) {
                 restoreDirectSortableOrder(
                     container,
                     collectRtlDashboardStorageOrder(container)
                 );
             }
             container.removeAttribute("dir");
-            delete container.dataset.finloSortableOriginal;
             delete container.dataset.finloSortableRtlPrepared;
         }
+        delete container.dataset.finloSortableOriginal;
         container.classList.remove(
             "finlo-dashboard-sortable",
             "is-edit-sortable",

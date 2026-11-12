@@ -205,7 +205,8 @@
                         }
                     }
 
-                    if (typeof Sortable !== "undefined") {
+                    window.ensureSortableLoaded(function() {
+                        if (!list.isConnected || Sortable.get(list)) return;
                         new Sortable(list, {
                             animation: 150,
                             handle: ".form-layout-handle",
@@ -220,7 +221,7 @@
                                 refresh();
                             },
                         });
-                    }
+                    });
 
                     list.addEventListener("click", function (event) {
                         var button = event.target.closest("[data-layout-move]");

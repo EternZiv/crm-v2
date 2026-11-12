@@ -46,7 +46,7 @@ class FinloNavView(TemplateView):
     model_app_label: str = ""
     custom_view_type: dict = {}
     nav_width = True
-    recently_viewed_option = True
+    recently_viewed_option = False
     all_view_types = True
     filter_option = True
     one_view_only = False

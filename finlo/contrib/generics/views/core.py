@@ -65,6 +65,9 @@ class FinloView(TemplateView):
 
             request = self.request
             old_hx = request.META.get("HTTP_HX_REQUEST")
+            # request.headers is a cached_property. Rebuild it after changing
+            # META so nested HTMX-only views see the synthetic header.
+            old_headers = request.__dict__.pop("headers", None)
             had_skip = hasattr(request, "_skip_header_context")
             old_skip = getattr(request, "_skip_header_context", False)
             request.META["HTTP_HX_REQUEST"] = "true"
@@ -94,6 +97,9 @@ class FinloView(TemplateView):
                     request.META.pop("HTTP_HX_REQUEST", None)
                 else:
                     request.META["HTTP_HX_REQUEST"] = old_hx
+                request.__dict__.pop("headers", None)
+                if old_headers is not None:
+                    request.__dict__["headers"] = old_headers
         except Exception as e:
             logger.debug("FinloView subview pre-render fallback for %s: %s", url_str, e)
         return ""
