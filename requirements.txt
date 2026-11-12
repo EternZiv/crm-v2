@@ -91,3 +91,5 @@ whitenoise==6.11.0
 zope.interface==8.1.1
 user-agents
 psycopg2-binary==2.9.12
+django-storages
+boto3

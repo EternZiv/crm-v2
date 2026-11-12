@@ -809,4 +809,9 @@ class FaviconRedirectView(RedirectView):
 
     branding = load_branding()
     favicon_path = branding.get("FAVICON_PATH", "favicon.ico")
-    url = staticfiles_storage.url(favicon_path)
+    try:
+        url = staticfiles_storage.url(favicon_path)
+    except ValueError:
+        # Production manifest entries are generated during collectstatic. Keep
+        # settings checks/imports usable before that build step completes.
+        url = f"{settings.STATIC_URL.rstrip('/')}/{favicon_path.lstrip('/')}"
