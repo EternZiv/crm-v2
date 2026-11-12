@@ -72,7 +72,7 @@ class LeadView(LoginRequiredMixin, FinloView):
     list_url = reverse_lazy("leads:leads_list")
     card_url = reverse_lazy("leads:leads_card")
     split_view_url = reverse_lazy("leads:leads_split_view")
-    default_layout = "chart"
+    default_layout = "list"
 
     def dispatch(self, request, *args, **kwargs):
         view_type = request.GET.get("view_type")
@@ -106,7 +106,7 @@ class LeadNavbar(LoginRequiredMixin, FinloNavView):
     chart_url = reverse_lazy("leads:leads_chart")
     card_url = reverse_lazy("leads:leads_card")
     split_view_url = reverse_lazy("leads:leads_split_view")
-    default_layout = "chart"
+    default_layout = "list"
     model_name = "Lead"
     model_app_label = "leads"
     enable_actions = True

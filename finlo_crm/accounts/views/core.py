@@ -65,7 +65,7 @@ class AccountView(LoginRequiredMixin, FinloView):
     list_url = reverse_lazy("accounts:accounts_list_view")
     card_url = reverse_lazy("accounts:accounts_card_view")
     split_view_url = reverse_lazy("accounts:accounts_split_view")
-    default_layout = "chart"
+    default_layout = "list"
 
 
 @method_decorator(
@@ -85,7 +85,7 @@ class AccountsNavbar(LoginRequiredMixin, FinloNavView):
     chart_url = reverse_lazy("accounts:accounts_chart_view")
     card_url = reverse_lazy("accounts:accounts_card_view")
     split_view_url = reverse_lazy("accounts:accounts_split_view")
-    default_layout = "chart"
+    default_layout = "list"
     model_name = "Account"
     model_app_label = "accounts"
     filterset_class = AccountFilter

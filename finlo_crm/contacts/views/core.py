@@ -62,7 +62,7 @@ class ContactView(LoginRequiredMixin, FinloView):
     list_url = reverse_lazy("contacts:contact_list_view")
     card_url = reverse_lazy("contacts:contact_card_view")
     split_view_url = reverse_lazy("contacts:contact_split_view")
-    default_layout = "chart"
+    default_layout = "list"
 
 
 @method_decorator(htmx_required, name="dispatch")
@@ -80,7 +80,7 @@ class ContactNavbar(LoginRequiredMixin, FinloNavView):
     chart_url = reverse_lazy("contacts:contact_chart_view")
     card_url = reverse_lazy("contacts:contact_card_view")
     split_view_url = reverse_lazy("contacts:contact_split_view")
-    default_layout = "chart"
+    default_layout = "list"
     model_str = "contacts.Contact"
     model_name = "Contact"
     model_app_label = "contacts"

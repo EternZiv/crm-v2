@@ -152,7 +152,11 @@
         if (!url) return "";
         try {
             const u = new URL(url, window.location.origin);
-            return u.pathname + u.search;
+            const params = Array.from(u.searchParams.entries()).sort(([ak, av], [bk, bv]) =>
+                ak === bk ? av.localeCompare(bv) : ak.localeCompare(bk)
+            );
+            const query = new URLSearchParams(params).toString();
+            return u.pathname + (query ? `?${query}` : "");
         } catch (e) {
             return url;
         }

@@ -45,7 +45,7 @@ class OpportunityView(LoginRequiredMixin, FinloView):
     list_url = reverse_lazy("opportunities:opportunities_list")
     card_url = reverse_lazy("opportunities:opportunities_card")
     split_view_url = reverse_lazy("opportunities:opportunities_split_view")
-    default_layout = "chart"
+    default_layout = "list"
 
 
 @method_decorator(htmx_required, name="dispatch")
@@ -64,7 +64,7 @@ class OpportunityNavbar(LoginRequiredMixin, FinloNavView):
     chart_url = reverse_lazy("opportunities:opportunities_chart")
     card_url = reverse_lazy("opportunities:opportunities_card")
     split_view_url = reverse_lazy("opportunities:opportunities_split_view")
-    default_layout = "chart"
+    default_layout = "list"
     model_name = "Opportunity"
     model_app_label = "opportunities"
     enable_actions = True
