@@ -3293,6 +3293,12 @@ document.addEventListener('DOMContentLoaded', function () {
         };
         }
 
+        const currentUserId = document.body ? parseInt(document.body.getAttribute("data-user-id") || "0", 10) : 0;
+        if (!currentUserId || currentUserId <= 0) {
+            // Unauthenticated user (e.g. login page) - skip notification WebSocket
+            return;
+        }
+
         connectWebSocket();
 
         if ("Notification" in window && Notification.permission === "default") {
