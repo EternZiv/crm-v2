@@ -1064,7 +1064,7 @@
 
     // 4. Invalidate on company switch or logout link clicks
     document.addEventListener("click", function (event) {
-        const target = event.target.closest("a[href*='switch-company'], a[href*='logout'], a[href*='/auth/']");
+        const target = event.target.closest("a[href*='switch-company'], a[href*='logout'], form[action*='logout'], a[href*='/auth/']");
         if (target) {
             onMutationDetected();
         }
@@ -1079,4 +1079,12 @@
             window.localStorage?.removeItem("htmx-history-cache");
         }
     });
+
+    document.addEventListener("submit", function (event) {
+        if (event.target.matches("form[action*='logout']")) {
+            FinloViewCache.clear();
+            window.sessionStorage?.removeItem("htmx-history-cache");
+            window.localStorage?.removeItem("htmx-history-cache");
+        }
+    }, true);
 })();

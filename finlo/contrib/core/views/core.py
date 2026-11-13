@@ -285,7 +285,7 @@ class LoginUserView(View):
                 )
         except Exception:
             # Fail closed if the configured shared throttle store is unavailable.
-            logger.exception("Authentication rate-limit cache unavailable")
+            logger.error("Authentication rate-limit cache unavailable")
             response = HttpResponse(
                 "Sign-in is temporarily unavailable. Please try again shortly.",
                 status=503,
@@ -312,7 +312,7 @@ class LoginUserView(View):
                     else 0
                 )
             except Exception:
-                logger.exception("Authentication rate-limit cache unavailable")
+                logger.error("Authentication rate-limit cache unavailable")
                 response = HttpResponse(
                     "Sign-in is temporarily unavailable. Please try again shortly.",
                     status=503,

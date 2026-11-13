@@ -5,9 +5,11 @@ Includes HTMX support for dynamic interactions.
 
 # Standard library imports
 import logging
+from urllib.parse import urlsplit
 
 # Third-party imports (Django)
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
@@ -16,6 +18,7 @@ from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.http.request import validate_host
 
 from finlo.auth.models import User
 from finlo.contrib.mail.models import FinloMailConfiguration
@@ -27,14 +30,45 @@ from finlo.shortcuts import redirect, render
 from finlo.utils.branding import load_branding
 from finlo.utils.html import strip_tags
 from finlo.utils.translation import gettext_lazy as _
-from finlo.utils.urls import build_absolute_url
 from finlo.views.generic import View
 from finlo.web import HttpResponse
 
 # Local imports
 from ..models import Company
+from ..auth_rate_limit import cache_key, count, increment
 
 logger = logging.getLogger(__name__)
+
+RESET_RATE_LIMIT_WINDOW = 60 * 60
+RESET_RATE_LIMIT_USER_MAX = 5
+RESET_RATE_LIMIT_IP_MAX = 20
+
+
+def _password_reset_link(uid, token, request):
+    """Build reset links only on a configured, allowlisted public origin."""
+    site_url = getattr(settings, "SITE_URL", "").strip().rstrip("/")
+    if site_url:
+        parsed = urlsplit(site_url)
+        hostname = parsed.hostname
+        if (
+            parsed.scheme not in {"https", "http"}
+            or not hostname
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+            or not validate_host(hostname, settings.ALLOWED_HOSTS)
+            or (getattr(settings, "IS_PRODUCTION", False) and parsed.scheme != "https")
+        ):
+            raise ImproperlyConfigured("SITE_URL must be an allowlisted public origin.")
+        origin = site_url
+    elif getattr(settings, "IS_PRODUCTION", False):
+        raise ImproperlyConfigured("SITE_URL is required for production reset emails.")
+    else:
+        # Django's get_host() validates against ALLOWED_HOSTS before use.
+        origin = request.build_absolute_uri("/").rstrip("/")
+
+    return f"{origin}/reset-password/{uid}/{token}/"
 
 
 class ForgotPasswordView(View):
@@ -54,7 +88,23 @@ class ForgotPasswordView(View):
 
     def post(self, request):
         """Handle password reset email submission"""
-        email_or_username = request.POST.get("email")
+        email_or_username = (request.POST.get("email") or "").strip()
+
+        identity_key = cache_key("reset-user", email_or_username.casefold())
+        remote_ip = request.META.get("REMOTE_ADDR", "").strip()
+        ip_key = cache_key("reset-ip", remote_ip) if remote_ip else None
+        try:
+            if count(identity_key) >= RESET_RATE_LIMIT_USER_MAX or (
+                ip_key and count(ip_key) >= RESET_RATE_LIMIT_IP_MAX
+            ):
+                return render(request, self.success_template)
+            increment(identity_key, RESET_RATE_LIMIT_WINDOW)
+            if ip_key:
+                increment(ip_key, RESET_RATE_LIMIT_WINDOW)
+        except Exception:
+            # Do not issue reset mail while shared rate limiting is unavailable.
+            logger.error("Password-reset rate-limit cache unavailable")
+            return render(request, self.success_template)
 
         try:
             user = User.objects.get(
@@ -64,9 +114,7 @@ class ForgotPasswordView(View):
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
 
-            reset_link = build_absolute_url(
-                f"/reset-password/{uid}/{token}/", request=request
-            )
+            reset_link = _password_reset_link(uid, token, request)
 
             primary_config = FinloMailConfiguration.objects.filter(
                 is_primary=True, company=user.company
@@ -111,12 +159,10 @@ class ForgotPasswordView(View):
 
         except User.DoesNotExist:
             # Intentionally silent — do not reveal whether account exists
-            logger.info(
-                "Password reset requested for unknown account: %s", email_or_username
-            )
+            logger.info("Password reset requested for an unknown account")
 
         except Exception:
-            logger.exception("Password reset email failed for: %s", email_or_username)
+            logger.error("Password reset email could not be delivered")
 
         # Always return the same success response regardless of account existence
         return render(request, self.success_template)
@@ -148,8 +194,8 @@ class PasswordResetConfirmView(View):
             else:
                 context = {"validlink": False}
 
-        except Exception as e:
-            context = {"validlink": False, "error": str(e)}
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            context = {"validlink": False}
 
         return render(request, self.template_name, context)
 
