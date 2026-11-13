@@ -302,6 +302,9 @@ class UserFormClassSingle(FinloModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        for field_name in ("password", "confirm_password"):
+            self.fields[field_name].widget.attrs["autocomplete"] = "new-password"
+
         # Configure username field
         self.fields["username"].widget.attrs.update(
             {

@@ -4,7 +4,6 @@ It also includes related models for managing field-level permissions and company
 """
 
 # Standard library imports
-import re
 from collections.abc import Iterable
 
 # Django imports
