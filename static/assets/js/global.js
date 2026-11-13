@@ -519,6 +519,8 @@ const SidebarManager = {
 let pendingSectionNavigation = null;
 let latestSectionNavigationId = 0;
 const sectionNavigationRequests = new WeakMap();
+const htmxRequestOwners = new WeakMap();
+const activeMainGetRequests = new Set();
 
 window.addEventListener("finlo:cachedNavigation", function () {
     latestSectionNavigationId += 1;
@@ -1895,6 +1897,15 @@ $(document).ready(function () {
 
             const isClickingSameSection =
                 isMainSectionLink && currentActiveSection === clickedSection;
+            // Leave in-flight reads for the previous section behind. They are
+            // safe GETs and can no longer contribute to the page being opened.
+            for (const xhr of activeMainGetRequests) {
+                if (xhr.readyState !== 4) xhr.abort();
+                activeMainGetRequests.delete(xhr);
+            }
+            if (pendingSectionNavigation?.xhr?.readyState !== 4) {
+                pendingSectionNavigation?.xhr?.abort();
+            }
             latestSectionNavigationId += 1;
             pendingSectionNavigation = {
                 id: latestSectionNavigationId,
@@ -1909,29 +1920,95 @@ $(document).ready(function () {
     );
 
     document.body.addEventListener("htmx:beforeRequest", function (event) {
+        const xhr = event.detail?.xhr;
+        const requestElement = event.detail?.elt;
+        const requestVerb = String(event.detail?.requestConfig?.verb || "").toUpperCase();
+        const mainContent = document.getElementById("mainContent");
+        const sourceLink = event.detail?.elt?.closest?.(
+            "nav a.nav-link, #subSidebar a.sidebar-link",
+        );
+        const sectionNavigationId =
+            sourceLink && pendingSectionNavigation?.link === sourceLink
+                ? pendingSectionNavigation.id
+                : undefined;
+        if (xhr) {
+            htmxRequestOwners.set(xhr, {
+                pathname: window.location.pathname,
+                sectionNavigationId,
+                navigationId: sectionNavigationId ?? latestSectionNavigationId,
+            });
+            if (sectionNavigationId !== undefined) {
+                sectionNavigationRequests.set(xhr, sectionNavigationId);
+            }
+            if (
+                requestVerb === "GET" &&
+                mainContent &&
+                requestElement &&
+                mainContent.contains(requestElement)
+            ) {
+                activeMainGetRequests.add(xhr);
+            }
+        }
+
         if (
             pendingSectionNavigation &&
             event.detail?.elt === pendingSectionNavigation.link
         ) {
-            pendingSectionNavigation.xhr = event.detail.xhr;
+            pendingSectionNavigation.xhr = xhr;
             sectionNavigationRequests.set(
-                event.detail.xhr,
+                xhr,
                 pendingSectionNavigation.id,
             );
         }
     });
 
     document.body.addEventListener("htmx:beforeSwap", function (event) {
-        const requestId = sectionNavigationRequests.get(event.detail?.xhr);
+        const detail = event.detail || {};
+        const target = detail.target;
+        const xhr = detail.xhr;
+        const requestOwner = htmxRequestOwners.get(xhr);
+        const requestId =
+            sectionNavigationRequests.get(xhr) ?? requestOwner?.sectionNavigationId;
         if (
             requestId !== undefined &&
             requestId !== latestSectionNavigationId
         ) {
-            event.detail.shouldSwap = false;
+            detail.shouldSwap = false;
+            return;
+        }
+
+        // HTMX may resolve an old selector after navigation has replaced its
+        // target. Drop that response before the swap engine can dereference a
+        // missing target or write old-page content into a new section.
+        if (!target || !target.isConnected) {
+            detail.shouldSwap = false;
+            return;
+        }
+
+        const mainContent = document.getElementById("mainContent");
+        const targetsCurrentPage =
+            target === mainContent || Boolean(mainContent?.contains(target));
+        if (
+            requestOwner?.navigationId !== undefined &&
+            requestOwner.navigationId !== latestSectionNavigationId &&
+            targetsCurrentPage
+        ) {
+            detail.shouldSwap = false;
+            return;
+        }
+
+        if (
+            requestOwner?.sectionNavigationId === undefined &&
+            targetsCurrentPage &&
+            requestOwner &&
+            requestOwner.pathname !== window.location.pathname
+        ) {
+            detail.shouldSwap = false;
         }
     });
 
     document.body.addEventListener("htmx:afterRequest", function (event) {
+        if (event.detail?.xhr) activeMainGetRequests.delete(event.detail.xhr);
         if (
             pendingSectionNavigation &&
             event.detail?.elt === pendingSectionNavigation.link &&
