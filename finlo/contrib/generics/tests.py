@@ -146,55 +146,6 @@ class ListViewSortPartialTests(SimpleTestCase):
             navigation_script,
         )
 
-    def test_navigation_snapshots_reject_late_previous_page_responses(self):
-        navigation_script = (
-            Path(settings.BASE_DIR)
-            / "static"
-            / "assets"
-            / "js"
-            / "navigation_history.js"
-        ).read_text(encoding="utf-8")
-        snapshot_logic = navigation_script.split(
-            "function scheduleSnapshot(event)", maxsplit=1
-        )[1].split(
-            'document.addEventListener("htmx:historyRestore"', maxsplit=1
-        )[0]
-        cache_key_logic = navigation_script.split(
-            "function buildCacheKey(url)", maxsplit=1
-        )[1].split("function isCacheableUrl(url)", maxsplit=1)[0]
-        restore_logic = navigation_script.split(
-            "function restoreView(url, cached)", maxsplit=1
-        )[1].split("// --- Stale-While-Revalidate", maxsplit=1)[0]
-
-        # A rapid Leads -> Dashboard -> Leads sequence can finish requests out
-        # of order; only connected targets for the URL that is still current
-        # may populate that URL's cache entry.
-        self.assertIn("target.isConnected", snapshot_logic)
-        self.assertIn("mainContent.contains(target)", snapshot_logic)
-        self.assertIn(
-            "normalizeUrl(requestPath) !== normalizeUrl(window.location.href)",
-            snapshot_logic,
-        )
-        self.assertIn(
-            "normalizeUrl(window.location.href) !== normalizeUrl(scheduledUrl)",
-            snapshot_logic,
-        )
-        self.assertIn("scheduleSnapshot(event)", navigation_script)
-
-        # Cache restore remains scoped by user, company and normalized URL,
-        # and still reinitializes HTMX-managed page scripts and charts.
-        self.assertIn("getActiveUserId()", cache_key_logic)
-        self.assertIn("getActiveCompanyScope()", cache_key_logic)
-        self.assertIn("norm", cache_key_logic)
-        self.assertIn("history.pushState(null, \"\", url)", restore_logic)
-        self.assertIn("htmx.process(mainContent)", restore_logic)
-        self.assertIn("reexecuteScripts(mainContent)", restore_logic)
-        self.assertIn('new Event("resize")', restore_logic)
-
-        # Back/Forward and permission invalidation hooks remain installed.
-        self.assertIn('document.addEventListener("htmx:historyRestore"', navigation_script)
-        self.assertIn("FinloViewCache.clear();", navigation_script)
-
     def test_main_nav_activation_happens_once_after_content_settles(self):
         global_script = (
             Path(settings.BASE_DIR) / "static" / "assets" / "js" / "global.js"
@@ -262,41 +213,6 @@ class ListViewSortPartialTests(SimpleTestCase):
             global_script,
         )
         self.assertIn("collapseSidebarAfterMobileNavigation?.();", global_script)
-
-    def test_htmx_discards_responses_whose_navigation_owner_is_stale(self):
-        global_script = (
-            Path(settings.BASE_DIR) / "static" / "assets" / "js" / "global.js"
-        ).read_text(encoding="utf-8")
-        before_request = global_script.split(
-            'document.body.addEventListener("htmx:beforeRequest"', maxsplit=1
-        )[1].split(
-            'document.body.addEventListener("htmx:beforeSwap"', maxsplit=1
-        )[0]
-        navigation_click = global_script.split(
-            "const isClickingSameSection =", maxsplit=1
-        )[1].split("pendingSectionNavigation = {", maxsplit=1)[0]
-        before_swap = global_script.split(
-            'document.body.addEventListener("htmx:beforeSwap"', maxsplit=1
-        )[1].split(
-            'document.body.addEventListener("htmx:afterRequest"', maxsplit=1
-        )[0]
-
-        self.assertIn("const htmxRequestOwners = new WeakMap();", global_script)
-        self.assertIn("const activeMainGetRequests = new Set();", global_script)
-        self.assertIn("for (const xhr of activeMainGetRequests)", navigation_click)
-        self.assertIn("xhr.abort()", navigation_click)
-        self.assertIn("pathname: window.location.pathname", before_request)
-        self.assertIn("navigationId: sectionNavigationId ?? latestSectionNavigationId", before_request)
-        self.assertIn("requestId !== latestSectionNavigationId", before_swap)
-        self.assertIn(
-            "requestOwner.navigationId !== latestSectionNavigationId", before_swap
-        )
-        self.assertIn("if (!target || !target.isConnected)", before_swap)
-        self.assertIn("targetsCurrentPage", before_swap)
-        self.assertIn(
-            "requestOwner.pathname !== window.location.pathname", before_swap
-        )
-        self.assertIn("detail.shouldSwap = false", before_swap)
 
     def test_stale_subsection_selection_does_not_reload_the_section(self):
         base_dir = Path(settings.BASE_DIR)

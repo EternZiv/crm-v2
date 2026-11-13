@@ -585,42 +585,26 @@
 
     // --- Snapshot Capture after View Settles ---
     let captureTimeout = null;
-    function scheduleSnapshot(event) {
-        const target = event?.detail?.target || event?.detail?.elt;
-        const mainContent = document.getElementById("mainContent");
-        const isCalendarTarget = target?.id === "calendarContainer";
-        if (!target || !target.isConnected || !mainContent ||
-            (target !== mainContent && !mainContent.contains(target) && !isCalendarTarget)) return;
-
-        // A late response for the previous page must not be cached under the
-        // URL that became current while that request was in flight.
-        const requestPath = event?.detail?.pathInfo?.finalRequestPath ||
-            event?.detail?.pathInfo?.requestPath;
-        if (target === mainContent && requestPath &&
-            normalizeUrl(requestPath) !== normalizeUrl(window.location.href)) return;
-
-        const scheduledUrl = window.location.href;
+    function scheduleSnapshot() {
         if (captureTimeout) clearTimeout(captureTimeout);
         captureTimeout = setTimeout(() => {
-            if (normalizeUrl(window.location.href) !== normalizeUrl(scheduledUrl)) return;
-            const currentUrl = scheduledUrl;
+            const currentUrl = window.location.href;
             if (!isCacheableUrl(currentUrl)) return;
 
-            const currentMainContent = document.getElementById("mainContent");
-            if (!currentMainContent || !target.isConnected ||
-                (target !== currentMainContent && !currentMainContent.contains(target) && !isCalendarTarget)) return;
+            const mainContent = document.getElementById("mainContent");
+            if (!mainContent) return;
 
             // Do not capture if still showing loading spinner, skeleton, indicator, or if header was nested
-            if (currentMainContent.querySelector("#header") ||
-                currentMainContent.querySelector("#finlo-skeleton-loader") ||
-                currentMainContent.querySelector(".htmx-indicator.htmx-request") ||
-                currentMainContent.querySelector("#loading-indicator[style*='display: flex']")) {
+            if (mainContent.querySelector("#header") ||
+                mainContent.querySelector("#finlo-skeleton-loader") ||
+                mainContent.querySelector(".htmx-indicator.htmx-request") ||
+                mainContent.querySelector("#loading-indicator[style*='display: flex']")) {
                 return;
             }
 
             const sideMenuContainer = document.getElementById("sideMenuContainer");
             FinloViewCache.set(currentUrl, {
-                mainContentHtml: currentMainContent.innerHTML,
+                mainContentHtml: mainContent.innerHTML,
                 sideMenuHtml: sideMenuContainer ? sideMenuContainer.innerHTML : ""
             });
             hideProgressBar();
@@ -632,12 +616,12 @@
         const targetId = target && target.id;
         if (targetId === "mainContent" || targetId === "calendarContainer" || (target && target.closest && target.closest("#mainContent"))) {
             setActiveSectionFromUrl(window.location.href);
-            scheduleSnapshot(event);
+            scheduleSnapshot();
         }
     });
 
     document.body.addEventListener("htmx:afterSettle", function (event) {
-        scheduleSnapshot(event);
+        scheduleSnapshot();
     });
 
     document.addEventListener("htmx:historyRestore", function (event) {
