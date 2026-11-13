@@ -49,7 +49,6 @@ def contact_table_func(generator, model_info):
         model_info=model_info,
         title=_("Contacts"),
         filter_kwargs={},
-        no_found_img="assets/img/not-found-list.svg",
         no_record_msg=_("No contacts found."),
         view_id="contacts_dashboard_list",
     )

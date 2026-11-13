@@ -192,7 +192,6 @@ def opportunity_table_func(generator, model_info):
         model_info=model_info,
         title=_("Closed Won Opportunities"),
         filter_kwargs=filter_kwargs,
-        no_found_img="assets/img/not-found-list.svg",
         no_record_msg=_("No closed won opportunities found."),
         view_id="opportunities_dashboard_list",
     )

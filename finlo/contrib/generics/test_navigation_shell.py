@@ -64,6 +64,19 @@ class ImmediateNavigationShellTests(SimpleTestCase):
         self.assertIn("const path = window.location.pathname + window.location.search", self.navigation_script)
         self.assertIn("window.location.reload()", self.navigation_script)
 
+    def test_history_cache_miss_shows_destination_shell_and_clears_on_failure(self):
+        self.assertIn('addEventListener("htmx:historyCacheMiss"', self.navigation_script)
+        self.assertIn("function showHistoryDestinationShell(path)", self.navigation_script)
+        self.assertIn("function getHistoryShellType(path)", self.navigation_script)
+        self.assertIn('addEventListener("htmx:historyCacheMissLoadError"', self.navigation_script)
+        self.assertIn('delete mainContent.dataset.finloHistoryNavigationPending', self.navigation_script)
+        self.assertIn('document.addEventListener("htmx:historyRestore"', self.navigation_script)
+        self.assertIn("restoreHistorySnapshots();", self.navigation_script)
+
+    def test_client_cache_history_entries_are_compatible_with_htmx_popstate(self):
+        self.assertIn('history.pushState({ htmx: true }, "", url)', self.navigation_script)
+        self.assertIn("suppressHistorySnapshot(mainContent)", self.navigation_script)
+
     def test_global_script_is_preserved_during_htmx_full_layout_swaps(self):
         for template in (self.index_template, self.login_template):
             global_script_tags = [

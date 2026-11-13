@@ -57,11 +57,19 @@ from finlo.web import (
 
 from ..models import ActiveTab, Company, RecentlyViewed
 from ..signals import pre_login_render_signal, pre_logout_signal
+from ..auth_rate_limit import cache_key as auth_rate_key
+from ..auth_rate_limit import clear as clear_auth_rate
+from ..auth_rate_limit import count as auth_rate_count
+from ..auth_rate_limit import increment as increment_auth_rate
 
 # Local imports
 from .initialiaze_database import InitializeDatabaseConditionView
 
 logger = logging.getLogger(__name__)
+
+LOGIN_RATE_LIMIT_WINDOW = 900
+LOGIN_RATE_LIMIT_USER_MAX = 20
+LOGIN_RATE_LIMIT_IP_MAX = 60
 
 
 def is_jwt_token_valid(auth_header):
@@ -263,55 +271,73 @@ class LoginUserView(View):
         else:
             next_url = safe_url(request, raw_next, settings.DEFAULT_HOME_REDIRECT)
 
-        ip = (
-            request.META.get(
-                "HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", "")
+        # Trust the address supplied by the WSGI/ASGI server. Never use the
+        # client-controlled X-Forwarded-For header unless a trusted proxy layer
+        # has explicitly normalized it.
+        ip = request.META.get("REMOTE_ADDR", "").strip()
+        user_rate_key = auth_rate_key("login-user", (identifier or "").strip().casefold())
+        ip_rate_key = auth_rate_key("login-ip", ip) if ip else None
+        try:
+            throttled = auth_rate_count(user_rate_key) >= LOGIN_RATE_LIMIT_USER_MAX
+            if ip_rate_key:
+                throttled = throttled or (
+                    auth_rate_count(ip_rate_key) >= LOGIN_RATE_LIMIT_IP_MAX
+                )
+        except Exception:
+            # Fail closed if the configured shared throttle store is unavailable.
+            logger.exception("Authentication rate-limit cache unavailable")
+            response = HttpResponse(
+                "Sign-in is temporarily unavailable. Please try again shortly.",
+                status=503,
+                content_type="text/plain; charset=utf-8",
             )
-            .split(",")[0]
-            .strip()
-        )
-        lockout_key = f"login_lockout_{ip}"
-        attempt_key = f"login_attempts_{ip}"
+            response["Retry-After"] = "30"
+            response["Cache-Control"] = "no-store"
+            return response
 
-        # Block IP if currently locked out
-        if cache.get(lockout_key):
-            messages.error(
-                request,
-                _("Too many failed login attempts. Please try again in 15 minutes."),
-            )
+        if throttled:
+            messages.error(request, _("Invalid credentials. Please check and try again."))
             return redirect(reverse_lazy("core:login") + f"?next={next_url}")
 
         user = authenticate(request, username=identifier, password=secret)
 
-        if not user:
-            attempts = cache.get(attempt_key, 0) + 1
-            if attempts >= 5:
-                cache.set(lockout_key, True, timeout=900)  # lock for 15 minutes
-                cache.delete(attempt_key)
-                logger.warning("Brute force lockout triggered for IP %s", ip)
-                messages.error(
-                    request,
-                    _(
-                        "Too many failed login attempts. Please try again in 15 minutes."
-                    ),
+        if not user or not user.is_active:
+            try:
+                user_attempts = increment_auth_rate(
+                    user_rate_key, LOGIN_RATE_LIMIT_WINDOW
                 )
-            else:
-                cache.set(attempt_key, attempts, timeout=900)
-                messages.error(
-                    request, _("Invalid credentials. Please check and try again.")
+                ip_attempts = (
+                    increment_auth_rate(ip_rate_key, LOGIN_RATE_LIMIT_WINDOW)
+                    if ip_rate_key
+                    else 0
                 )
-            return redirect(reverse_lazy("core:login") + f"?next={next_url}")
+            except Exception:
+                logger.exception("Authentication rate-limit cache unavailable")
+                response = HttpResponse(
+                    "Sign-in is temporarily unavailable. Please try again shortly.",
+                    status=503,
+                    content_type="text/plain; charset=utf-8",
+                )
+                response["Retry-After"] = "30"
+                response["Cache-Control"] = "no-store"
+                return response
 
-        if not user.is_active:
-            messages.warning(
-                request,
-                _("This user is archived or blocked. Please contact support."),
-            )
+            if user_attempts in (1, LOGIN_RATE_LIMIT_USER_MAX) or ip_attempts in (
+                1,
+                LOGIN_RATE_LIMIT_IP_MAX,
+            ):
+                logger.warning("Authentication failure threshold reached")
+            messages.error(request, _("Invalid credentials. Please check and try again."))
             return redirect(reverse_lazy("core:login") + f"?next={next_url}")
 
         # Clear failed attempt counters on successful login
-        cache.delete(attempt_key)
-        cache.delete(lockout_key)
+        try:
+            clear_auth_rate(user_rate_key, ip_rate_key)
+            # Clear legacy counters created by the former per-IP lockout.
+            cache.delete(f"login_attempts_{ip}")
+            cache.delete(f"login_lockout_{ip}")
+        except Exception:
+            logger.exception("Could not clear authentication rate-limit counters")
 
         login(request, user)
         messages.success(request, _("Login successful."))
@@ -325,7 +351,7 @@ class LogoutView(View):
     All preservation logic is handled by signal receivers.
     """
 
-    def get(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         """
         Logout the user and clear local storage.
         """
@@ -804,14 +830,8 @@ class GetCountrySubdivisionsView(LoginRequiredMixin, View):
         return HttpResponse(options)
 
 
-class FaviconRedirectView(RedirectView):
-    """Redirect to the configured favicon."""
+class FaviconRedirectView(View):
+    """Handle /favicon.ico with No Content to avoid unnecessary redirects and 404s."""
 
-    branding = load_branding()
-    favicon_path = branding.get("FAVICON_PATH", "favicon.ico")
-    try:
-        url = staticfiles_storage.url(favicon_path)
-    except ValueError:
-        # Production manifest entries are generated during collectstatic. Keep
-        # settings checks/imports usable before that build step completes.
-        url = f"{settings.STATIC_URL.rstrip('/')}/{favicon_path.lstrip('/')}"
+    def get(self, request, *args, **kwargs):
+        return HttpResponse(status=204)

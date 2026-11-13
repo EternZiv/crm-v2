@@ -338,12 +338,6 @@
     {% else %}
         <div class="flex justify-between items-center h-20"></div>
 
-        <img
-            src="{% static 'assets/img/not-found.svg' %}"
-            alt="404"
-            class="w-60 m-auto mb-4 mt-5"
-        >
-
         <p class="text-sm text-center mb-3">
             {% if no_record_add_button.message %}
                 {{ no_record_add_button.message }}

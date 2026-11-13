@@ -385,7 +385,6 @@ class DashboardCountDeduplicationIntegrationTests(TestCase):
                 model_info=model_info,
                 title="Accounts",
                 filter_kwargs={},
-                no_found_img="assets/img/not-found-list.svg",
                 no_record_msg="No accounts found.",
                 view_id="accounts_dashboard_list",
                 request=request,

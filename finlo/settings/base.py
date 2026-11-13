@@ -419,6 +419,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Reset email templates promise a 24-hour expiry; keep Django's signed reset
+# tokens aligned with that user-facing contract.
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

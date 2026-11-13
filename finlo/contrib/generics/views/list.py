@@ -1286,7 +1286,7 @@ class FinloListView(FinloListViewMixin, ListView):
         context["no_record_add_button"] = self.no_record_add_button or {}
         context["no_record_section"] = self.no_record_section
         context["no_record_msg"] = self.no_record_msg
-        context["no_found_img"] = self.no_found_img
+        context["no_found_img"] = ""
         context["bulk_update_two_column"] = self.bulk_update_two_column
         context["has_active_filters"] = self._has_active_filters()
         header_attrs_dict = {}

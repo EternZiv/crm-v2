@@ -246,7 +246,6 @@ def lead_convert_table_func(generator, model_info):
         model_info=model_info,
         title=_("Won Leads"),
         filter_kwargs=filter_kwargs,
-        no_found_img="assets/img/not-found-list.svg",
         no_record_msg=_("No won leads found."),
         view_id="leads_dashboard_list",
     )
@@ -262,7 +261,6 @@ def lead_open_pipeline_table_func(generator, model_info):
         model_info=model_info,
         title=_("Open Leads (pipeline)"),
         filter_kwargs=filter_kwargs,
-        no_found_img="assets/img/not-found-list.svg",
         no_record_msg=_("No open leads found."),
         view_id="leads_dashboard_open_list",
     )

@@ -296,13 +296,15 @@ class FinloUser(AbstractUser):
         return super().has_perm(perm, obj)
 
     def save(self, *args, **kwargs):
-        """Set username from email and password from contact_number if missing; then save."""
+        """Fill a missing username and make passwordless new users unusable."""
         if not self.username and self.email:
             self.username = self.email
 
-        if not self.password and self.contact_number:
-            digits_only = re.sub(r"\D", "", self.contact_number)
-            self.set_password(digits_only or self.contact_number)
+        # Never derive credentials from personal information. Existing password
+        # hashes remain untouched; new records without a password must complete
+        # the password setup/reset flow before they can authenticate.
+        if self._state.adding and not self.password:
+            self.set_unusable_password()
 
         super().save(*args, **kwargs)
 

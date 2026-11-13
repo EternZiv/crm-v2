@@ -818,7 +818,7 @@ class DefaultDashboardGenerator:
                 "view_type": "dashboard",
                 "no_record_section": True,
                 "no_record_msg": no_record_msg,
-                "no_found_img": no_found_img,
+                "no_found_img": "",
                 "no_record_add_button": {},
                 "page_obj": page_obj,
                 "has_next": has_next,

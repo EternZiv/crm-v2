@@ -116,13 +116,6 @@
             <div>
                 {% if no_record_section %}
                     <div class="flex justify-between items-center h-20"></div>
-                    <img
-                        src="{% static no_found_img|default:'assets/img/not-found.svg' %}"
-                        alt="{% trans 'No records found' %}"
-                        width="240"
-                        height="173"
-                        class="w-60 h-auto m-auto mb-4 mt-5"
-                    >
                     {% if no_record_msg %}
                         <p class="text-sm text-center pb-3">
                             {{ no_record_msg }}

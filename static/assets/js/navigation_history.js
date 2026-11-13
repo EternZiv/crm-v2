@@ -115,12 +115,7 @@
         // HTMX snapshots the source page immediately before its response swap.
         // Keep this transient shell out of that snapshot so Back cannot restore
         // a loading placeholder as if it were a completed page.
-        const historyElement = mainContent.closest("[hx-history-elt], [data-hx-history-elt]");
-        if (historyElement && historyElement.getAttribute("hx-history") !== "false"
-            && historyElement.getAttribute("data-hx-history") !== "false") {
-            historyElement.setAttribute("data-finlo-history-suppressed", "true");
-            historyElement.setAttribute("hx-history", "false");
-        }
+        suppressHistorySnapshot(mainContent);
 
         const shellType = getNavigationShellType(link);
         const template = document.getElementById(`finlo-nav-shell-${shellType}`);
@@ -140,6 +135,66 @@
         }));
         return true;
     }
+
+    function suppressHistorySnapshot(mainContent) {
+        const historyElement = mainContent?.closest("[hx-history-elt], [data-hx-history-elt]");
+        if (historyElement && historyElement.getAttribute("hx-history") !== "false"
+            && historyElement.getAttribute("data-hx-history") !== "false") {
+            historyElement.setAttribute("data-finlo-history-suppressed", "true");
+            historyElement.setAttribute("hx-history", "false");
+        }
+    }
+
+    function getHistoryShellType(path) {
+        let parsedUrl;
+        try {
+            parsedUrl = new URL(path, window.location.href);
+        } catch (e) {
+            return "generic";
+        }
+
+        if (/\/dashboard\//i.test(parsedUrl.pathname) || parsedUrl.searchParams.get("section") === "home") {
+            return "dashboard";
+        }
+        if (/^\/crm\/(leads|accounts|contacts|opportunities|forecast)\//i.test(parsedUrl.pathname)) {
+            return "list";
+        }
+        return "generic";
+    }
+
+    function showHistoryDestinationShell(path) {
+        const mainContent = document.getElementById("mainContent");
+        if (!mainContent) return false;
+
+        const shellType = getHistoryShellType(path);
+        const template = document.getElementById(`finlo-nav-shell-${shellType}`);
+        if (!template?.content) return false;
+
+        cleanupDetachedChartInstances();
+        mainContent.replaceChildren(template.content.cloneNode(true));
+        mainContent.setAttribute("aria-busy", "true");
+        mainContent.dataset.finloHistoryNavigationPending = "true";
+        setActiveSectionFromUrl(path);
+        return true;
+    }
+
+    document.body.addEventListener("htmx:historyCacheMiss", function (event) {
+        showHistoryDestinationShell(event.detail?.path || window.location.href);
+    });
+
+    document.body.addEventListener("htmx:historyCacheMissLoadError", function () {
+        const mainContent = document.getElementById("mainContent");
+        if (!mainContent?.querySelector("[data-finlo-navigation-shell]")) return;
+
+        const error = document.createElement("section");
+        error.className = "m-5 rounded-xl border border-red-200 bg-white p-6 text-slate-800";
+        error.setAttribute("role", "alert");
+        error.textContent = "This page could not be restored. Refresh to try again.";
+        mainContent.replaceChildren(error);
+        mainContent.removeAttribute("aria-busy");
+        delete mainContent.dataset.finloHistoryNavigationPending;
+        restoreHistorySnapshots();
+    });
 
     function showNavigationFailure(navigation, status) {
         const mainContent = document.getElementById("mainContent");
@@ -565,7 +620,10 @@
 
         // 6. Update URL in browser address bar and history
         if (window.location.href !== url) {
-            history.pushState(null, "", url);
+            // HTMX handles popstate only for entries carrying this marker.
+            // Suppress its next snapshot while its private path can be stale.
+            suppressHistorySnapshot(mainContent);
+            history.pushState({ htmx: true }, "", url);
         }
 
         // 7. Update sidebar visual indicator
@@ -917,6 +975,8 @@
         setActiveSectionFromUrl(path);
         const mainContent = document.getElementById("mainContent");
         if (mainContent) {
+            mainContent.removeAttribute("aria-busy");
+            delete mainContent.dataset.finloHistoryNavigationPending;
             cleanupDetachedChartInstances();
             reexecuteScripts(mainContent);
             window.dispatchEvent(new Event("resize"));
@@ -928,6 +988,7 @@
                 return;
             }
         }
+        restoreHistorySnapshots();
         hideProgressBar();
     });
 

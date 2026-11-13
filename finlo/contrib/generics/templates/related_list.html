@@ -68,11 +68,6 @@
     </div>
 {% else %}
     <div class="flex justify-between items-center"></div>
-    <img
-        src="{% static 'assets/img/not-found.svg' %}"
-        alt="404"
-        class="w-60 m-auto mb-4 mt-5"
-    >
     <p class="text-sm text-center mb-3">
         {% trans 'No related lists found for this' %} {{ object|model_verbose_name }}
     </p>

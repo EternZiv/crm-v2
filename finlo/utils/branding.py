@@ -11,7 +11,7 @@ DEFAULTS = {
     "LOGIN_TAG_LINE": _("Please sign in to access your dashboard"),
     "SIGNUP_TAG_LINE": _("Please sign up to access Finlo CRM"),
     "LOGO_PATH": "assets/img/finlo-crm-logo.png",
-    "FAVICON_PATH": "assets/img/finlo-favicon.ico",
+    "FAVICON_PATH": "",
     "PAGE_HEADER": _("Finlo CRM"),
 }
 

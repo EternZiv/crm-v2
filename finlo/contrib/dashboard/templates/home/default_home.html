@@ -172,14 +172,7 @@
                             </div>
                             <h3 class="text-md font-semibold mb-4">{{ block.data.title }}</h3>
                             {% if block.data.is_empty %}
-                                <img
-                                    src="{% static 'assets/img/not-found-chart.svg' %}"
-                                    alt="{% trans 'No chart data' %}"
-                                    width="240"
-                                    height="173"
-                                    class="w-60 h-auto m-auto mb-4 mt-5"
-                                >
-                                <p class="text-sm text-center pb-3">
+                                <p class="text-sm text-center py-6 text-gray-500">
                                     {% if block.data.no_record_msg %}
                                         {{ block.data.no_record_msg }}
                                     {% else %}
