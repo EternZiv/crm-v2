@@ -298,7 +298,7 @@ class FinloChartView(FinloListView):
                 return field_name
         return None
 
-    def _label_for_group_key(self, field, group_key):
+    def _label_for_group_key(self, field, group_key, prefetch_map=None):
         """Human-readable label for aggregate bucket."""
         if group_key is None:
             return str(_("(empty)"))
@@ -314,6 +314,8 @@ class FinloChartView(FinloListView):
                     return str(label)
             return str(group_key)
         if isinstance(field, ForeignKey):
+            if prefetch_map and group_key in prefetch_map:
+                return str(prefetch_map[group_key])
             try:
                 related = field.related_model.objects.get(pk=group_key)
                 return str(related)
@@ -478,13 +480,22 @@ class FinloChartView(FinloListView):
         if is_date_dimension:
             list_url = ""
 
+        fk_prefetch_map = None
+        if isinstance(dim_field, ForeignKey):
+            fk_ids = {row[group_expr] for row in rows if row[group_expr] is not None}
+            if fk_ids:
+                try:
+                    fk_prefetch_map = dim_field.related_model.objects.filter(pk__in=fk_ids).in_bulk()
+                except Exception:
+                    fk_prefetch_map = {}
+
         for row in rows:
             key = row[group_expr]
             value = row[agg_field_name] or 0
             if is_date_dimension:
                 label = key.strftime("%Y-%m") if key is not None else str(_("(empty)"))
             else:
-                label = self._label_for_group_key(dim_field, key)
+                label = self._label_for_group_key(dim_field, key, prefetch_map=fk_prefetch_map)
             labels.append(label)
             data.append(value)
             if list_url:

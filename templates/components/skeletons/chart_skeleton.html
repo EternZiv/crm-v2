@@ -1,0 +1,19 @@
+<div class="finlo-skeleton grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse mb-6" id="finlo-chart-skeleton">
+    {% for _ in "12" %}
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 min-h-[380px] flex flex-col justify-between">
+        <div class="flex items-center justify-between pb-4 border-b border-gray-100">
+            <div class="h-5 w-36 bg-gray-200 rounded"></div>
+            <div class="h-4 w-12 bg-gray-100 rounded"></div>
+        </div>
+        <div class="flex items-end justify-center space-x-6 h-48 my-auto px-4">
+            <div class="w-8 bg-gray-100 rounded-t h-28"></div>
+            <div class="w-8 bg-gray-200 rounded-t h-40"></div>
+            <div class="w-8 bg-gray-100 rounded-t h-20"></div>
+            <div class="w-8 bg-gray-200 rounded-t h-32"></div>
+            <div class="w-8 bg-gray-100 rounded-t h-24"></div>
+        </div>
+        <div class="h-3 w-48 bg-gray-100 rounded mx-auto mt-2"></div>
+    </div>
+    {% endfor %}
+</div>
+

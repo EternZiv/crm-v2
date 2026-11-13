@@ -13,6 +13,7 @@ from finlo.utils.translation import gettext_lazy as _
 
 # Local imports
 from .models import Lead
+from .services import LeadDataService
 
 
 def create_lead_source_charts(self, queryset, model_info):
@@ -26,8 +27,13 @@ def create_lead_source_charts(self, queryset, model_info):
                 "lead_source" if hasattr(queryset.model, "lead_source") else "source"
             )
 
-            data = list(
-                queryset.values(field).annotate(count=Count("id")).order_by("-count")
+            data = LeadDataService.get_leads_by_source(
+                self.user,
+                self.company,
+                date_range=getattr(self, "date_range", None),
+                date_from=getattr(self, "date_from", None),
+                date_to=getattr(self, "date_to", None),
+                is_convert=False,
             )
 
             if data:
@@ -121,10 +127,13 @@ def create_lead_charts_by_stage(self, queryset, model_info):
         if not hasattr(queryset.model, "lead_status"):
             return None
 
-        data = list(
-            queryset.values("lead_status_id", "lead_status__name")
-            .annotate(count=Count("id"))
-            .order_by("-count")
+        data = LeadDataService.get_lead_counts_by_stage(
+            self.user,
+            self.company,
+            date_range=getattr(self, "date_range", None),
+            date_from=getattr(self, "date_from", None),
+            date_to=getattr(self, "date_to", None),
+            is_convert=False,
         )
 
         if not data:
@@ -171,10 +180,14 @@ def lead_kpi_cards(generator, model_info):
     set ``type`` only if you need to override formatting.
     """
     model_class = model_info["model"]
-    filter_kwargs = (
-        {"is_convert": False} if hasattr(model_class, "is_convert") else {}
+    summary = LeadDataService.get_lead_kpi_summary(
+        generator.user,
+        generator.company,
+        date_range=getattr(generator, "date_range", None),
+        date_from=getattr(generator, "date_from", None),
+        date_to=getattr(generator, "date_to", None),
     )
-    open_count = generator.get_model_count(model_class, **filter_kwargs)
+    open_count = summary.get("open", 0)
     section_info = get_section_info_for_model(model_class)
 
     return [

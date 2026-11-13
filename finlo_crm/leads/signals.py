@@ -29,7 +29,8 @@ from finlo.contrib.utils.middlewares import _thread_local
 from finlo.core.exceptions import FieldDoesNotExist
 from finlo.db import transaction
 from finlo.db.models import Count
-from finlo.db.models.signals import post_save, pre_save
+from finlo.db.models.signals import post_delete, post_init, post_save, pre_save
+from finlo_crm.leads.services import bump_lead_cache_version
 from finlo.urls import reverse, reverse_lazy
 from finlo.utils import timezone
 from finlo.web.response import ScriptResponse
@@ -660,3 +661,62 @@ try:
 
 except ImportError:
     pass
+
+
+# ─── Shared Analytics Cache Invalidation ─────────────────────────────────────
+@receiver(post_init, sender=Lead)
+def remember_lead_cache_scope(sender, instance, **kwargs):
+    """Track the loaded tenant so moving a Lead invalidates both old and new scopes."""
+    if "company" not in instance.get_deferred_fields():
+        instance._lead_cache_company_id = instance.company_id
+
+
+@receiver(pre_save, sender=Lead)
+def capture_lead_previous_cache_scope(sender, instance, **kwargs):
+    """Capture prior tenant before save for partial/deferred model instances."""
+    if (
+        instance.pk
+        and not hasattr(instance, "_lead_cache_company_id")
+        and not kwargs.get("raw", False)
+    ):
+        instance._lead_cache_company_id = (
+            Lead.all_objects.filter(pk=instance.pk)
+            .values_list("company_id", flat=True)
+            .first()
+        )
+
+
+@receiver([post_save, post_delete], sender=Lead)
+def invalidate_lead_data_caches_on_mutation(sender, instance, **kwargs):
+    """Invalidate all affected tenant aggregates only after the mutation commits."""
+    new_company_id = getattr(instance, "company_id", None)
+    old_company_id = getattr(instance, "_lead_cache_company_id", None)
+
+    affected_company_ids = {new_company_id, old_company_id}
+    if kwargs.get("created", False):
+        affected_company_ids.discard(old_company_id)
+
+    def invalidate():
+        for company_id in affected_company_ids:
+            bump_lead_cache_version(company_id)
+
+    transaction.on_commit(invalidate)
+    if kwargs.get("signal") is post_save:
+        instance._lead_cache_company_id = new_company_id
+
+
+@receiver([post_save, post_delete], sender=LeadStatus)
+def invalidate_lead_status_caches_on_mutation(sender, instance, **kwargs):
+    """Invalidate aggregated lead metrics in cache when pipeline stages change."""
+    def invalidate_related_companies():
+        company_ids = set(
+            Lead.all_objects.filter(lead_status_id=instance.pk)
+            .values_list("company_id", flat=True)
+            .distinct()
+        )
+        if instance.company_id is not None:
+            company_ids.add(instance.company_id)
+        for company_id in company_ids:
+            bump_lead_cache_version(company_id)
+
+    transaction.on_commit(invalidate_related_companies)

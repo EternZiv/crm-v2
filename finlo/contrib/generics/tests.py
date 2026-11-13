@@ -1101,3 +1101,89 @@ class HistoryTabRenderingTests(TestCase):
         html = self.render_edit({"monthly_day_of_month": ["None", "15"]})
         self.assertRegex(html, r'class="history-kv-value"\s+dir="auto"\s*>--</span>')
         self.assertRegex(html, r'class="history-diff-chip"\s+dir="auto"\s*>15</span>')
+
+
+class FinloNavigationCacheHardeningTests(SimpleTestCase):
+    """
+    Focused unit tests for Phase 1 FinloViewCache hardening:
+    - Dashboard ↔ Leads repeated navigation policies
+    - Rapid out-of-order response protection
+    - Browser Back/Forward history integration
+    - Scroll-position capture and restoration
+    - Cache invalidation across mutations and authorization boundaries
+    - ECharts lifecycle cleanup and memory leak prevention
+    - Duplicate in-flight request coalescing
+    - Prevention of incomplete/empty shell snapshots
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.script_path = Path(settings.BASE_DIR) / "static" / "assets" / "js" / "navigation_history.js"
+        cls.script_content = cls.script_path.read_text(encoding="utf-8")
+
+    def test_dashboard_leads_cache_policy_and_isolation(self):
+        """Dashboard and Leads have explicit TTL policies and are cacheable."""
+        self.assertIn("pattern: /\\/dashboard\\//i, ttl: 30000", self.script_content)
+        self.assertIn("pattern: /\\/crm\\/leads\\//i, ttl: 30000", self.script_content)
+        self.assertIn("getActiveUserId()", self.script_content)
+        self.assertIn("getActiveCompanyScope()", self.script_content)
+        self.assertIn("buildCacheKey(url)", self.script_content)
+        self.assertIn("${getActiveUserId()}|${getActiveCompanyScope()}|${norm}", self.script_content)
+
+    def test_rapid_out_of_order_responses_protection(self):
+        """Superseded or older responses are discarded if user has navigated elsewhere."""
+        self.assertIn("latestNavigationId = 0", self.script_content)
+        self.assertIn("const navId = ++latestNavigationId", self.script_content)
+        self.assertIn("navId !== latestNavigationId", self.script_content)
+
+    def test_browser_back_forward_and_history(self):
+        """History navigation re-executes scripts, cleans charts, and triggers resize."""
+        self.assertIn("htmx.config.historyCacheSize = 20", self.script_content)
+        self.assertIn('"htmx:historyRestore"', self.script_content)
+        self.assertIn("cleanupDetachedChartInstances();", self.script_content)
+        self.assertIn("reexecuteScripts(mainContent);", self.script_content)
+        self.assertIn('window.dispatchEvent(new Event("resize"))', self.script_content)
+
+    def test_scroll_position_capture_and_restoration(self):
+        """Viewport scroll offsets for #mainContent and table containers are recorded and restored."""
+        self.assertIn("function captureScrollState(", self.script_content)
+        self.assertIn("function restoreScrollState(", self.script_content)
+        self.assertIn("mainTop: mainContent.scrollTop", self.script_content)
+        self.assertIn("mainLeft: mainContent.scrollLeft", self.script_content)
+        self.assertIn("#tableContainer", self.script_content)
+        self.assertIn("requestAnimationFrame(() =>", self.script_content)
+
+    def test_echarts_detached_instance_cleanup(self):
+        """Detached canvas DOM nodes and registered chart instances are cleanly disposed."""
+        self.assertIn("function cleanupDetachedChartInstances()", self.script_content)
+        self.assertIn("window.chartInstances", self.script_content)
+        self.assertIn("window.echarts.getInstanceByDom", self.script_content)
+        self.assertIn("inst.dispose()", self.script_content)
+        self.assertIn("delete window.chartInstances[key]", self.script_content)
+
+    def test_duplicate_in_flight_navigation_coalescing(self):
+        """Duplicate clicks for already in-flight URLs are coalesced/prevented."""
+        self.assertIn("activeInFlightNavigations", self.script_content)
+        self.assertIn("activeInFlightNavigations.has(fullUrl)", self.script_content)
+        self.assertIn("activeInFlightNavigations.add(fullUrl)", self.script_content)
+        self.assertIn("activeInFlightNavigations.delete(fullUrl)", self.script_content)
+
+    def test_cache_invalidation_and_auth_boundary(self):
+        """Cache is flushed on mutations, company switches, role/permission updates, and logout."""
+        self.assertIn('"finlo:data-mutated"', self.script_content)
+        self.assertIn('"finlo:invalidateCache"', self.script_content)
+        self.assertIn('"finlo:permissions-updated"', self.script_content)
+        self.assertIn('"finlo:role-changed"', self.script_content)
+        self.assertIn('"finlo:company-changed"', self.script_content)
+        self.assertIn("switch-company", self.script_content)
+        self.assertIn("logout", self.script_content)
+
+    def test_unready_and_empty_view_snapshot_prevention(self):
+        """Incomplete shells and empty placeholders are never snapshotted or restored."""
+        self.assertIn("function isViewReadyForSnapshot(", self.script_content)
+        self.assertIn("#mainSession:empty", self.script_content)
+        self.assertIn("#navBar:empty", self.script_content)
+        self.assertIn("[hx-trigger*='load']:empty", self.script_content)
+        self.assertIn("FinloViewCache.delete(url)", self.script_content)
+

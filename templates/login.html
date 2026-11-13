@@ -229,7 +229,7 @@
 
         <!-- Global Scripts -->
         <script src="{% url 'javascript-catalog' %}"></script>
-        <script src="{% static 'assets/js/global.js' %}"></script>
+        <script id="finlo-global-js" hx-preserve src="{% static 'assets/js/global.js' %}"></script>
 
         <!-- Body End: Deferred scripts & event bindings -->
         {% load_registered_html "body_end" "login" as body_end_html %}

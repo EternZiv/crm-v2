@@ -76,7 +76,8 @@
                     <h2 class="text-md font-semibold">{% trans 'Select Columns to Export (Optional)' %}</h2>
                     <button
                         type="button"
-                        onclick="closeExport('{{ view_id|safe }}')"
+                        data-finlo-action="close-export"
+                        data-view-id="{{ view_id|safe }}"
                         class="text-gray-500 hover:text-gray-500 text-xl cursor-pointer"
                     >
                         <img src="{% static 'assets/icons/close.svg' %}" alt="{% trans 'Close' %}">
@@ -168,7 +169,8 @@
                     <div class="flex justify-end gap-2">
                         <button
                             type="submit"
-                            hx-on::after-request="if(event.detail.successful) { closeExport('{{ view_id|safe }}'); clearSelections('{{ view_id|safe }}'); }"
+                            data-after-success="export-complete"
+                            data-view-id="{{ view_id|safe }}"
                             class="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-800"
                         >
                             <span class="flex items-center gap-2">
@@ -194,7 +196,8 @@
                     <div class="flex gap-1 flex-wrap">
                         <button
                             class="text-xs px-4 py-2 bg-[#0aa10a1a] rounded-md hover:bg-[#0ba10a] transition duration-300 text-[#0ba10a] border border-[#0aa10a46] hover:text-[white]"
-                            onclick="selectAll(true, '{{ view_id|safe }}')"
+                            data-finlo-action="select-all"
+                            data-view-id="{{ view_id|safe }}"
                             id="select-all-btn-{{ view_id|safe }}"
                         >
                             <i class="fa-solid fa-check pe-1"></i> {% trans 'Select' %} ({{ total_records_count }})
@@ -202,7 +205,8 @@
 
                         <button
                             class="unselect-all-btn text-xs px-4 py-2 bg-[#ba10bf2a] rounded-md hover:bg-[#ba10bf] transition duration-300 text-[#ba10bf] border border-[#ba10bf2a] hover:text-[white]"
-                            onclick="clearSelections('{{ view_id|safe }}')"
+                            data-finlo-action="clear-selections"
+                            data-view-id="{{ view_id|safe }}"
                             id="unselect-all-btn-{{ view_id|safe }}"
                             style="display: none"
                         >
@@ -216,7 +220,8 @@
                         {% if bulk_export_option %}
                             <button
                                 class="text-xs px-4 py-2 pe-2 bg-[#009dff25] border border-[#009dff41] font-medium rounded-md text-[#009fff] hover:bg-[#0c85ce] w-max transition duration-300 hover:text-[white]"
-                                onclick="exportSelected('{{ view_id|safe }}')"
+                                data-finlo-action="export-selected"
+                                data-view-id="{{ view_id|safe }}"
                                 id="export-all-btn-{{ view_id|safe }}"
                                 style="display: none"
                             >
@@ -236,8 +241,9 @@
                                     hx-swap="innerHTML"
                                     hx-push-url="false"
                                     hx-trigger="click"
-                                    hx-vals='js:{"bulk_update_form": "true", "selected_ids": JSON.stringify(selectedRecordIds("{{ view_id|safe }}"))}'
-                                    hx-on::after-request="openModal()"
+                                    hx-vals='{"bulk_update_form": "true"}'
+                                    data-view-id="{{ view_id|safe }}"
+                                    data-open-modal="modalBox"
                                     id="bulk-update-btn-{{ view_id|safe }}"
                                     style="display: none"
                                 >
@@ -261,11 +267,12 @@
                                     hx-swap="innerHTML"
                                     hx-push-url="false"
                                     hx-trigger="doRequest"
-                                    hx-vals='js:{"delete_mode_form": "true", "selected_ids": JSON.stringify(selectedRecordIds("{{ view_id|safe }}"))}'
+                                    hx-vals='{"delete_mode_form": "true"}'
+                                    data-view-id="{{ view_id|safe }}"
+                                    data-open-modal="deleteModeBox"
                                     id="bulk-delete-btn-{{ view_id|safe }}"
-                                    hx-on::after-request="openDeleteModeModal()"
                                     style="display: none"
-                                    _="on click call doBulkDeleteRequest(me)"
+                                    data-finlo-action="bulk-delete"
                                 >
                                     <i class="fa-solid fa-trash-alt"></i>
                                     {% trans 'Bulk Delete' %}
@@ -276,21 +283,22 @@
                             <button
                                 class="text-xs px-4 py-2 {% if bulk_action.bg_color %}bg-[{{ bulk_action.bg_color }}]{% else %}bg-[#009dff25]{% endif %} rounded-md {% if bulk_action.hover_bg_color %}hover:bg-[{{ bulk_action.hover_bg_color }}]{% endif %} transition duration-300 {% if bulk_action.text_color %}text-[{{ bulk_action.text_color }}]{% else %}text-[#009fff]{% endif %} border {% if bulk_action.border_color %}border-[{{ bulk_action.border_color }}]{% else %}border-[#009dff41]{% endif %} {% if bulk_action.hover_text_color %}hover:text-[{{ bulk_action.hover_text_color }}]{% else %}hover:text-white{% endif %}"
                                 {% if bulk_action.onclick %}
-                                    onclick="{{ bulk_action.onclick }}('{{ view_id|safe }}')"
+                                    data-finlo-action="{{ bulk_action.onclick|cut:'('|cut:' '|cut:')' }}"
+                                    data-view-id="{{ view_id|safe }}"
                                 {% else %}
                                     hx-{{ bulk_action.method|default:'post' }}="{{ bulk_action.url }}"
                                     hx-target="{{ bulk_action.target|default:'#modalBox' }}"
                                     hx-swap="{{ bulk_action.swap|default:'innerHTML' }}"
                                     hx-push-url="false"
                                     hx-trigger="{{ bulk_action.trigger|default:'click' }}"
-                                    hx-vals='js:{"action": "{{ bulk_action.name }}", "selected_ids": JSON.stringify(selectedRecordIds("{{ view_id|safe }}"))}'
-                                    {% if bulk_action.after_request %}
-                                        hx-on::after-request="{{ bulk_action.after_request }}"
-                                    {% else %}
-                                        hx-on::after-request="openModal()"
-                                    {% endif %}
+                                    hx-vals='{"action": "{{ bulk_action.name }}"}'
+                                    data-view-id="{{ view_id|safe }}"
+                                    data-open-modal="{{ bulk_action.target|default:'modalBox'|cut:'#' }}"
                                     {% if bulk_action.hx_click %}
-                                        hx-on:click="{{ bulk_action.hx_click }}"
+                                        {% if bulk_action.confirm_message %}
+                                            data-confirm-message="{{ bulk_action.confirm_message|escape }}"
+                                            data-confirm-hint="{{ bulk_action.confirm_hint|default:''|escape }}"
+                                        {% endif %}
                                     {% endif %}
                                 {% endif %}
                                 id="bulk-action-{{ bulk_action.name }}-{{ view_id|safe }}"
@@ -311,7 +319,7 @@
                                 hx-target="#modalBox"
                                 hx-swap="innerHTML"
                                 hx-trigger="click"
-                                onclick="openModal()"
+                                data-finlo-action="open-modal"
                             >
                                 <i class="fa-solid fa-pen-to-square"></i>
                                 {% trans 'Edit List' %}
@@ -326,7 +334,7 @@
                                 hx-swap="outerHTML"
                                 hx-push-url="true"
                                 hx-trigger="confirmed"
-                                hx-on:click="hxConfirm(this,'{% trans "Are you sure you want to delete this saved list?" %}');"
+                                data-confirm-message="{% trans 'Are you sure you want to delete this saved list?' %}"
                             >
                                 <i class="fa-solid fa-trash pe-1"></i>
                                 {% trans 'Delete List' %}
@@ -336,7 +344,8 @@
                             <button
                                 class="text-xs px-4 py-2 {% if additional_action.bg_color %}bg-[{{ additional_action.bg_color }}]{% else %}bg-[#009dff25]{% endif %} rounded-md {% if additional_action.hover_bg_color %}hover:bg-[{{ additional_action.hover_bg_color }}]{% endif %} transition duration-300 {% if additional_action.text_color %}text-[{{ additional_action.text_color }}]{% else %}text-[#009fff]{% endif %} mb-3 border {% if additional_action.border_color %}border-[{{ additional_action.border_color }}]{% else %}border-[#009dff41]{% endif %} {% if additional_action.hover_text_color %}hover:text-[{{ additional_action.hover_text_color }}]{% else %}hover:text-white{% endif %}"
                                 {% if additional_action.onclick %}
-                                    onclick="{{ additional_action.onclick }}('{{ view_id|safe }}')"
+                                    data-finlo-action="{{ additional_action.onclick|cut:'('|cut:' '|cut:')' }}"
+                                    data-view-id="{{ view_id|safe }}"
                                 {% else %}
                                     hx-{{ additional_action.method|default:'post' }}="{{ additional_action.url }}"
                                     hx-target="{{ additional_action.target|default:'#modalBox' }}"
@@ -344,12 +353,15 @@
                                     hx-push-url="false"
                                     hx-trigger="{{ additional_action.trigger |default:'click'}}"
                                     {% if additional_action.after_request %}
-                                        hx-on::after-request="{{ additional_action.after_request }}"
+                                        data-after-request-action="{{ additional_action.after_request|default:'' }}"
                                     {% else %}
-                                        hx-on::after-request="openModal()"
+                                        data-open-modal="modalBox"
                                     {% endif %}
                                     {% if additional_action.hx_click %}
-                                        hx-on:click="{{ additional_action.hx_click }}"
+                                        {% if additional_action.confirm_message %}
+                                            data-confirm-message="{{ additional_action.confirm_message|escape }}"
+                                            data-confirm-hint="{{ additional_action.confirm_hint|default:''|escape }}"
+                                        {% endif %}
                                     {% endif %}
                                 {% endif %}
                                 id="additional-action-{{ additional_action.name }}-{{ view_id|safe }}"
@@ -429,7 +441,7 @@
                                             data-search-url="{{ search_url }}"
                                             data-sort-target="{{ sorting_target|default:'' }}"
                                             data-view-id="{{ view_id|safe }}"
-                                            onclick="finloMultiSort(event, this)"
+                                            data-finlo-action="multi-sort"
                                         >
                                             {% trans cell.0 %}
                                             <span
@@ -528,7 +540,7 @@
                             hx-target="#modalBox"
                             hx-swap="innerHTML"
                             hx-trigger="click"
-                            onclick="openModal()"
+                            data-finlo-action="open-modal"
                         >
                             <i class="fa-solid fa-pen-to-square pe-1"></i>
                             {% trans 'Edit List' %}
@@ -543,7 +555,7 @@
                             hx-swap="outerHTML"
                             hx-push-url="true"
                             hx-trigger="confirmed"
-                            hx-on:click="hxConfirm(this,'{% trans "Are you sure you want to delete this saved list?" %}');"
+                            data-confirm-message="{% trans 'Are you sure you want to delete this saved list?' %}"
                         >
                             <i class="fa-solid fa-trash pe-1"></i>
                             {% trans 'Delete List' %}
@@ -555,7 +567,7 @@
                             hx-get="{{ no_record_add_button.url }}"
                             hx-target="{{ no_record_add_button.target|default:'#modalBox' }}"
                             hx-swap="{{ no_record_add_button.swap|default:'innerHTML' }}"
-                            onclick="{{ no_record_add_button.onclick|default:'openModal()' }}"
+                            data-finlo-action="{{ no_record_add_button.onclick|default:'openModal'|cut:'('|cut:' '|cut:')' }}"
                             class="{{ no_record_add_button.class|default:'text-sm px-4 py-2 bg-primary-600 rounded-md hover:bg-primary-800 transition duration-300 text-[white] m-auto flex' }}"
                             {% if no_record_add_button.attrs %}
                                 {{ no_record_add_button.attrs|safe }}

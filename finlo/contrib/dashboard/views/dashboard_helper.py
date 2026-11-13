@@ -56,8 +56,9 @@ def get_kpi_data(component, request):
 
         metric_type = (component.metric_type or "").strip()
 
-        # Default: simple record count
-        value = queryset.count()
+        # Count metrics need one COUNT query. Numeric metrics should go straight
+        # to the database aggregate instead of first counting the same rows.
+        value = None
         metric_label = "Count"
         field_label_str = module_name.title() if module_name else "Records"
 
@@ -95,6 +96,9 @@ def get_kpi_data(component, request):
                     else agg_key.replace("_", " ").title()
                 )
 
+        if value is None:
+            value = queryset.count()
+
         section_info = get_section_info_for_model(model)
 
         return {
@@ -131,9 +135,6 @@ def get_report_chart_data(component, request):
 
         queryset = get_queryset_for_module(request.user, model)
 
-        if queryset.count() == 0:
-            return None
-
         group_by_field = component.grouping_field
 
         if not group_by_field:
@@ -158,7 +159,10 @@ def get_report_chart_data(component, request):
                 .order_by("-value")
             )
 
-        if not chart_data.exists():
+        # Evaluate the grouped query once. A count() plus exists() followed by
+        # iteration previously issued up to three database round trips.
+        chart_rows = list(chart_data)
+        if not chart_rows:
             return None
 
         labels = []
@@ -167,7 +171,7 @@ def get_report_chart_data(component, request):
 
         section_info = get_section_info_for_model(model)
 
-        for item in chart_data:
+        for item in chart_rows:
             label_value = item[group_by_field]
 
             try:

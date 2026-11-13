@@ -584,11 +584,28 @@ class LeadChartView(LoginRequiredMixin, FinloChartView):
             )
         else:
             agg_field_name = "_count"
-            rows = list(
-                queryset.values(group_by)
-                .annotate(_count=Count("pk"))
-                .order_by("-_count")
+            # Check if we can reuse the shared cached aggregation from LeadDataService
+            has_custom_filters = bool(
+                self.request.GET.get("apply_filter") or self.request.GET.get("search")
             )
+            if not has_custom_filters:
+                from finlo_crm.leads.services import LeadDataService
+                is_convert = (self.request.GET.get("view_type") == "converted_lead")
+                raw_counts = LeadDataService.get_lead_counts_by_stage(
+                    self.request.user,
+                    getattr(self.request.user, "company", None),
+                    is_convert=is_convert,
+                )
+                rows = [
+                    {group_by: r["lead_status_id"], agg_field_name: r["count"]}
+                    for r in raw_counts
+                ]
+            else:
+                rows = list(
+                    queryset.values(group_by)
+                    .annotate(_count=Count("pk"))
+                    .order_by("-_count")
+                )
 
         status_ids = {row[group_by] for row in rows if row[group_by] is not None}
         statuses = {

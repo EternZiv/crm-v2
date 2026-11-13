@@ -6,6 +6,8 @@ Installed from ``manage.py`` — no extra INSTALLED_APPS entry required.
 
 from __future__ import annotations
 
+import sys
+
 _installed = False
 
 
@@ -14,6 +16,14 @@ def install() -> None:
     global _installed
     if _installed:
         return
+
+    # Importing Daphne's runserver command creates an asyncio event loop. On
+    # Windows that initializes a socketpair, which can block ordinary Django
+    # management commands (including check/test) even though they do not use
+    # Daphne. Only load the command when it is actually being invoked.
+    if len(sys.argv) < 2 or sys.argv[1] != "runserver":
+        return
+
     _installed = True
 
     from daphne.management.commands.runserver import Command as DaphneCommand

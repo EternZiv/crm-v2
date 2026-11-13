@@ -5,7 +5,7 @@
 {% block navbar %}
 <div id="navBar" class="w-full"{% if not rendered_navbar %}
     hx-get="{{ nav_url }}{% if request.GET.urlencode %}{% if '?' in nav_url %}&{% else %}?{% endif %}{{ request.GET.urlencode }}{% endif %}"
-    hx-trigger="load"{% endif %}>{% if rendered_navbar %}{{ rendered_navbar|safe }}{% endif %}</div>
+    hx-trigger="load"{% endif %}>{% if rendered_navbar %}{{ rendered_navbar|safe }}{% else %}{% include "components/skeletons/navbar_skeleton.html" %}{% endif %}</div>
 {% endblock navbar %}
 
 {% block main %}
@@ -16,6 +16,8 @@
     hx-trigger="load" hx-disinherit="*"{% endif %}>
     {% if rendered_main_session %}
         {{ rendered_main_session|safe }}
+    {% else %}
+        {% include "components/skeletons/table_skeleton.html" %}
     {% endif %}
 </div>
 {% endwith %}

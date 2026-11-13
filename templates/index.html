@@ -219,6 +219,11 @@
             {% include "messages.html" %}
         </div>
 
+        <!-- Inert templates cloned into #mainContent before a cache-miss HTMX navigation. -->
+        <template id="finlo-nav-shell-list">{% include "components/skeletons/navigation_list.html" %}</template>
+        <template id="finlo-nav-shell-dashboard">{% include "components/skeletons/navigation_dashboard.html" %}</template>
+        <template id="finlo-nav-shell-generic">{% include "components/skeletons/navigation_generic.html" %}</template>
+
         <!-- HTMX CSRF Token Configuration -->
         <script>
             document.body.addEventListener("htmx:configRequest", (event) => {
@@ -250,7 +255,7 @@
         <!-- Global Scripts (Defer) -->
         <script src="{% url 'javascript-catalog' %}"></script>
         <script src="{% static 'assets/js/navigation_history.js' %}"></script>
-        <script src="{% static 'assets/js/global.js' %}"></script>
+        <script id="finlo-global-js" hx-preserve src="{% static 'assets/js/global.js' %}"></script>
         <script src="{% static 'assets/js/filter_reload.js' %}"></script>
         <script src="{% static 'assets/js/list_view.js' %}"></script>
         <script src="{% static 'assets/js/select2_htmx_cleanup.js' %}"></script>

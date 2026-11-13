@@ -9,7 +9,7 @@
 <div class="p-6">
     <div class="flex justify-between items-center mb-2">
         <h2 class="text-md font-semibold">{% trans 'Select Delete Mode' %}</h2>
-        <button onclick="closeDeleteModeModal()" class="text-gray-500 hover:text-red-500 text-xl cursor-pointer">
+        <button type="button" data-finlo-action="close-delete-mode" class="text-gray-500 hover:text-red-500 text-xl cursor-pointer">
             <img src="{% static 'assets/icons/close.svg' %}" alt="{% trans 'Close' %}">
         </button>
     </div>
@@ -38,8 +38,9 @@
                 hx-target="#deleteBox"
                 hx-swap="innerHTML"
                 hx-push-url="false"
-                hx-vals='js:{"bulk_delete_form": "true", "selected_ids": JSON.stringify(selectedRecordIds("{{ view_id|safe }}"))}'
-                hx-on::after-request="openDeleteModal()"
+                hx-vals='{"bulk_delete_form": "true"}'
+                data-view-id="{{ view_id|safe }}"
+                data-open-modal="deleteBox"
                 hx-indicator="#hard-delete-spinner"
             >
                 <span class="flex items-center gap-2">
@@ -56,8 +57,9 @@
                 hx-target="#deleteBox"
                 hx-swap="innerHTML"
                 hx-push-url="false"
-                hx-vals='js:{"soft_delete_form": "true", "selected_ids": JSON.stringify(selectedRecordIds("{{ view_id|safe }}"))}'
-                hx-on::after-request="openDeleteModal()"
+                hx-vals='{"soft_delete_form": "true"}'
+                data-view-id="{{ view_id|safe }}"
+                data-open-modal="deleteBox"
                 hx-indicator="#soft-delete-spinner"
             >
                 <span class="flex items-center gap-2">

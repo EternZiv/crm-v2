@@ -92,14 +92,10 @@ class RecycleBinListView(LoginRequiredMixin, FinloListView):
         """
         Return bulk restore and delete action configurations for the recycle bin.
         """
-        restore_msg = escapejs(
-            _("Are you sure you want to restore the selected items?")
-        )
-        delete_msg = escapejs(_("Are you sure you want to delete the selected items?"))
-        delete_hint = escapejs(
-            _(
-                "When deleting the items, its dependent data will be set to NULL or reassigned."
-            )
+        restore_msg = _("Are you sure you want to restore the selected items?")
+        delete_msg = _("Are you sure you want to delete the selected items?")
+        delete_hint = _(
+            "When deleting the items, its dependent data will be set to NULL or reassigned."
         )
         return [
             {
@@ -116,7 +112,7 @@ class RecycleBinListView(LoginRequiredMixin, FinloListView):
                 "target": "#deleteModeBox",
                 "swap": "innerHTML",
                 "trigger": "confirmed",
-                "hx_click": f"hxConfirm(this,'{restore_msg}')",
+                "confirm_message": restore_msg,
             },
             {
                 "name": "delete",
@@ -132,7 +128,8 @@ class RecycleBinListView(LoginRequiredMixin, FinloListView):
                 "target": "#deleteModeBox",
                 "swap": "innerHTML",
                 "trigger": "confirmed",
-                "hx_click": f"hxConfirm(this,'{delete_msg}','{delete_hint}')",
+                "confirm_message": delete_msg,
+                "confirm_hint": delete_hint,
             },
         ]
 
@@ -141,7 +138,7 @@ class RecycleBinListView(LoginRequiredMixin, FinloListView):
         """
         Return the empty recycle bin action button configuration.
         """
-        empty_msg = escapejs(_("Are you sure you want to empty this bin?"))
+        empty_msg = _("Are you sure you want to empty this bin?")
         return [
             {
                 "name": "empty_recyclebin",
@@ -155,7 +152,7 @@ class RecycleBinListView(LoginRequiredMixin, FinloListView):
                 "target": "#deleteModeBox",
                 "swap": "innerHTML",
                 "trigger": "confirmed",
-                "hx_click": f"hxConfirm(this,'{empty_msg}')",
+                "confirm_message": empty_msg,
             },
         ]
 

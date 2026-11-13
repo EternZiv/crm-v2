@@ -10,7 +10,7 @@ import re
 import threading
 from decimal import Decimal
 
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group, Permission
 from django.core.cache import cache
 
 # Third-party imports (Django)
@@ -46,6 +46,7 @@ from .models import (
     ListColumnVisibility,
     MultipleCurrency,
     Role,
+    RoleDataScope,
 )
 from .services.fiscal_year_service import FiscalYearService
 from .utils import fetch_exchange_rates_bulk, get_user_field_permission
@@ -60,6 +61,89 @@ def invalidate_role_permission_snapshots(**kwargs):
     from .sales_authorization import invalidate_role_permission_cache
 
     invalidate_role_permission_cache(**kwargs)
+
+    # Role permission changes can alter the queryset scope used by lead
+    # aggregates. The cache remains user-scoped; only the tenant revision is
+    # advanced so every member gets a fresh authorized result.
+    if kwargs.get("action", "").startswith("post_"):
+        role = kwargs.get("instance")
+        company_id = getattr(role, "company_id", None)
+        from finlo_crm.leads.services import bump_lead_cache_version
+
+        transaction.on_commit(lambda: bump_lead_cache_version(company_id))
+
+
+@receiver([post_save, post_delete], sender=RoleDataScope)
+def invalidate_lead_caches_for_role_scope(sender, instance, **kwargs):
+    """Role data-scope changes invalidate aggregates for that role's tenant."""
+    company_id = getattr(instance, "company_id", None)
+    if company_id is None and getattr(instance, "role_id", None):
+        company_id = getattr(getattr(instance, "role", None), "company_id", None)
+    from finlo_crm.leads.services import bump_lead_cache_version
+
+    transaction.on_commit(lambda: bump_lead_cache_version(company_id))
+
+
+@receiver(m2m_changed, sender=User.user_permissions.through)
+@receiver(m2m_changed, sender=User.groups.through)
+def invalidate_lead_caches_for_user_scope(sender, instance, action, reverse, pk_set, **kwargs):
+    """Invalidate only affected users when direct permissions or memberships change."""
+    if not (action.startswith("post_") or action == "pre_clear"):
+        return
+
+    if isinstance(instance, User):
+        user_ids = {instance.pk}
+    elif pk_set:
+        user_ids = set(pk_set)
+    elif action == "pre_clear":
+        if isinstance(instance, Group):
+            user_ids = set(User.objects.filter(groups=instance).values_list("pk", flat=True))
+        elif isinstance(instance, Permission):
+            user_ids = set(
+                User.objects.filter(user_permissions=instance).values_list("pk", flat=True)
+            )
+        else:
+            user_ids = set()
+    else:
+        user_ids = set()
+
+    if not user_ids:
+        return
+    from finlo_crm.leads.services import bump_lead_user_cache_version
+
+    transaction.on_commit(
+        lambda: [bump_lead_user_cache_version(user_id) for user_id in user_ids]
+    )
+
+
+@receiver(m2m_changed, sender=Group.permissions.through)
+def invalidate_lead_caches_for_group_permissions(
+    sender, instance, action, reverse, pk_set, **kwargs
+):
+    """Refresh only members of groups whose Django permissions changed."""
+    if not (action.startswith("post_") or action == "pre_clear"):
+        return
+
+    if isinstance(instance, Group):
+        users = User.objects.filter(groups=instance)
+    elif isinstance(instance, Permission):
+        if pk_set:
+            users = User.objects.filter(groups__in=pk_set)
+        elif action == "pre_clear":
+            users = User.objects.filter(groups__permissions=instance)
+        else:
+            return
+    else:
+        return
+
+    user_ids = set(users.values_list("pk", flat=True))
+    if not user_ids:
+        return
+    from finlo_crm.leads.services import bump_lead_user_cache_version
+
+    transaction.on_commit(
+        lambda: [bump_lead_user_cache_version(user_id) for user_id in user_ids]
+    )
 
 
 # Fired after a company default currency changes; listeners bulk-update MoneyField amounts.
@@ -455,14 +539,34 @@ def capture_user_old_role(sender, instance, **kwargs):
         # Fixture loads only ever insert brand-new rows (used to seed empty DBs),
         # so there is no previous role to look up.
         instance._previous_role = None
+        instance._previous_company_id = None
         return
     if instance.pk:
         try:
-            instance._previous_role = User.objects.get(pk=instance.pk).role
+            previous_user = User.objects.only("role_id", "company_id").get(pk=instance.pk)
+            instance._previous_role_id = previous_user.role_id
+            instance._previous_company_id = previous_user.company_id
         except User.DoesNotExist:
-            instance._previous_role = None
+            instance._previous_role_id = None
+            instance._previous_company_id = None
+        instance._previous_role = None
     else:
         instance._previous_role = None
+        instance._previous_role_id = None
+        instance._previous_company_id = None
+
+
+@receiver(post_save, sender=User)
+def invalidate_lead_cache_on_user_scope_change(sender, instance, created, **kwargs):
+    """Refresh tenant aggregates when a user's company or role scope changes."""
+    old_role_id = getattr(instance, "_previous_role_id", None)
+    old_company_id = getattr(instance, "_previous_company_id", None)
+    if not created and old_role_id == instance.role_id and old_company_id == instance.company_id:
+        return
+
+    from finlo_crm.leads.services import bump_lead_user_cache_version
+
+    transaction.on_commit(lambda: bump_lead_user_cache_version(instance.pk))
 
 
 _raw_load_state = threading.local()

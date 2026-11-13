@@ -1941,6 +1941,78 @@ $(document).ready(function () {
         }
     });
 
+    // CSP-compliant parameter injection for bulk actions without eval/new Function
+    document.body.addEventListener("htmx:configRequest", function (event) {
+        const elt = event.detail?.elt;
+        if (!elt) return;
+        const viewId = elt.getAttribute("data-view-id");
+        if (viewId && typeof window.selectedRecordIds === "function") {
+            try {
+                event.detail.parameters["selected_ids"] = JSON.stringify(window.selectedRecordIds(viewId));
+            } catch (e) {}
+        }
+    });
+
+    // CSP-compliant modal triggering after HTMX requests without inline hx-on
+    document.body.addEventListener("htmx:afterRequest", function (event) {
+        const elt = event.detail?.elt;
+        if (!elt) return;
+        if (event.detail?.successful && elt.getAttribute("data-after-success") === "export-complete") {
+            const viewId = elt.getAttribute("data-view-id");
+            if (viewId) {
+                window.closeExport(viewId);
+                window.clearSelections(viewId);
+            }
+        }
+        const namedAfterAction = elt.getAttribute("data-after-request-action");
+        if (namedAfterAction === "openModal()") window.openModal();
+        if (namedAfterAction === "openDeleteModeModal()") window.openDeleteModeModal();
+        if (namedAfterAction === "openDeleteModal()") window.openDeleteModal();
+        const modalType = elt.getAttribute("data-open-modal");
+        if (modalType === "modalBox" && typeof window.openModal === "function") {
+            window.openModal();
+        } else if (modalType === "deleteModeBox" && typeof window.openDeleteModeModal === "function") {
+            window.openDeleteModeModal();
+        } else if (modalType === "deleteBox" && typeof window.openDeleteModal === "function") {
+            window.openDeleteModal();
+        }
+    });
+
+    // Generic list controls use delegated, named actions instead of inline JS.
+    document.body.addEventListener("click", function (event) {
+        const element = event.target.closest("[data-finlo-action], [data-confirm-message]");
+        if (!element) return;
+
+        const message = element.getAttribute("data-confirm-message");
+        if (message) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.hxConfirm(element, message, element.getAttribute("data-confirm-hint"));
+            return;
+        }
+
+        const action = element.getAttribute("data-finlo-action");
+        const viewId = element.getAttribute("data-view-id");
+        const actions = {
+            "close-export": () => window.closeExport(viewId),
+            "select-all": () => window.selectAll(true, viewId),
+            "clear-selections": () => window.clearSelections(viewId),
+            "export-selected": () => window.exportSelected(viewId),
+            "bulk-delete": () => window.doBulkDeleteRequest(element),
+            "open-modal": () => window.openModal(),
+            "close-delete-mode": () => window.closeDeleteModeModal(),
+            "multi-sort": () => window.finloMultiSort(event, element),
+            "closeContentModal": () => window.closeContentModal(viewId),
+            "openContentModal": () => window.openContentModal(viewId),
+            "openDetailModal": () => window.openDetailModal(viewId),
+            "openfinloModal": () => window.openfinloModal(viewId),
+            "openModal": () => window.openModal(viewId),
+        };
+        if (Object.prototype.hasOwnProperty.call(actions, action)) {
+            actions[action]();
+        }
+    });
+
     $("body").on("click", "ul a.sidebar-link", function () {
         const $this = $(this);
         const sectionId = $this.attr("data-section") || SidebarManager.getActiveSection();
@@ -2133,6 +2205,10 @@ document.addEventListener("finlo:viewRestored", function (event) {
     function onHtmxNetworkFailure(e) {
         var d = e && e.detail;
         if (!d) return;
+        // navigation_history.js owns failures for a navigation that already
+        // replaced #mainContent with its destination shell. Avoid replacing the
+        // persistent header/sidebar with the generic connection-loss page.
+        if (d.elt && d.elt.dataset && d.elt.dataset.finloNavigationPending) return;
         if (e.type === "htmx:sendError" || (e.type === "htmx:afterRequest" && d.failed && d.xhr && d.xhr.status === 0)) {
             showNetworkConnectionErrorPage();
         }
