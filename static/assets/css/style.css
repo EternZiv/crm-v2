@@ -2333,41 +2333,296 @@ button[aria-disabled="true"],
   cursor: not-allowed !important;
 }
 
-/* ==========================================================================
-   FINLONEXA Layout, Responsive Navigation & Viewport Scrolling
-   ========================================================================== */
-
-#header {
-  position: fixed;
-  top: 0;
-  inset-inline-start: 5rem;
-  inset-inline-end: 0;
-  width: calc(100% - 5rem);
-  height: 60px;
-  z-index: 40;
+/* ===========================================================================
+   Unified FINLO navigation
+   =========================================================================== */
+:root {
+  --finlo-sidebar-expanded: 18rem;
+  --finlo-sidebar-collapsed: 4.75rem;
+  --finlo-sidebar-width: var(--finlo-sidebar-expanded);
+  --finlo-sidebar-active: var(--menu-arrow-fg, #7c87c2);
 }
 
-[dir="rtl"] #header {
-  inset-inline-start: 0;
-  inset-inline-end: 5rem;
+html[data-sidebar-collapsed="true"] {
+  --finlo-sidebar-width: var(--finlo-sidebar-collapsed);
 }
 
-.mobile-menu-btn {
+.finlo-app-shell {
+  margin-inline-start: var(--finlo-sidebar-width);
+  transition: margin-inline-start 160ms ease;
+}
+
+.leftspace {
+  padding-inline-start: 0 !important;
+}
+
+#primarySidebar {
+  width: var(--finlo-sidebar-width);
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  transition: width 160ms ease, transform 200ms ease;
+  overflow: hidden;
+}
+
+.finlo-sidebar-brand {
+  min-height: 4.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid #edf0f2;
+}
+
+.finlo-brand-link {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1 1 auto;
+  color: #26364b;
+  text-decoration: none;
+}
+
+.finlo-brand-logo {
+  width: min(10.5rem, 100%);
+  height: 2.35rem;
+  flex: 0 1 auto;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.finlo-sidebar-collapse {
+  display: inline-flex;
+  width: 2.15rem;
+  height: 2.15rem;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.65rem;
+  background: #fff;
+  color: var(--menu-arrow-fg, #7c87c2);
+  cursor: pointer;
+}
+
+.finlo-sidebar-navigation {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #d2d8df transparent;
+}
+
+.finlo-sidebar-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1.15rem 0.85rem;
+}
+
+.finlo-nav-section-heading {
+  padding: 0.25rem 0.8rem 0.15rem;
+  color: #9aa2ad;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.finlo-nav-section-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+#primarySidebar .nav-link,
+#primarySidebar .sidebar-link {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.7rem;
+  border-radius: 0.65rem;
+  color: #273b55;
+  text-decoration: none;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+#primarySidebar .nav-link {
+  min-height: 2.6rem;
+  flex: 1 1 auto;
+  padding: 0.55rem 0.8rem;
+}
+
+#primarySidebar .nav-link-icon,
+#primarySidebar .sidebar-link-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 1.1rem;
+  background-color: currentColor;
+}
+
+#primarySidebar .nav-link-label,
+#primarySidebar .nav-sub-link-label {
+  overflow: hidden;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finlo-nav-group-toggle {
+  display: inline-flex;
+  width: 2rem;
+  height: 2.4rem;
+  flex: 0 0 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: #8994a2;
+}
+
+.finlo-nav-group-toggle[aria-expanded="true"] i {
+  transform: rotate(180deg);
+}
+
+.finlo-nav-group-toggle i {
+  transition: transform 120ms ease;
+}
+
+.finlo-nav-children {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0.2rem 0 0.15rem 0.85rem;
+  padding: 0 0 0 0.75rem;
+  border-inline-start: 1px solid #e8ebef;
+  list-style: none;
+}
+
+.finlo-nav-children.hidden {
   display: none !important;
 }
 
+#primarySidebar .sidebar-link {
+  min-height: 2.4rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+#primarySidebar .nav-link:hover,
+#primarySidebar .sidebar-link:hover {
+  background: color-mix(in srgb, var(--finlo-sidebar-active) 12%, white);
+  color: var(--finlo-sidebar-active);
+}
+
+#primarySidebar .finlo-nav-active,
+#primarySidebar .finlo-nav-active:hover {
+  background: var(--finlo-sidebar-active);
+  color: #fff;
+}
+
+.finlo-sidebar-footer {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-top: 1px solid #edf0f2;
+  color: #96a0ad;
+  font-size: 0.75rem;
+}
+
+.finlo-sidebar-product {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.finlo-sidebar-backdrop {
+  display: none;
+}
+
+.mobile-menu-btn,
 .mobile-close-btn {
   display: none !important;
 }
 
-/* Void gap fix for sub-sidebar:
-   When sub-sidebar is collapsed or hidden, guarantee 0px inline start padding */
-#sideMenuContainer.hidden ~ #mainContent,
-#sideMenuContainer:empty ~ #mainContent,
-html[data-sidebar-collapsed='true'] #mainContent,
-html[data-sidebar-collapsed='true'] .leftspace {
-  padding-inline-start: 0 !important;
+html[data-sidebar-collapsed="true"] .finlo-nav-section-heading,
+html[data-sidebar-collapsed="true"] .finlo-nav-group-toggle,
+html[data-sidebar-collapsed="true"] .finlo-sidebar-footer {
+  display: none !important;
 }
+
+html[data-sidebar-collapsed="true"] .finlo-sidebar-brand {
+  justify-content: space-between;
+  gap: 0.15rem;
+  padding-inline: 0.25rem;
+}
+
+html[data-sidebar-collapsed="true"] .finlo-brand-link {
+  flex: 0 0 2.15rem;
+  overflow: hidden;
+}
+
+html[data-sidebar-collapsed="true"] .finlo-brand-logo {
+  width: 2.15rem;
+  height: 2.15rem;
+  max-width: none;
+  object-fit: cover;
+  object-position: left center;
+}
+
+html[data-sidebar-collapsed="true"] .finlo-sidebar-collapse {
+  width: 1.55rem;
+  height: 1.55rem;
+  border: 0;
+  background: transparent;
+  font-size: 0.75rem;
+}
+
+html[data-sidebar-collapsed="true"] .finlo-sidebar-collapse i {
+  transform: rotate(180deg);
+}
+
+html[data-sidebar-collapsed="true"] .finlo-nav-section-row {
+  justify-content: center;
+}
+
+html[data-sidebar-collapsed="true"] #primarySidebar .nav-link {
+  justify-content: center;
+  padding-inline: 0.5rem;
+}
+
+html[data-sidebar-collapsed="true"] #primarySidebar .nav-link-label,
+html[data-sidebar-collapsed="true"] #primarySidebar .nav-sub-link-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+#header {
+  position: fixed;
+  top: 0;
+  inset-inline-start: var(--finlo-sidebar-width);
+  inset-inline-end: 0;
+  width: calc(100% - var(--finlo-sidebar-width));
+  height: 60px;
+  z-index: 40;
+}
+
+/* Ensure clean scrolling and visible scrollbars across all viewports */
 
 /* Ensure clean scrolling and visible scrollbars across all viewports */
 .custom-scroll {
@@ -2394,8 +2649,8 @@ html[data-sidebar-collapsed='true'] .leftspace {
   background-color: #71717a;
 }
 
-/* Mobile & Small Device Breakpoint (<768px): iPhones, Android phones, small tablets */
-@media (max-width: 767px) {
+/* Tablet and mobile: accessible off-canvas navigation. */
+@media (max-width: 1023px) {
   .mobile-menu-btn {
     display: inline-flex !important;
   }
@@ -2405,18 +2660,27 @@ html[data-sidebar-collapsed='true'] .leftspace {
   }
 
   #mobileSidebarBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
     z-index: 55;
+    background: rgba(15, 23, 42, 0.42);
+  }
+
+  #mobileSidebarBackdrop.hidden {
+    display: none;
   }
 
   #primarySidebar {
-    transform: translateX(-100%);
+    width: min(18rem, calc(100vw - 3rem));
+    transform: translateX(-102%);
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 60;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 30px rgba(15, 23, 42, 0.22);
   }
 
   [dir="rtl"] #primarySidebar {
-    transform: translateX(100%);
+    transform: translateX(102%);
   }
 
   #primarySidebar.mobile-open {
@@ -2429,31 +2693,60 @@ html[data-sidebar-collapsed='true'] .leftspace {
     width: 100% !important;
   }
 
-  .ml-\[5rem\],
-  .mr-\[5rem\] {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+  .finlo-app-shell {
+    margin-inline-start: 0;
   }
 
-  .leftspace {
-    padding-inline-start: 0 !important;
+  html[data-sidebar-collapsed="true"] #primarySidebar {
+    width: min(18rem, calc(100vw - 3rem));
   }
 
-  #toggleSideMenu {
-    display: block !important;
-    z-index: 62;
+  html[data-sidebar-collapsed="true"] .finlo-nav-section-heading,
+  html[data-sidebar-collapsed="true"] .finlo-nav-group-toggle {
+    display: initial !important;
   }
 
-  #sideMenu {
-    display: block !important;
-    z-index: 61;
-    max-width: calc(100vw - 5rem);
-    overflow-y: auto;
+  html[data-sidebar-collapsed="true"] .finlo-sidebar-brand,
+  html[data-sidebar-collapsed="true"] .finlo-nav-section-row,
+  html[data-sidebar-collapsed="true"] #primarySidebar .nav-link {
+    justify-content: space-between;
   }
 
-  html:not(.finlo-mobile-navigation-open) #sideMenu,
-  html:not(.finlo-mobile-navigation-open) #toggleSideMenu {
-    display: none !important;
+  html[data-sidebar-collapsed="true"] #primarySidebar .nav-link-label,
+  html[data-sidebar-collapsed="true"] #primarySidebar .nav-sub-link-label {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
+
+  .finlo-sidebar-collapse {
+    display: none;
+  }
+
+  .finlo-sidebar-footer {
+    display: flex !important;
+  }
+
+  .mobile-close-btn {
+    display: inline-flex !important;
+    width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: #53657c;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .finlo-app-shell,
+  #primarySidebar,
+  .finlo-nav-group-toggle i {
+    transition: none !important;
   }
 }
 

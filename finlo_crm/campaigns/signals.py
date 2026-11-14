@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 @receiver(post_save, sender=User)
 def create_campaign_shortcuts(sender, instance, created, **kwargs):
     """Create default keyboard shortcuts for campaigns when a user is created."""
+    if kwargs.get("raw", False) or not created:
+        return
     page = resolve_page_url("campaigns:campaign_view")
     if not page:
         return

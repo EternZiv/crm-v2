@@ -780,29 +780,45 @@ class CompanyAuthorizationTests(TestCase):
             content_type__app_label="accounts",
             codename="add_account",
         )
+        activity_add = Permission.objects.get(
+            content_type__app_label="activity",
+            codename="add_activity",
+        )
         self.actor.user_permissions.add(
             view_permission,
             add_permission,
             change_permission,
             delete_permission,
             other_module_add,
+            activity_add,
         )
 
         for role in roles:
             self.actor.role = role
             self.actor.save(update_fields=["role"])
+            self.assertTrue(self.actor.has_perm("activity.add_activity"))
             if role.system_key == "SUPER_ADMIN":
                 self.assertTrue(self.actor.has_perm("leads.delete_lead"))
                 self.assertTrue(self.actor.has_perm("accounts.add_account"))
                 continue
             self.assertTrue(self.actor.has_perm("leads.view_lead"))
-            self.assertTrue(self.actor.has_perm("leads.add_lead"))
+            self.assertEqual(
+                self.actor.has_perm("leads.add_lead"),
+                role.system_key != "BDO",
+            )
             self.assertFalse(self.actor.has_perm("leads.delete_lead"))
             self.assertFalse(self.actor.has_perm("accounts.add_account"))
             self.assertEqual(
                 self.actor.has_perm("leads.change_lead"),
                 role.system_key in {"RSM", "SSM", "ASM", "BDO"},
             )
+
+        self.actor.role = roles[-1]
+        self.actor.save(update_fields=["role"])
+        self.assertTrue(
+            self.actor.user_permissions.filter(pk=add_permission.pk).exists()
+        )
+        self.assertFalse(self.actor.has_perm("leads.add_lead"))
 
         self.actor.role = roles[2]
         self.actor.save(update_fields=["role"])

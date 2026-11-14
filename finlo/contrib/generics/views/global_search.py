@@ -540,7 +540,7 @@ class GlobalSearchView(LoginRequiredMixin, View):
             "hx-swap": "outerHTML",
             "hx-push-url": "true",
             "hx-select": "#mainContent",
-            "hx-select-oob": "#sideMenuContainer",
+            "hx-select-oob": "#finloUnifiedNavigation",
             "hx-on:click": "$('#header-search').val('')",
         }
         return htmx_attrs

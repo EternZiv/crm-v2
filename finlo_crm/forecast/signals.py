@@ -310,6 +310,8 @@ def update_forecast_on_opportunity_delete(sender, instance, **kwargs):
 @receiver(post_save, sender=User)
 def create_forecast_shortcuts(sender, instance, created, **kwargs):
     """Create default keyboard shortcuts for forecast when a user is created."""
+    if kwargs.get("raw", False) or not created:
+        return
     page = resolve_page_url("forecast:forecast_view")
     if not page:
         return

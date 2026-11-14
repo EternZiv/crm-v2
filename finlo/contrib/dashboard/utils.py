@@ -745,18 +745,22 @@ class DefaultDashboardGenerator:
                 if cached_count is None and not filter_kwargs:
                     cached_count = self._model_count_cache.get(model_info["model"])
 
-            paginator = PrecountedPaginator(qs, 10, total_count=cached_count)
-            try:
-                page_obj = paginator.get_page(page)
-            except Exception:
+            if cached_count == 0:
+                paginator = PrecountedPaginator(qs.none(), 10, total_count=0)
                 page_obj = paginator.get_page(1)
+                page_records = []
+            else:
+                paginator = PrecountedPaginator(qs, 10, total_count=cached_count)
+                try:
+                    page_obj = paginator.get_page(page)
+                except Exception:
+                    page_obj = paginator.get_page(1)
+                page_records = list(page_obj.object_list)
+                page_obj.object_list = page_records
 
             has_next = page_obj.has_next()
             next_page = page_obj.next_page_number() if has_next else None
-
             columns = [(f["verbose_name"], f["name"]) for f in table_fields]
-            page_records = list(page_obj.object_list)
-            page_obj.object_list = page_records
             filtered_ids = [record.pk for record in page_records]
 
             first_col_field = table_fields[0]["name"] if table_fields else None
@@ -777,7 +781,7 @@ class DefaultDashboardGenerator:
                             "hx-swap": "outerHTML",
                             "hx-push-url": "true",
                             "hx-select": "#mainContent",
-                            "hx-select-oob": "#sideMenuContainer",
+                            "hx-select-oob": "#finloUnifiedNavigation",
                             "class": "hover:text-primary-600",
                             "style": "cursor:pointer;",
                         }

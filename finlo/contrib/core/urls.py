@@ -20,6 +20,11 @@ urlpatterns = [
     path("favicon.ico", views.FaviconRedirectView.as_view()),
     path("settings-view/", views.SettingView.as_view(), name="settings_view"),
     path(
+        "connect-mcp-settings/",
+        views.ConnectMCPSettingsView.as_view(),
+        name="connect_mcp_settings",
+    ),
+    path(
         "settings-search/",
         views.SettingsSearchView.as_view(),
         name="settings_search",

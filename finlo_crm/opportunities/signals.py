@@ -140,6 +140,8 @@ def update_crm_on_currency_change(sender, **kwargs):
 @receiver(post_save, sender=User)
 def create_opportunity_shortcuts(sender, instance, created, **kwargs):
     """Create default keyboard shortcuts for opportunities when a user is created."""
+    if kwargs.get("raw", False) or not created:
+        return
     page = resolve_page_url("opportunities:opportunities_view")
     if not page:
         return

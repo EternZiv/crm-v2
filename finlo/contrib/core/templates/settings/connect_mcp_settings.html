@@ -1,0 +1,274 @@
+{% extends "settings/settings.html" %}
+{% load i18n %}
+
+{% block settings %}
+<div id="connect-mcp-settings-view" class="space-y-6">
+    {% include "messages.html" %}
+
+    <!-- Page Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+        <div>
+            <div class="flex items-center gap-3">
+                <h3 class="text-lg font-bold text-gray-900">{% trans "Connect Model Context Protocol (MCP) Server" %}</h3>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                    <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-emerald-500"></span>
+                    {% trans "MCP Active" %}
+                </span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">
+                {% trans "Securely connect your AI coding and chat assistants to live, permission-scoped FINLONEXA CRM data." %}
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-xs font-medium text-gray-500">{% trans "Remote Transport:" %}</span>
+            <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                <i class="fas fa-exclamation-triangle mr-1.5 text-amber-500"></i>
+                {% trans "SETUP REQUIRED" %}
+            </span>
+        </div>
+    </div>
+
+    <!-- Section A & B: Overview & Status Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- Overview Card -->
+        <div class="lg:col-span-2 bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm">
+            <h4 class="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                <i class="fas fa-robot text-primary-600"></i>
+                {% trans "AI-Powered CRM Intelligence" %}
+            </h4>
+            <p class="text-xs text-gray-600 leading-relaxed mb-3">
+                {% trans "The Model Context Protocol (MCP) enables AI assistants like Claude, Cursor, Antigravity, and Codex to answer questions about your CRM records in natural language. The server runs in strictly read-only mode and inherits your exact user authorization." %}
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200">
+                <div>
+                    <span class="text-[11px] font-medium text-gray-400 uppercase tracking-wider">{% trans "Tenant Organization" %}</span>
+                    <p class="text-xs font-semibold text-gray-800 truncate">{{ connection_status.company_name }}</p>
+                </div>
+                <div>
+                    <span class="text-[11px] font-medium text-gray-400 uppercase tracking-wider">{% trans "User Identity" %}</span>
+                    <p class="text-xs font-semibold text-gray-800 truncate">{{ connection_status.user_identity }}</p>
+                </div>
+                <div>
+                    <span class="text-[11px] font-medium text-gray-400 uppercase tracking-wider">{% trans "Effective Role" %}</span>
+                    <p class="text-xs font-semibold text-gray-800 truncate">{{ connection_status.role_name }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Status Card -->
+        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
+            <div>
+                <h4 class="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <i class="fas fa-network-wired text-primary-600"></i>
+                    {% trans "Transport Status" %}
+                </h4>
+                <div class="space-y-2.5">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-gray-500">{% trans "Local STDIO Server:" %}</span>
+                        <span class="font-semibold text-emerald-600 flex items-center gap-1">
+                            <i class="fas fa-check-circle text-xs"></i>
+                            {% trans "LOCAL VERIFIED" %}
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-gray-500">{% trans "Remote Streamable HTTP:" %}</span>
+                        <span class="font-semibold text-amber-600 flex items-center gap-1">
+                            <i class="fas fa-clock text-xs"></i>
+                            {% trans "SETUP REQUIRED" %}
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-gray-500">{% trans "Accessible Modules:" %}</span>
+                        <span class="font-semibold text-gray-800">{{ connection_status.accessible_modules_count }} / {{ connection_status.total_modules_count }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-gray-100 text-[11px] text-gray-400">
+                {% trans "Last session check: " %} {{ connection_status.last_connected|date:"Y-m-d H:i"|default:"Active Now" }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Section C: Copyable Agent Setup Script -->
+    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+            <div>
+                <h4 class="text-sm font-semibold text-gray-800">{% trans "AI Assistant System Prompt / Instruction Script" %}</h4>
+                <p class="text-xs text-gray-500">{% trans "Copy and paste these instructions into your AI conversation to guide how it operates with your CRM." %}</p>
+            </div>
+            <button
+                type="button"
+                onclick="navigator.clipboard.writeText(document.getElementById('agent-setup-prompt-text').innerText); this.innerText='{% trans "Copied!" %}'; setTimeout(() => this.innerText='{% trans "Copy Prompt" %}', 2000)"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-xs font-medium transition shadow-sm"
+            >
+                <i class="far fa-copy text-xs"></i>
+                <span>{% trans "Copy Prompt" %}</span>
+            </button>
+        </div>
+        <pre id="agent-setup-prompt-text" class="bg-slate-900 text-slate-100 text-xs p-4 rounded-lg overflow-x-auto font-mono leading-relaxed border border-slate-800">{{ agent_setup_prompt }}</pre>
+        <p class="text-[11px] text-gray-400 mt-2">
+            <i class="fas fa-info-circle mr-1 text-primary-500"></i>
+            {% trans "Note: A prompt alone cannot install or register an MCP server. Use the client configuration tabs below to register the server in your AI client." %}
+        </p>
+    </div>
+
+    <!-- Section D: Client Connection Examples -->
+    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm" x-data="{ clientTab: 'claude' }">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+                <h4 class="text-sm font-semibold text-gray-800">{% trans "AI Client Configuration Templates" %}</h4>
+                <p class="text-xs text-gray-500">{% trans "Select your AI coding client to view the verified registration snippet." %}</p>
+            </div>
+            <!-- Client Tabs -->
+            <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+                <button
+                    type="button"
+                    onclick="document.querySelectorAll('.client-tab-btn').forEach(b => b.classList.remove('bg-white', 'shadow-sm', 'text-gray-900')); this.classList.add('bg-white', 'shadow-sm', 'text-gray-900'); document.querySelectorAll('.client-config-panel').forEach(p => p.classList.add('hidden')); document.getElementById('config-panel-claude').classList.remove('hidden');"
+                    class="client-tab-btn px-2.5 py-1 text-xs font-medium rounded-md text-gray-900 bg-white shadow-sm transition"
+                >Claude</button>
+                <button
+                    type="button"
+                    onclick="document.querySelectorAll('.client-tab-btn').forEach(b => b.classList.remove('bg-white', 'shadow-sm', 'text-gray-900')); this.classList.add('bg-white', 'shadow-sm', 'text-gray-900'); document.querySelectorAll('.client-config-panel').forEach(p => p.classList.add('hidden')); document.getElementById('config-panel-antigravity').classList.remove('hidden');"
+                    class="client-tab-btn px-2.5 py-1 text-xs font-medium rounded-md text-gray-600 hover:text-gray-900 transition"
+                >Antigravity</button>
+                <button
+                    type="button"
+                    onclick="document.querySelectorAll('.client-tab-btn').forEach(b => b.classList.remove('bg-white', 'shadow-sm', 'text-gray-900')); this.classList.add('bg-white', 'shadow-sm', 'text-gray-900'); document.querySelectorAll('.client-config-panel').forEach(p => p.classList.add('hidden')); document.getElementById('config-panel-cursor').classList.remove('hidden');"
+                    class="client-tab-btn px-2.5 py-1 text-xs font-medium rounded-md text-gray-600 hover:text-gray-900 transition"
+                >Cursor</button>
+                <button
+                    type="button"
+                    onclick="document.querySelectorAll('.client-tab-btn').forEach(b => b.classList.remove('bg-white', 'shadow-sm', 'text-gray-900')); this.classList.add('bg-white', 'shadow-sm', 'text-gray-900'); document.querySelectorAll('.client-config-panel').forEach(p => p.classList.add('hidden')); document.getElementById('config-panel-codex').classList.remove('hidden');"
+                    class="client-tab-btn px-2.5 py-1 text-xs font-medium rounded-md text-gray-600 hover:text-gray-900 transition"
+                >Codex</button>
+                <button
+                    type="button"
+                    onclick="document.querySelectorAll('.client-tab-btn').forEach(b => b.classList.remove('bg-white', 'shadow-sm', 'text-gray-900')); this.classList.add('bg-white', 'shadow-sm', 'text-gray-900'); document.querySelectorAll('.client-config-panel').forEach(p => p.classList.add('hidden')); document.getElementById('config-panel-remote').classList.remove('hidden');"
+                    class="client-tab-btn px-2.5 py-1 text-xs font-medium rounded-md text-gray-600 hover:text-gray-900 transition"
+                >Remote HTTP</button>
+            </div>
+        </div>
+
+        <!-- Panel: Claude -->
+        <div id="config-panel-claude" class="client-config-panel">
+            <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>{% trans "Configuration file: claude_desktop_config.json" %}</span>
+                <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('code-claude').innerText); this.innerText='{% trans "Copied!" %}'; setTimeout(() => this.innerText='{% trans "Copy JSON" %}', 2000)" class="text-primary-600 hover:underline">{% trans "Copy JSON" %}</button>
+            </div>
+            <pre id="code-claude" class="bg-slate-900 text-slate-100 text-xs p-3 rounded-lg overflow-x-auto font-mono">{{ client_configs.claude }}</pre>
+        </div>
+
+        <!-- Panel: Antigravity -->
+        <div id="config-panel-antigravity" class="client-config-panel hidden">
+            <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>{% trans "Configuration file: ~/.gemini/config/mcp_config.json" %}</span>
+                <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('code-antigravity').innerText); this.innerText='{% trans "Copied!" %}'; setTimeout(() => this.innerText='{% trans "Copy JSON" %}', 2000)" class="text-primary-600 hover:underline">{% trans "Copy JSON" %}</button>
+            </div>
+            <pre id="code-antigravity" class="bg-slate-900 text-slate-100 text-xs p-3 rounded-lg overflow-x-auto font-mono">{{ client_configs.antigravity }}</pre>
+        </div>
+
+        <!-- Panel: Cursor -->
+        <div id="config-panel-cursor" class="client-config-panel hidden">
+            <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>{% trans "Configuration file: .cursor/mcp.json" %}</span>
+                <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('code-cursor').innerText); this.innerText='{% trans "Copied!" %}'; setTimeout(() => this.innerText='{% trans "Copy JSON" %}', 2000)" class="text-primary-600 hover:underline">{% trans "Copy JSON" %}</button>
+            </div>
+            <pre id="code-cursor" class="bg-slate-900 text-slate-100 text-xs p-3 rounded-lg overflow-x-auto font-mono">{{ client_configs.cursor }}</pre>
+        </div>
+
+        <!-- Panel: Codex -->
+        <div id="config-panel-codex" class="client-config-panel hidden">
+            <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>{% trans "Configuration file: mcp.json" %}</span>
+                <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('code-codex').innerText); this.innerText='{% trans "Copied!" %}'; setTimeout(() => this.innerText='{% trans "Copy JSON" %}', 2000)" class="text-primary-600 hover:underline">{% trans "Copy JSON" %}</button>
+            </div>
+            <pre id="code-codex" class="bg-slate-900 text-slate-100 text-xs p-3 rounded-lg overflow-x-auto font-mono">{{ client_configs.codex }}</pre>
+        </div>
+
+        <!-- Panel: Remote HTTP -->
+        <div id="config-panel-remote" class="client-config-panel hidden">
+            <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>{% trans "Streamable HTTP Remote Endpoint" %}</span>
+                <span class="text-amber-600 font-medium">{% trans "Status: SETUP REQUIRED" %}</span>
+            </div>
+            <pre id="code-remote" class="bg-slate-900 text-amber-200 text-xs p-3 rounded-lg overflow-x-auto font-mono">{{ client_configs.remote_http }}</pre>
+            <p class="text-xs text-gray-500 mt-2">
+                {% trans "Remote Streamable HTTP transport requires deploying an authenticated ASGI HTTPS reverse proxy or OAuth gateway. Contact your administrator to activate remote access." %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Section E: Connected AI Applications -->
+    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <h4 class="text-sm font-semibold text-gray-800 mb-1">{% trans "Connected AI Applications" %}</h4>
+        <p class="text-xs text-gray-500 mb-4">{% trans "AI assistants and development environments authorized to interact with your CRM account." %}</p>
+
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs text-slate-700">
+            <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 text-slate-600">
+                    <i class="fas fa-network-wired"></i>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-900 mb-1">{% trans "Connection management not yet available" %}</p>
+                    <p class="text-slate-600 leading-relaxed mb-2">
+                        {% trans "Centralized client token registry and remote revocation require the OAuth 2.0 PKCE gateway deployment. Local AI clients (Antigravity, Claude Code, Cursor) currently connect via secure local STDIO transport isolated to your system process and active user credentials." %}
+                    </p>
+                    <div class="flex items-center gap-2 text-[11px] text-slate-500">
+                        <span class="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                        <span>{% trans "STDIO Local Transport Active — No remote tokens stored" %}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section F: Security & Permissions Breakdown -->
+    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <div class="mb-3">
+            <h4 class="text-sm font-semibold text-gray-800">{% trans "Effective Permission & Data Isolation Policy" %}</h4>
+            <p class="text-xs text-gray-600 mt-0.5">
+                <i class="fas fa-shield-alt text-emerald-600 mr-1"></i>
+                {% trans "AI assistants can only access information that your FINLO account is currently permitted to view." %}
+            </p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border border-gray-100 rounded-lg">
+                <thead class="bg-slate-50 text-gray-600 border-b border-gray-200">
+                    <tr>
+                        <th class="py-2.5 px-3 font-semibold">{% trans "CRM Module" %}</th>
+                        <th class="py-2.5 px-3 font-semibold">{% trans "Access Status" %}</th>
+                        <th class="py-2.5 px-3 font-semibold">{% trans "Authorization Scope" %}</th>
+                        <th class="py-2.5 px-3 font-semibold">{% trans "Visible Records" %}</th>
+                        <th class="py-2.5 px-3 font-semibold">{% trans "Description & Security Guardrails" %}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for m in modules %}
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-3 px-3 font-medium text-gray-900">{{ m.title }}</td>
+                        <td class="py-3 px-3">
+                            {% if m.is_accessible %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <i class="fas fa-check text-[10px] mr-1"></i>
+                                    {% trans "Accessible" %}
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                                    <i class="fas fa-ban text-[10px] mr-1"></i>
+                                    {% trans "Restricted" %}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 font-medium text-gray-700">{{ m.scope }}</td>
+                        <td class="py-3 px-3 font-mono text-gray-600">{{ m.record_count }}</td>
+                        <td class="py-3 px-3 text-gray-500">{{ m.description }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

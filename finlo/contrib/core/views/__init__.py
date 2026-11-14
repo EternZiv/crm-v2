@@ -207,6 +207,8 @@ from finlo.contrib.core.views.user_login_history import (
     UserloginHistoryListView,
 )
 
+from finlo.contrib.core.views.connect_mcp import ConnectMCPSettingsView
+
 from finlo.contrib.core.views.sales_hierarchy import (
     SalesRegionView,
     SalesRegionNavbar,
@@ -519,4 +521,6 @@ __all__ = [
     "HolidayFormView",
     "HolidayDeleteView",
     "HolidayDetailView",
+    # connect_mcp.py
+    "ConnectMCPSettingsView",
 ]

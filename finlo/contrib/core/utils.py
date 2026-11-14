@@ -443,50 +443,14 @@ def get_user_field_permission(user, model, field_name):
     2. Role permission (if user has a role)
     3. Default: 'readwrite' (lowest)
 
-    List/detail renderers call this once per row/action for the same
-    (user, model, field_name), so the result is cached on the current
-    request (mirrors get_custom_field_definitions's request-cache
-    pattern) to avoid repeated FieldPermission queries within a request.
+    Delegates to get_field_permissions_for_model to fetch all permissions for
+    (user, model) in a single batch query rather than issuing N single-row queries.
     """
     if user.is_superuser:
         return "readwrite"
 
-    request = get_current_request()
-    cache_key = (model, field_name, user.pk) if request is not None else None
-    if cache_key is not None:
-        cache = getattr(request, "_field_permission_cache", None)
-        if cache is None:
-            cache = {}
-            request._field_permission_cache = cache
-        if cache_key in cache:
-            return cache[cache_key]
-
-    content_type = FinloContentType.objects.get_for_model(model)
-
-    user_perm = FieldPermission.objects.filter(
-        user=user, content_type=content_type, field_name=field_name
-    ).first()
-
-    if user_perm:
-        result = user_perm.permission_type
-    else:
-        result = None
-        if hasattr(user, "role") and user.role:
-            role_perm = FieldPermission.objects.filter(
-                role=user.role, content_type=content_type, field_name=field_name
-            ).first()
-
-            if role_perm:
-                result = role_perm.permission_type
-
-        if result is None:
-            model_defaults = getattr(model, "default_field_permissions", {})
-            result = model_defaults.get(field_name, "readwrite")
-
-    if cache_key is not None:
-        cache[cache_key] = result
-
-    return result
+    perms = get_field_permissions_for_model(user, model)
+    return perms.get(field_name, "readwrite")
 
 
 def field_readonly_hidden_if(model, field_name):
@@ -517,9 +481,8 @@ def get_field_permissions_for_model(user, model):
 
     List/filter/column builders call ``filter_hidden_fields`` (and thus this
     helper) several times for the same (user, model) in a single request, so
-    the result is cached on the current request (same pattern as
-    ``get_user_field_permission``) to avoid repeating the user+role
-    FieldPermission queries.
+    the result is cached on the user instance and the current request to avoid
+    repeating the user+role FieldPermission queries.
     """
 
     if not user.is_authenticated:
@@ -531,6 +494,10 @@ def get_field_permissions_for_model(user, model):
 
     if user.is_superuser:
         return {}
+
+    user_cache = getattr(user, "_field_perms_model_cache", None)
+    if user_cache is not None and model in user_cache:
+        return user_cache[model]
 
     request = get_current_request()
     cache_key = (model, user.pk) if request is not None else None
@@ -561,6 +528,14 @@ def get_field_permissions_for_model(user, model):
     for field_name, default_value in model_defaults.items():
         if field_name not in permissions_dict:
             permissions_dict[field_name] = default_value
+
+    if user_cache is None:
+        user_cache = {}
+        try:
+            user._field_perms_model_cache = user_cache
+        except Exception:
+            pass
+    user_cache[model] = permissions_dict
 
     if cache_key is not None:
         cache[cache_key] = permissions_dict

@@ -31,10 +31,13 @@ def company_list(request):
         return {"available_companies": []}
     if getattr(request, "_skip_header_context", False) or request.headers.get("HX-Request") == "true":
         return {"available_companies": []}
+    if hasattr(request, "_cached_available_companies"):
+        return {"available_companies": request._cached_available_companies}
     companies = cache.get(COMPANY_LIST_CACHE_KEY)
     if companies is None:
         companies = list(Company.objects.all())
         cache.set(COMPANY_LIST_CACHE_KEY, companies, timeout=300)
+    request._cached_available_companies = companies
     return {"available_companies": companies}
 
 
@@ -171,10 +174,15 @@ def menu_context_processor(request):
     # skip evaluating heavy menu registries and permission checks.
     target = request.headers.get("HX-Target", "")
     target_clean = target.lstrip("#")
+    hx_request = request.headers.get("HX-Request") == "true"
+    render_unified_navigation = (
+        not hx_request
+        or "#finloUnifiedNavigation" in request.headers.get("HX-Select-OOB", "")
+    )
     is_partial = getattr(request, "_skip_header_context", False) or (
         request.headers.get("HX-Request") == "true"
         and target_clean in ("navBar", "mainSession", "modalBox", "filter-panel", "filterpanel", "mainContent")
-        and "#sideMenuContainer" not in request.headers.get("HX-Select-OOB", "")
+        and "#finloUnifiedNavigation" not in request.headers.get("HX-Select-OOB", "")
     )
 
     if is_partial:
@@ -197,6 +205,7 @@ def menu_context_processor(request):
             ),
             "current_section": section_param,
             "current_app_label": current_app_label,
+            "render_unified_navigation": render_unified_navigation,
         }
 
     return {
@@ -207,6 +216,7 @@ def menu_context_processor(request):
         "my_settings_menu": SimpleLazyObject(lambda: get_my_settings_menu(request)),
         "current_section": section_param,
         "current_app_label": current_app_label,
+        "render_unified_navigation": render_unified_navigation,
     }
 
 

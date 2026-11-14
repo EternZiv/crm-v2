@@ -11,6 +11,8 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from finlo.db import transaction
+from finlo.contrib.core.authorization import get_company_scope
 
 # First party imports (Finlo)
 from finlo.api.docs import BULK_DELETE_DOCS, BULK_UPDATE_DOCS
@@ -45,6 +47,14 @@ from finlo_crm.leads.api.docs import (
 )
 from finlo_crm.leads.api.serializers import LeadSerializer, LeadStatusSerializer
 from finlo_crm.leads.models import Lead, LeadStatus
+from finlo_crm.leads.services import bump_lead_cache_version
+
+
+def schedule_lead_bulk_cache_invalidation(request):
+    """Invalidate the exact tenant (or global) Lead aggregate generation."""
+    scope = get_company_scope(request.user, request)
+    company_id = None if scope.all_companies else scope.company_id
+    transaction.on_commit(lambda: bump_lead_cache_version(company_id))
 
 # Define common Swagger parameters and bodies consistent with core
 search_param = openapi.Parameter(
@@ -157,7 +167,10 @@ class LeadViewSet(SearchFilterMixin, BulkOperationsMixin, viewsets.ModelViewSet)
     @action(detail=False, methods=["post"])
     def bulk_update(self, request):
         """Update multiple leads in a single request"""
-        return super().bulk_update(request)
+        response = super().bulk_update(request)
+        if response.status_code < 400 and response.data.get("updated_count", 0):
+            schedule_lead_bulk_cache_invalidation(request)
+        return response
 
     @swagger_auto_schema(
         request_body=bulk_delete_body, operation_description=BULK_DELETE_DOCS

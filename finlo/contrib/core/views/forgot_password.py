@@ -90,8 +90,11 @@ class ForgotPasswordView(View):
         """Handle password reset email submission"""
         email_or_username = (request.POST.get("email") or "").strip()
 
-        identity_key = cache_key("reset-user", email_or_username.casefold())
         remote_ip = request.META.get("REMOTE_ADDR", "").strip()
+        identity_key = cache_key(
+            "reset-user-ip",
+            f"{email_or_username.casefold()}\0{remote_ip or 'unknown'}",
+        )
         ip_key = cache_key("reset-ip", remote_ip) if remote_ip else None
         try:
             if count(identity_key) >= RESET_RATE_LIMIT_USER_MAX or (

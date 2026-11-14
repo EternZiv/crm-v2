@@ -47,6 +47,9 @@ from .models import (
     MultipleCurrency,
     Role,
     RoleDataScope,
+    SalesAssignment,
+    SalesRegion,
+    SalesTeam,
 )
 from .services.fiscal_year_service import FiscalYearService
 from .utils import fetch_exchange_rates_bulk, get_user_field_permission
@@ -82,6 +85,40 @@ def invalidate_lead_caches_for_role_scope(sender, instance, **kwargs):
     from finlo_crm.leads.services import bump_lead_cache_version
 
     transaction.on_commit(lambda: bump_lead_cache_version(company_id))
+
+
+@receiver(pre_save, sender=SalesRegion)
+@receiver(pre_save, sender=SalesTeam)
+@receiver(pre_save, sender=SalesAssignment)
+def remember_sales_scope_company(sender, instance, **kwargs):
+    """Capture the old tenant before a hierarchy row moves between companies."""
+    if instance.pk and not kwargs.get("raw", False):
+        instance._lead_cache_previous_company_id = (
+            sender.all_objects.filter(pk=instance.pk)
+            .values_list("company_id", flat=True)
+            .first()
+        )
+
+
+@receiver([post_save, post_delete], sender=SalesRegion)
+@receiver([post_save, post_delete], sender=SalesTeam)
+@receiver([post_save, post_delete], sender=SalesAssignment)
+def invalidate_lead_caches_for_sales_hierarchy(sender, instance, **kwargs):
+    """Rebuild user-scoped Lead aggregates after reporting-scope changes."""
+    company_ids = {
+        getattr(instance, "company_id", None),
+        getattr(instance, "_lead_cache_previous_company_id", None),
+    }
+    if kwargs.get("created", False):
+        company_ids.discard(getattr(instance, "_lead_cache_previous_company_id", None))
+    from finlo_crm.leads.services import bump_lead_cache_version
+
+    def invalidate():
+        for company_id in company_ids:
+            if company_id is not None:
+                bump_lead_cache_version(company_id)
+
+    transaction.on_commit(invalidate)
 
 
 @receiver(m2m_changed, sender=User.user_permissions.through)

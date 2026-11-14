@@ -3,9 +3,12 @@ Finlo management command to create a new user and associated employee.
 """
 
 # Standard library imports
+import getpass
 import uuid
 
 # Third-party imports (Django)
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.management.base import BaseCommand, CommandError
 
 # First party imports (Finlo)
@@ -34,7 +37,7 @@ class Command(BaseCommand):
             first_name = input("Enter first name: ")
             last_name = input("Enter last name: ")
             username = input("Enter username: ")
-            password = input("Enter password: ")
+            password = getpass.getpass("Enter password: ")
             email = input("Enter email: ")
             phone = input("Enter phone number: ")
         else:
@@ -44,6 +47,19 @@ class Command(BaseCommand):
             password = options["password"]
             email = options["email"]
             phone = options["phone"]
+
+        if not password:
+            raise CommandError("An explicit password is required to create this account.")
+        candidate = User(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+        )
+        try:
+            validate_password(password, user=candidate)
+        except DjangoValidationError as error:
+            raise CommandError("Password does not meet the configured policy: " + "; ".join(error.messages)) from error
 
         if User.objects.filter(username=username).exists():
             self.stdout.write(

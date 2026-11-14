@@ -26,8 +26,9 @@
     htmx.config.historyCacheSize = 20;
     htmx.config.refreshOnHistoryMiss = false;
 
-    // --- Configuration & TTL Policies ---
+    // --- Configuration & freshness policies ---
     const MAX_CACHED_VIEWS = 20;
+    const MAX_CACHED_VIEW_BYTES = 8 * 1024 * 1024;
 
     // Per-view TTL policies (in milliseconds)
     const TTL_POLICIES = [
@@ -50,15 +51,30 @@
         return 30000;
     }
 
+    function estimateSnapshotBytes(data) {
+        try {
+            return JSON.stringify(data).length * 2 + 128;
+        } catch (_error) {
+            return MAX_CACHED_VIEW_BYTES + 1;
+        }
+    }
+
     // --- State Variables ---
     const viewCache = new Map();
+    let viewCacheBytes = 0;
     const pendingFreshUpdates = new Map();
     let latestNavigationId = 0;
     const activeRevalidations = new Set();
     const activeInFlightNavigations = new Set();
+    const historyFallbacks = new Set();
     const navigationRequests = new WeakMap();
     let pendingNavigation = null;
+    let pendingHistoryValidation = null;
     let dashboardInterval = null;
+    let leadRevisionRequest = null;
+    let lastLeadRevision = null;
+    let leadRevisionFailures = 0;
+    let leadRevisionRetryAfter = 0;
 
     // Bounded, in-memory timing samples for the click → shell → request → usable
     // lifecycle. Route paths are recorded without query values or CRM data.
@@ -178,22 +194,245 @@
         return true;
     }
 
-    document.body.addEventListener("htmx:historyCacheMiss", function (event) {
-        showHistoryDestinationShell(event.detail?.path || window.location.href);
-    });
+    function clearProtectedHistoryCaches() {
+        if (window.FinloViewCache) window.FinloViewCache.clear();
+        try { window.sessionStorage?.removeItem("htmx-history-cache"); } catch (_error) {}
+        try { window.localStorage?.removeItem("htmx-history-cache"); } catch (_error) {}
+    }
 
-    document.body.addEventListener("htmx:historyCacheMissLoadError", function () {
+    function showHistoryRestoreError(message, path, status) {
         const mainContent = document.getElementById("mainContent");
-        if (!mainContent?.querySelector("[data-finlo-navigation-shell]")) return;
+        if (!mainContent) return;
 
         const error = document.createElement("section");
         error.className = "m-5 rounded-xl border border-red-200 bg-white p-6 text-slate-800";
         error.setAttribute("role", "alert");
-        error.textContent = "This page could not be restored. Refresh to try again.";
+        const text = document.createElement("p");
+        text.textContent = message || (status === 403
+            ? "You do not have permission to open this page."
+            : "This page could not be restored.");
+        error.appendChild(text);
+
+        if (status !== 401) {
+            const retry = document.createElement("button");
+            retry.type = "button";
+            retry.className = "mt-3 rounded-lg bg-primary-600 px-4 py-2 text-white";
+            retry.dataset.finloHistoryRetry = "true";
+            retry.dataset.finloHistoryUrl = path || (window.location.pathname + window.location.search);
+            retry.textContent = "Retry";
+            error.appendChild(retry);
+        }
+
         mainContent.replaceChildren(error);
         mainContent.removeAttribute("aria-busy");
         delete mainContent.dataset.finloHistoryNavigationPending;
+        delete mainContent.dataset.finloHistoryFallbackPending;
+        hideProgressBar();
+    }
+
+    function initializeRestoredDashboard(mainContent) {
+        if (!mainContent?.querySelector("#default-home-view")) return;
+        if (typeof window.initFinloDefaultHomeDashboard === "function") {
+            try { window.initFinloDefaultHomeDashboard(); } catch (error) {
+                console.warn("Dashboard chart restoration failed:", error);
+            }
+        }
+    }
+
+    function finishHistoryValidation(path) {
+        const mainContent = document.getElementById("mainContent");
+        if (!mainContent || !isViewReadyForSnapshot(mainContent)) return false;
+
+        mainContent.removeAttribute("aria-busy");
+        delete mainContent.dataset.finloHistoryNavigationPending;
+        delete mainContent.dataset.finloHistoryFallbackPending;
+        if (pendingHistoryValidation?.timer) clearTimeout(pendingHistoryValidation.timer);
+        pendingHistoryValidation = null;
         restoreHistorySnapshots();
+        initializeRestoredDashboard(mainContent);
+        window.dispatchEvent(new Event("resize"));
+        document.dispatchEvent(new CustomEvent("finlo:viewRestored", { detail: { url: path } }));
+        scheduleSnapshot();
+        hideProgressBar();
+        return true;
+    }
+
+    function scheduleHistoryValidation(path, fallbackUsed = false) {
+        const target = new URL(path, window.location.href);
+        if (target.origin !== window.location.origin) return;
+        const key = normalizeUrl(target.href);
+
+        if (pendingHistoryValidation?.timer) clearTimeout(pendingHistoryValidation.timer);
+        if (!pendingHistoryValidation || pendingHistoryValidation.path !== key) {
+            pendingHistoryValidation = {
+                path: key,
+                startedAt: Date.now(),
+                fallbackUsed: Boolean(fallbackUsed),
+                timer: null,
+            };
+        } else if (fallbackUsed) {
+            pendingHistoryValidation.fallbackUsed = true;
+        }
+
+        pendingHistoryValidation.timer = setTimeout(() => {
+            const state = pendingHistoryValidation;
+            const mainContent = document.getElementById("mainContent");
+            if (!state || state.path !== key || normalizeUrl(window.location.href) !== key) return;
+            if (finishHistoryValidation(key)) return;
+
+            const requestPending = mainContent?.matches(".htmx-request") || mainContent?.querySelector(".htmx-request");
+            if (requestPending && Date.now() - state.startedAt < 10000) {
+                scheduleHistoryValidation(key, state.fallbackUsed);
+                return;
+            }
+
+            if (!state.fallbackUsed) {
+                restoreInvalidHistorySnapshot(key);
+                return;
+            }
+
+            showHistoryRestoreError("The page content did not finish loading. Retry to request it again.", key);
+            pendingHistoryValidation = null;
+        }, 500);
+    }
+
+    async function restoreInvalidHistorySnapshot(path) {
+        let target;
+        try { target = new URL(path, window.location.href); } catch (_error) { return; }
+        if (target.origin !== window.location.origin || !/^https?:$/.test(target.protocol)) return;
+
+        const key = normalizeUrl(target.href);
+        if (historyFallbacks.has(key)) return;
+        historyFallbacks.add(key);
+
+        const restoreId = ++latestNavigationId;
+        pendingNavigation = null;
+        activeInFlightNavigations.add(key);
+        showHistoryDestinationShell(target.href);
+        showProgressBar();
+
+        try {
+            const response = await fetch(target.href, {
+                credentials: "same-origin",
+                cache: "no-store",
+                headers: {
+                    "HX-Request": "true",
+                    "HX-Target": "#mainContent",
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+            });
+
+            if (restoreId !== latestNavigationId || normalizeUrl(window.location.href) !== key) return;
+
+            const finalUrl = new URL(response.url || target.href, window.location.href);
+            if (response.status === 401 || (response.redirected && finalUrl.pathname.replace(/\/$/, "") === "/login")) {
+                clearProtectedHistoryCaches();
+                const loginUrl = finalUrl.origin === window.location.origin
+                    ? finalUrl.href
+                    : `${window.location.origin}/login/?next=${encodeURIComponent(target.pathname + target.search)}`;
+                window.location.replace(loginUrl);
+                return;
+            }
+            if (response.status === 403) {
+                clearProtectedHistoryCaches();
+                showHistoryRestoreError(null, key, 403);
+                return;
+            }
+            if (!response.ok) {
+                showHistoryRestoreError("The page could not be restored from the server. Retry to try again.", key, response.status);
+                return;
+            }
+
+            const html = await response.text();
+            if (restoreId !== latestNavigationId || normalizeUrl(window.location.href) !== key) return;
+
+            const doc = new DOMParser().parseFromString(html, "text/html");
+            const freshMain = doc.querySelector("#mainContent");
+            if (!freshMain) {
+                const redirectedToLogin = doc.querySelector("form[action*='login'], #loginForm");
+                if (redirectedToLogin) {
+                    clearProtectedHistoryCaches();
+                    window.location.replace(`${window.location.origin}/login/?next=${encodeURIComponent(target.pathname + target.search)}`);
+                    return;
+                }
+                showHistoryRestoreError("The server response did not contain this page. Retry to try again.", key);
+                return;
+            }
+
+            const nestedHeader = freshMain.querySelector("#header");
+            if (nestedHeader) nestedHeader.remove();
+            const nestedSidebar = freshMain.querySelector("#sidebar, #primarySidebar");
+            if (nestedSidebar) nestedSidebar.remove();
+
+            const mainContent = document.getElementById("mainContent");
+            if (!mainContent) return;
+            cleanupDetachedChartInstances();
+            mainContent.innerHTML = freshMain.innerHTML;
+            mainContent.setAttribute("aria-busy", "true");
+            mainContent.dataset.finloHistoryFallbackPending = key;
+
+            const freshSideMenu = doc.querySelector("#sideMenuContainer");
+            const sideMenu = document.getElementById("sideMenuContainer");
+            if (freshSideMenu && sideMenu) sideMenu.innerHTML = freshSideMenu.innerHTML;
+
+            setActiveSectionFromUrl(key);
+            if (window.htmx) {
+                htmx.process(mainContent);
+                if (sideMenu) htmx.process(sideMenu);
+            }
+            reexecuteScripts(mainContent);
+            if (typeof window.bootstrapFinloUI === "function") window.bootstrapFinloUI(mainContent);
+            initializeRestoredDashboard(mainContent);
+            restoreHistorySnapshots();
+
+            pendingHistoryValidation = {
+                path: key,
+                startedAt: Date.now(),
+                fallbackUsed: true,
+                timer: null,
+            };
+            scheduleHistoryValidation(key, true);
+        } catch (error) {
+            if (restoreId === latestNavigationId && normalizeUrl(window.location.href) === key) {
+                showHistoryRestoreError("The page could not be restored because the request failed. Retry to try again.", key);
+                pendingHistoryValidation = null;
+            }
+            console.debug("History restore fallback failed:", error.message);
+        } finally {
+            historyFallbacks.delete(key);
+            activeInFlightNavigations.delete(key);
+        }
+    }
+
+    document.addEventListener("click", function (event) {
+        const retry = event.target instanceof Element
+            ? event.target.closest("[data-finlo-history-retry]")
+            : null;
+        if (!retry) return;
+        event.preventDefault();
+        restoreInvalidHistorySnapshot(retry.dataset.finloHistoryUrl || window.location.href);
+    });
+
+    document.body.addEventListener("htmx:historyCacheMiss", function (event) {
+        showHistoryDestinationShell(event.detail?.path || window.location.href);
+    });
+
+    document.body.addEventListener("htmx:historyCacheMissLoadError", function (event) {
+        const xhr = event.detail?.xhr;
+        const responseUrl = xhr?.responseURL ? new URL(xhr.responseURL, window.location.href) : null;
+        if (xhr?.status === 401 || (responseUrl && responseUrl.pathname.replace(/\/$/, "") === "/login")) {
+            clearProtectedHistoryCaches();
+            const next = window.location.pathname + window.location.search;
+            window.location.replace(responseUrl?.origin === window.location.origin
+                ? responseUrl.href
+                : `${window.location.origin}/login/?next=${encodeURIComponent(next)}`);
+            return;
+        }
+        showHistoryRestoreError(
+            "This page could not be restored. Retry to request the current page.",
+            event.detail?.path || (window.location.pathname + window.location.search),
+            xhr?.status || 0,
+        );
     });
 
     function showNavigationFailure(navigation, status) {
@@ -452,24 +691,33 @@
             // Security check: Verify that user and company scope still match current session
             if (entry.userId !== getActiveUserId() || entry.companyScope !== getActiveCompanyScope()) {
                 viewCache.clear();
+                viewCacheBytes = 0;
                 return null;
             }
 
             // Touch entry for true LRU (re-insert moves it to the end of iteration order)
             viewCache.delete(key);
+            viewCacheBytes -= entry.cacheBytes || 0;
             viewCache.set(key, entry);
+            viewCacheBytes += entry.cacheBytes || 0;
 
             return entry;
         },
         set(url, data) {
             if (!isCacheableUrl(url)) return;
             const key = buildCacheKey(url);
+            const cacheBytes = estimateSnapshotBytes(data);
+            if (cacheBytes > MAX_CACHED_VIEW_BYTES) return;
 
-            // LRU eviction if full
             if (viewCache.has(key)) {
+                viewCacheBytes -= viewCache.get(key).cacheBytes || 0;
                 viewCache.delete(key);
-            } else if (viewCache.size >= MAX_CACHED_VIEWS) {
+            }
+            while (viewCache.size >= MAX_CACHED_VIEWS ||
+                   viewCacheBytes + cacheBytes > MAX_CACHED_VIEW_BYTES) {
                 const lruKey = viewCache.keys().next().value;
+                if (lruKey === undefined) break;
+                viewCacheBytes -= viewCache.get(lruKey)?.cacheBytes || 0;
                 viewCache.delete(lruKey);
             }
 
@@ -478,8 +726,10 @@
                 ...data,
                 userId: getActiveUserId(),
                 companyScope: getActiveCompanyScope(),
-                ttl: ttl,
-                timestamp: Date.now()
+                // Freshness threshold for SWR, not snapshot expiration.
+                revalidateAfterMs: ttl,
+                timestamp: Date.now(),
+                cacheBytes
             });
         },
         has(url) {
@@ -487,10 +737,12 @@
         },
         delete(url) {
             const key = buildCacheKey(url);
+            viewCacheBytes -= viewCache.get(key)?.cacheBytes || 0;
             viewCache.delete(key);
         },
         clear() {
             viewCache.clear();
+            viewCacheBytes = 0;
             activeRevalidations.clear();
             activeInFlightNavigations.clear();
         },
@@ -642,6 +894,7 @@
 
         // 9. Re-execute component initialization scripts (charts, table bindings)
         reexecuteScripts(mainContent);
+        initializeRestoredDashboard(mainContent);
 
         // 10. Restore scroll position
         if (cached.scrollState) {
@@ -673,6 +926,21 @@
                 credentials: "same-origin"
             });
 
+            const responseUrl = new URL(response.url || url, window.location.href);
+            if (response.status === 401 || (response.redirected && responseUrl.pathname.replace(/\/$/, "") === "/login")) {
+                clearProtectedHistoryCaches();
+                window.location.replace(responseUrl.origin === window.location.origin
+                    ? responseUrl.href
+                    : `/login/?next=${encodeURIComponent(new URL(url, window.location.href).pathname + new URL(url, window.location.href).search)}`);
+                return;
+            }
+            if (response.status === 403) {
+                clearProtectedHistoryCaches();
+                if (navId === latestNavigationId && normalizeUrl(window.location.href) === normalizeUrl(url)) {
+                    showHistoryRestoreError(null, url, 403);
+                }
+                return;
+            }
             if (!response.ok) {
                 throw new Error(`Revalidation failed with status ${response.status}`);
             }
@@ -819,7 +1087,7 @@
 
                 // 4. Stale-While-Revalidate (SWR): if stale, revalidate silently in background
                 const age = Date.now() - cached.timestamp;
-                if (age > cached.ttl) {
+                if (age > (cached.revalidateAfterMs ?? cached.ttl ?? 30000)) {
                     revalidateView(fullUrl, navId);
                 }
                 return false;
@@ -966,41 +1234,129 @@
 
     document.body.addEventListener("htmx:afterSettle", function (event) {
         scheduleSnapshot();
+        if (pendingHistoryValidation &&
+            normalizeUrl(window.location.href) === pendingHistoryValidation.path &&
+            (document.getElementById("mainContent")?.dataset.finloHistoryNavigationPending ||
+             document.getElementById("mainContent")?.dataset.finloHistoryFallbackPending)) {
+            scheduleHistoryValidation(pendingHistoryValidation.path, pendingHistoryValidation.fallbackUsed);
+        }
     });
 
-    document.addEventListener("htmx:historyRestore", function () {
+    document.addEventListener("htmx:historyRestore", function (event) {
         // The address bar is the final source of truth. Browser history entries
         // can carry a stale HTMX path when older snapshots were saved.
         const path = window.location.pathname + window.location.search;
         setActiveSectionFromUrl(path);
         const mainContent = document.getElementById("mainContent");
         if (mainContent) {
-            mainContent.removeAttribute("aria-busy");
-            delete mainContent.dataset.finloHistoryNavigationPending;
             cleanupDetachedChartInstances();
             reexecuteScripts(mainContent);
+            initializeRestoredDashboard(mainContent);
             window.dispatchEvent(new Event("resize"));
-
-            // Recover any shell snapshot written by an earlier app version.
-            // A full reload avoids replaying stale out-of-band shell fragments.
-            if (mainContent.querySelector("[data-finlo-navigation-shell]")) {
-                window.location.reload();
-                return;
-            }
         }
         restoreHistorySnapshots();
-        hideProgressBar();
+        // HTMX already requests a cache miss through its same-origin AJAX path.
+        // Validate after nested fragments settle; invalid stored snapshots get
+        // one bounded server fetch without triggering a full document reload.
+        scheduleHistoryValidation(path, Boolean(event.detail?.cacheMiss));
     });
 
     // --- Tab Visibility & Background Refresh Strategy ---
+    function isLeadResourceRoute(url) {
+        const parsed = new URL(url, window.location.href);
+        return /\/crm\/leads\//i.test(parsed.pathname) ||
+            /\/dashboard\//i.test(parsed.pathname) ||
+            parsed.searchParams.get("section") === "home";
+    }
+
+    async function checkLeadResourceRevision() {
+        if (document.visibilityState !== "visible" || navigator.onLine === false) return;
+        if (Date.now() < leadRevisionRetryAfter) return;
+        if (leadRevisionRequest) return leadRevisionRequest;
+
+        const requestedUrl = window.location.href;
+        leadRevisionRequest = (async () => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            try {
+                const response = await fetch("/crm/leads/cache-revision/", {
+                    credentials: "same-origin",
+                    cache: "no-store",
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    signal: controller.signal
+                });
+                if (response.status === 401) {
+                    stopDashboardInterval();
+                    FinloViewCache.clear();
+                    window.location.reload();
+                    return;
+                }
+                if (response.status === 403) {
+                    stopDashboardInterval();
+                    FinloViewCache.clear();
+                    if (/\/crm\/leads\//i.test(new URL(requestedUrl).pathname)) {
+                        window.location.reload();
+                    } else if (normalizeUrl(window.location.href) === normalizeUrl(requestedUrl)) {
+                        await revalidateView(requestedUrl, ++latestNavigationId);
+                    }
+                    return;
+                }
+                if (!response.ok) {
+                    leadRevisionFailures += 1;
+                    leadRevisionRetryAfter = Date.now() + Math.min(
+                        120000,
+                        30000 * (2 ** Math.min(leadRevisionFailures - 1, 2))
+                    );
+                    return;
+                }
+                if (normalizeUrl(window.location.href) !== normalizeUrl(requestedUrl)) return;
+                const payload = await response.json();
+                const revision = payload?.resources?.leads;
+                if (payload?.enabled === false) {
+                    stopDashboardInterval();
+                    return;
+                }
+                if (typeof revision !== "string") return;
+                leadRevisionFailures = 0;
+                leadRevisionRetryAfter = 0;
+
+                if (lastLeadRevision === null) {
+                    lastLeadRevision = revision;
+                    return;
+                }
+                if (revision !== lastLeadRevision) {
+                    lastLeadRevision = revision;
+                    await revalidateView(requestedUrl, ++latestNavigationId);
+                }
+            } catch (error) {
+                // A transient freshness-service error must not break navigation.
+                console.debug("Lead freshness check unavailable:", error.message);
+                leadRevisionFailures += 1;
+                leadRevisionRetryAfter = Date.now() + Math.min(
+                    120000,
+                    30000 * (2 ** Math.min(leadRevisionFailures - 1, 2))
+                );
+            } finally {
+                clearTimeout(timeoutId);
+                leadRevisionRequest = null;
+            }
+        })();
+        return leadRevisionRequest;
+    }
+
     function checkAndRevalidateActiveView() {
         const currentUrl = window.location.href;
         if (!isCacheableUrl(currentUrl)) return;
 
+        if (isLeadResourceRoute(currentUrl)) {
+            checkLeadResourceRevision();
+            return;
+        }
+
         const cached = FinloViewCache.get(currentUrl);
         if (cached) {
             const age = Date.now() - cached.timestamp;
-            if (age > cached.ttl) {
+            if (age > (cached.revalidateAfterMs ?? cached.ttl ?? 30000)) {
                 revalidateView(currentUrl, ++latestNavigationId);
             }
         }
@@ -1015,16 +1371,12 @@
         }
     });
 
-    // Dashboard periodic revalidation while tab is active
+    // One active-view freshness scheduler. Lead/Dashboard pages use the small
+    // revision endpoint; other eligible routes retain their existing SWR path.
     function startDashboardInterval() {
         stopDashboardInterval();
-        dashboardInterval = setInterval(() => {
-            if (document.visibilityState !== "visible") return;
-            const currentUrl = window.location.href;
-            if (/\/dashboard\//i.test(currentUrl) || /section=home/i.test(currentUrl)) {
-                checkAndRevalidateActiveView();
-            }
-        }, 45000); // 45 seconds
+        checkAndRevalidateActiveView();
+        dashboardInterval = setInterval(checkAndRevalidateActiveView, 30000);
     }
 
     function stopDashboardInterval() {
@@ -1035,6 +1387,8 @@
     }
 
     startDashboardInterval();
+    window.addEventListener("online", checkAndRevalidateActiveView);
+    window.addEventListener("focus", checkAndRevalidateActiveView);
 
     // --- Guaranteed Invalidation on Mutations ---
     function onMutationDetected() {

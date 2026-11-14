@@ -5,7 +5,10 @@ from urllib.parse import urlencode
 
 # Third-party imports (Django)
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 
+from finlo.contrib.core.authorization import get_company_scope
 from finlo.contrib.core.sales_authorization import has_effective_permission
 from finlo.contrib.core.utils import field_readonly_hidden_if
 from finlo.contrib.generics.mixins import RecentlyViewedMixin
@@ -39,6 +42,42 @@ from finlo.web import RedirectResponse
 # Local imports
 from finlo_crm.leads.filters import LeadFilter
 from finlo_crm.leads.models import Lead, LeadStatus
+from finlo_crm.leads.services import (
+    get_lead_cache_version,
+    get_lead_user_cache_version,
+)
+
+
+@require_GET
+def lead_cache_revision(request):
+    """Return a tiny, authorized freshness token for the active tenant's Leads."""
+    response_headers = {"Cache-Control": "private, no-store"}
+    user = request.user
+    if not user.is_authenticated:
+        return JsonResponse({"detail": "Authentication required."}, status=401, headers=response_headers)
+    if not (
+        has_effective_permission(user, "leads.view_lead")
+        or has_effective_permission(user, "leads.view_own_lead")
+    ):
+        return JsonResponse({"detail": "Permission denied."}, status=403, headers=response_headers)
+
+    scope = get_company_scope(user, request)
+    if scope.all_companies:
+        # A global view needs a composite of tenant revisions. Do not emit an
+        # incomplete token that would incorrectly mark an aggregate as fresh.
+        return JsonResponse({"enabled": False}, headers=response_headers)
+    if scope.company_id is None:
+        return JsonResponse({"detail": "Company scope unavailable."}, status=403, headers=response_headers)
+
+    global_revision = get_lead_cache_version("all")
+    company_revision = get_lead_cache_version(scope.company_id)
+    user_revision = get_lead_user_cache_version(user.pk)
+    if None in (global_revision, company_revision, user_revision):
+        return JsonResponse({"detail": "Freshness service unavailable."}, status=503, headers=response_headers)
+    return JsonResponse(
+        {"resources": {"leads": f"{global_revision}:{company_revision}:{user_revision}"}},
+        headers=response_headers,
+    )
 
 
 def _convert_action_hidden_if(_obj):

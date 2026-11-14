@@ -185,7 +185,7 @@
 
         <!-- Main Content Wrapper -->
         <div
-            class="{% if LANGUAGE_BIDI %}mr-[5rem]{% else %}ml-[5rem]{% endif %} h-screen"
+            class="finlo-app-shell h-screen"
             hx-history-elt
         >
             <!-- Header -->
@@ -201,9 +201,11 @@
         </div>
 
         <!-- Sidebar -->
-        <div id="sidebar">
-            {% include 'components/sidebar.html' %}
-        </div>
+        {% if render_unified_navigation %}
+            <div id="sidebar">
+                {% include 'components/sidebar.html' %}
+            </div>
+        {% endif %}
 
         <!-- Messages Reload Button -->
         <button

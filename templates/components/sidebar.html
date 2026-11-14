@@ -1,44 +1,120 @@
-<div id="mobileSidebarBackdrop" class="fixed inset-0 bg-black/50 z-35 hidden transition-opacity duration-300"></div>
-<div id="primarySidebar" class="fixed inset-y-0 {% if LANGUAGE_BIDI %}right-0 border-l border-l-primary-100{% else %}left-0 border-r border-r-primary-100{% endif %} w-[5rem] bg-white z-40">
-    <div class="p-4">
-        <div class="flex items-center justify-between gap-2 mb-8">
-            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary-600 text-white font-bold text-lg mx-auto select-none">F</span>
-            <button
-                type="button"
-                id="closeMobileSidebar"
-                class="mobile-close-btn text-dark-300 hover:text-dark-600 p-1 rounded-md"
-                title="{% trans 'Close menu' %}"
-                aria-label="{% trans 'Close menu' %}"
-            >
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-        </div>
+<div id="mobileSidebarBackdrop" class="finlo-sidebar-backdrop hidden" aria-hidden="true"></div>
 
-        <nav class="relative space-y-2">
+<aside
+    id="primarySidebar"
+    class="finlo-sidebar fixed inset-y-0 {% if LANGUAGE_BIDI %}right-0 border-l{% else %}left-0 border-r{% endif %} border-primary-100 bg-white z-40"
+    aria-label="{% trans 'Main navigation' %}"
+>
+    <div class="finlo-sidebar-brand">
+        <div class="finlo-brand-link" aria-label="{{ TITLE }}">
+            <img src="{% static LOGO_PATH %}" alt="{{ TITLE }}" class="finlo-brand-logo">
+        </div>
+        <button
+            type="button"
+            id="toggleSideMenu"
+            class="finlo-sidebar-collapse"
+            aria-controls="finloUnifiedNavigation"
+            aria-label="{% trans 'Collapse navigation' %}"
+            title="{% trans 'Collapse navigation' %}"
+        >
+            <i class="fa-solid fa-angles-left" aria-hidden="true"></i>
+        </button>
+        <button
+            type="button"
+            id="closeMobileSidebar"
+            class="mobile-close-btn"
+            title="{% trans 'Close menu' %}"
+            aria-label="{% trans 'Close menu' %}"
+        >
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+    </div>
+
+    <div id="finloUnifiedNavigation" class="finlo-sidebar-navigation" hx-swap-oob="true">
+        <nav id="subSidebar" class="finlo-sidebar-menu" aria-label="{% trans 'CRM modules' %}">
             {% for item in main_section_menu %}
                 {% has_section_perm_url request.user item.section as perm_url %}
                 {% if perm_url %}
-                    <a
-                        href="{{ item.url|default:perm_url }}?section={{ item.section }}"
-                        class="nav-link"
-                        id="{{ item.section }}"
-                        title="{{ item.name }}"
-                        aria-label="{{ item.name }}"
-                        data-tooltip-placement="{% if LANGUAGE_BIDI %}left{% else %}right{% endif %}"
-                        {% for attr, value in item.attrs.items %}
-                            {{ attr }}="{{ value }}"
-                        {% endfor %}
-                    >
-                        <span
-                            class="nav-link-icon w-5 h-5"
-                            style="--icon-url: url('{% static item.icon %}')"
-                        ></span>
-                        <span class="nav-link-label">{{ item.name }}</span>
-                    </a>
+                    {% with section_items=sub_section_menu|get_item:item.section %}
+                        <section class="finlo-nav-section" data-nav-section="{{ item.section }}">
+                            <div class="finlo-nav-section-heading">{{ item.name }}</div>
+                            <div class="finlo-nav-section-row">
+                                <a
+                                    href="{{ item.url|default:perm_url }}?section={{ item.section }}"
+                                    class="nav-link"
+                                    id="{{ item.section }}"
+                                    title="{{ item.name }}"
+                                    aria-label="{{ item.name }}"
+                                    data-tooltip-placement="{% if LANGUAGE_BIDI %}left{% else %}right{% endif %}"
+                                    {% for attr, value in item.attrs.items %}
+                                        {{ attr }}="{{ value }}"
+                                    {% endfor %}
+                                >
+                                    <span class="nav-link-icon" style="--icon-url: url('{% static item.icon %}')" aria-hidden="true"></span>
+                                    <span class="nav-link-label">{{ item.name }}</span>
+                                </a>
+                                {% if section_items %}
+                                    <button
+                                        type="button"
+                                        class="finlo-nav-group-toggle"
+                                        data-nav-group-toggle="{{ item.section }}"
+                                        aria-controls="nav-group-{{ item.section }}"
+                                        aria-expanded="{% if current_section == item.section %}true{% else %}false{% endif %}"
+                                        aria-label="{% blocktrans with section=item.name %}Toggle {{ section }} links{% endblocktrans %}"
+                                    >
+                                        <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+
+                            {% if section_items %}
+                                <ul
+                                    id="nav-group-{{ item.section }}"
+                                    class="finlo-nav-children{% if current_section != item.section %} hidden{% endif %}"
+                                    data-nav-group="{{ item.section }}"
+                                >
+                                    {% for child in section_items %}
+                                        <li>
+                                            <a
+                                                id="{{ child.id }}"
+                                                href="{{ child.url }}?section={{ item.section }}"
+                                                data-section="{{ item.section }}"
+                                                title="{{ child.label }}"
+                                                aria-label="{{ child.label }}"
+                                                {% if child.attrs %}
+                                                    {% for attr, value in child.attrs.items %}
+                                                        {{ attr }}="{{ value }}"
+                                                    {% endfor %}
+                                                {% else %}
+                                                    hx-boost="true"
+                                                    hx-target="#mainContent"
+                                                    hx-select="#mainContent"
+                                                    hx-swap="outerHTML"
+                                                    hx-push-url="true"
+                                                {% endif %}
+                                                class="sidebar-link"
+                                            >
+                                                {% if child.icon %}
+                                                    <span class="sidebar-link-icon" style="--icon-url: url('{% static child.icon %}')" aria-hidden="true"></span>
+                                                {% endif %}
+                                                <span class="nav-sub-link-label">{{ child.label }}</span>
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </section>
+                    {% endwith %}
                 {% endif %}
             {% endfor %}
         </nav>
     </div>
+
+    <footer class="finlo-sidebar-footer">
+        <span class="finlo-sidebar-product">{{ TITLE|default:'Finlo CRM' }}</span>
+        <span class="finlo-sidebar-version">v2</span>
+    </footer>
+
     {% if floating_menu %}
         <div class="floating-menu bg-primary-600">
             <input
@@ -47,11 +123,8 @@
                 title="{% trans 'Quick actions' %}"
                 aria-label="{% trans 'Quick actions' %}"
                 data-tooltip-placement="{% if LANGUAGE_BIDI %}left{% else %}right{% endif %}"
-                onkeydown="if (event.key === 'Enter') { this.checked = !this.checked; }"
             >
-            <span class="plus-icon bg-primary-600">
-                <span class="fa fa-plus" aria-hidden="true"></span>
-            </span>
+            <span class="plus-icon bg-primary-600"><span class="fa fa-plus" aria-hidden="true"></span></span>
             <ul class="floating-nav">
                 {% for menu in floating_menu %}
                     <li class="bg-primary-600">
@@ -59,13 +132,10 @@
                             type="button"
                             hx-get="{{ menu.url }}{% if request.GET.urlencode %}{% if '?' in menu.url %}&{% else %}?{% endif %}{{ request.GET.urlencode }}{% endif %}"
                             hx-trigger="click, keyup[key=='Enter']"
-                            {% for key, value in menu.items.items %}
-                                {{ key }}="{{ value }}"
-                            {% endfor %}
+                            {% for key, value in menu.items.items %}{{ key }}="{{ value }}"{% endfor %}
                             class="w-full h-full flex items-center justify-center rounded-full text-white cursor-pointer bg-transparent border-0 p-0"
                             title="{{ menu.title }}"
                             aria-label="{{ menu.title }}"
-                            data-tooltip-placement="{% if LANGUAGE_BIDI %}left{% else %}right{% endif %}"
                         >
                             <img src="{% static menu.icon %}" alt="" width="17" class="w-4 h-4 brightness-0 invert">
                         </button>
@@ -74,4 +144,4 @@
             </ul>
         </div>
     {% endif %}
-</div>
+</aside>

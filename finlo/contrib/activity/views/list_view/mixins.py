@@ -298,7 +298,7 @@ class ActivityTabListMixin:
                     "hx-swap": "outerHTML",
                     "hx-push-url": "true",
                     "hx-select": "#mainContent",
-                    "hx-select-oob": "#sideMenuContainer",
+                    "hx-select-oob": "#finloUnifiedNavigation",
                     "permission": "activity.view_activity",
                     "own_permission": "activity.view_own_activity",
                     "owner_field": ["owner", "assigned_to"],

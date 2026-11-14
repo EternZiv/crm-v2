@@ -91,5 +91,8 @@ whitenoise==6.11.0
 zope.interface==8.1.1
 user-agents
 psycopg2-binary==2.9.12
+psycopg==3.3.9
+psycopg-binary==3.3.9
+psycopg-pool==3.3.3
 django-storages
 boto3

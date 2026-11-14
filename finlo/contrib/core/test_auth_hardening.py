@@ -12,6 +12,8 @@ from finlo.contrib.core.auth_rate_limit import cache_key, count, increment
 from finlo.contrib.core.models.user import FinloUser
 from finlo.contrib.core.views.core import LoginUserView, LogoutView
 from finlo.contrib.core.views.forgot_password import _password_reset_link
+from finlo.contrib.core.management.commands.create_finlo_user import Command as CreateFinloUserCommand
+from django.core.management.base import CommandError
 
 
 class PasswordlessUserTests(SimpleTestCase):
@@ -45,6 +47,22 @@ class PasswordlessUserTests(SimpleTestCase):
 
         self.assertEqual(user.password, "existing-encoded-hash")
 
+    def test_user_creation_command_requires_policy_valid_password(self):
+        command = CreateFinloUserCommand()
+        base_options = {
+            "first_name": "Example",
+            "last_name": "User",
+            "username": "example",
+            "email": "example@example.test",
+            "phone": "03001234567",
+        }
+        with patch("finlo.contrib.core.management.commands.create_finlo_user.User.objects.filter") as query:
+            with self.assertRaises(CommandError):
+                command.handle(**base_options, password=None)
+            with self.assertRaises(CommandError):
+                command.handle(**base_options, password="12345678")
+        query.assert_not_called()
+
 
 class AuthenticationRateLimitTests(SimpleTestCase):
     def setUp(self):
@@ -58,6 +76,15 @@ class AuthenticationRateLimitTests(SimpleTestCase):
         self.assertEqual(increment(key, 60), 1)
         self.assertEqual(increment(key, 60), 2)
         self.assertEqual(count(key), 2)
+
+    def test_user_throttle_scope_is_separated_by_client_address(self):
+        first = cache_key(
+            "login-user-ip", "employee@example.test" + "\0" + "192.0.2.1"
+        )
+        second = cache_key(
+            "login-user-ip", "employee@example.test" + "\0" + "192.0.2.2"
+        )
+        self.assertNotEqual(first, second)
 
     def test_login_fails_closed_when_throttle_cache_is_unavailable(self):
         request = RequestFactory().post(
@@ -73,6 +100,59 @@ class AuthenticationRateLimitTests(SimpleTestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response["Cache-Control"], "no-store")
         authenticate.assert_not_called()
+
+    def test_throttled_login_is_rejected_before_password_authentication(self):
+        request = RequestFactory().post(
+            "/login/",
+            {"username": "employee", "password": "never-logged"},
+            REMOTE_ADDR="192.0.2.10",
+            HTTP_X_FORWARDED_FOR="198.51.100.77",
+        )
+        request.user = AnonymousUser()
+        with patch(
+            "finlo.contrib.core.views.core.auth_rate_count", side_effect=[20]
+        ), patch(
+            "finlo.contrib.core.views.core.auth_rate_key", wraps=cache_key
+        ) as rate_key_builder, patch(
+            "finlo.contrib.core.views.core.messages.error"
+        ), patch(
+            "finlo.contrib.core.views.core.authenticate"
+        ) as authenticate:
+            response = LoginUserView.as_view()(request)
+
+        self.assertEqual(response.status_code, 302)
+        authenticate.assert_not_called()
+        self.assertEqual(
+            rate_key_builder.call_args_list[0].args,
+            ("login-user-ip", "employee\0" + "192.0.2.10"),
+        )
+        self.assertEqual(
+            rate_key_builder.call_args_list[1].args,
+            ("login-ip", "192.0.2.10"),
+        )
+
+    def test_inactive_and_unknown_user_get_the_same_login_response(self):
+        responses = []
+        inactive_user = type("User", (), {"is_active": False})()
+        for result in (None, inactive_user):
+            request = RequestFactory().post(
+                "/login/",
+                {"username": "employee", "password": "not-logged"},
+                REMOTE_ADDR="192.0.2.11",
+                HTTP_X_FORWARDED_FOR="198.51.100.77",
+            )
+            request.user = AnonymousUser()
+            with patch(
+                "finlo.contrib.core.views.core.auth_rate_count", return_value=0
+            ), patch(
+                "finlo.contrib.core.views.core.increment_auth_rate", return_value=1
+            ), patch("finlo.contrib.core.views.core.messages.error"), patch(
+                "finlo.contrib.core.views.core.authenticate", return_value=result
+            ):
+                response = LoginUserView.as_view()(request)
+            responses.append((response.status_code, response["Location"]))
+
+        self.assertEqual(responses[0], responses[1])
 
 
 class LogoutMethodTests(SimpleTestCase):

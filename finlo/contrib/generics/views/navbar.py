@@ -141,11 +141,24 @@ class FinloNavView(TemplateView):
 
     def _get_pinned_view(self):
         """Load the user's pinned view once per request and reuse it."""
-        if hasattr(self, "_pinned_view_cache"):
-            return self._pinned_view_cache
-        self._pinned_view_cache = PinnedView.all_objects.filter(
-            user=self.request.user, model_name=self.model_name
-        ).first()
+        req = getattr(self, "request", None)
+        user = getattr(req, "user", None)
+        if not user or not user.is_authenticated:
+            self._pinned_view_cache = None
+            return None
+        model_name = getattr(self, "model_name", None)
+        if not model_name:
+            self._pinned_view_cache = None
+            return None
+        if not hasattr(req, "_pinned_view_request_cache"):
+            req._pinned_view_request_cache = {}
+        company_id = getattr(user, "company_id", None)
+        cache_key = (user.id, company_id, model_name)
+        if cache_key not in req._pinned_view_request_cache:
+            req._pinned_view_request_cache[cache_key] = PinnedView.all_objects.filter(
+                user=user, model_name=model_name
+            ).first()
+        self._pinned_view_cache = req._pinned_view_request_cache[cache_key]
         return self._pinned_view_cache
 
     @cached_property

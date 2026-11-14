@@ -188,6 +188,15 @@ def lead_kpi_cards(generator, model_info):
         date_to=getattr(generator, "date_to", None),
     )
     open_count = summary.get("open", 0)
+    converted_count = summary.get("converted", 0)
+    total_count = summary.get("total", 0)
+
+    if hasattr(generator, "_model_count_cache"):
+        generator._model_count_cache[(model_class, (("is_convert", False),))] = open_count
+        generator._model_count_cache[(model_class, (("is_convert", True),))] = converted_count
+        generator._model_count_cache[model_class] = total_count
+        generator._model_count_cache[(model_class, ())] = total_count
+
     section_info = get_section_info_for_model(model_class)
 
     return [

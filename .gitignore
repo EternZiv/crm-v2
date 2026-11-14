@@ -168,3 +168,5 @@ load_tests/reports/
 # Disposable performance experiments and linter caches
 /.pool-eval-deps/
 /.ruff_cache/
+scratch/
+

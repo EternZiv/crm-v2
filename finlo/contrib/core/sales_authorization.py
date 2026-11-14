@@ -114,7 +114,9 @@ def sales_role_permission_decision(user, permission):
     if action == "view":
         return True
     if action == "add":
-        return app_label in {"leads", "activity"}
+        return app_label == "activity" or (
+            app_label == "leads" and role_key != "BDO"
+        )
     if action == "change":
         return role_key in {"RSM", "SSM", "ASM", "BDO"}
     return False
@@ -371,6 +373,12 @@ def _record_matches_owner_filter(user, record):
 def get_sales_scope_user_ids(user):
     """Return scoped employee IDs, or ``None`` for non-sales roles."""
     role_key = _role_key(user)
+    cache_key = (user.pk, getattr(user, "company_id", None), role_key)
+
+    user_cache = getattr(user, "_sales_scope_user_ids_cache", None)
+    if user_cache is not None and cache_key in user_cache:
+        cached_scope = user_cache[cache_key]
+        return set(cached_scope) if cached_scope is not None else None
 
     from finlo.contrib.utils.middlewares import get_current_request
 
@@ -381,17 +389,22 @@ def get_sales_scope_user_ids(user):
         if cache is None:
             cache = {}
             request._sales_scope_user_ids_cache = cache
-        cache_key = (user.pk, getattr(user, "company_id", None), role_key)
         if cache_key in cache:
             cached_scope = cache[cache_key]
             return set(cached_scope) if cached_scope is not None else None
-    else:
-        cache_key = None
 
     def remember(scope):
         frozen = frozenset(scope) if scope is not None else None
         if cache is not None:
             cache[cache_key] = frozen
+        nonlocal user_cache
+        if user_cache is None:
+            user_cache = {}
+            try:
+                user._sales_scope_user_ids_cache = user_cache
+            except Exception:
+                pass
+        user_cache[cache_key] = frozen
         return scope
 
     if role_key not in SALES_ROLE_KEYS:

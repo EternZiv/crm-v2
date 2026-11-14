@@ -24,6 +24,8 @@ _thread_locals = threading.local()
 @receiver(post_save, sender=User)
 def create_contact_shortcuts(sender, instance, created, **kwargs):
     """Create default keyboard shortcuts for contacts when a user is created."""
+    if kwargs.get("raw", False) or not created:
+        return
     page = resolve_page_url("contacts:contacts_view")
     if not page:
         return

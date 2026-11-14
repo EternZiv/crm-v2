@@ -105,7 +105,7 @@ class ReportDetailView(ReportDetailDataMixin, RecentlyViewedMixin, DetailView):
                 "hx-target": "#mainContent",
                 "hx-swap": "outerHTML",
                 "hx-push-url": "true",
-                "hx-select-oob": "#sideMenuContainer",
+                "hx-select-oob": "#finloUnifiedNavigation",
                 "hx-select": "#mainContent",
                 "style": "cursor:pointer",
                 "class": "hover:text-primary-600",

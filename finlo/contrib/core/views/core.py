@@ -68,7 +68,7 @@ from .initialiaze_database import InitializeDatabaseConditionView
 logger = logging.getLogger(__name__)
 
 LOGIN_RATE_LIMIT_WINDOW = 900
-LOGIN_RATE_LIMIT_USER_MAX = 20
+LOGIN_RATE_LIMIT_USER_IP_MAX = 20
 LOGIN_RATE_LIMIT_IP_MAX = 60
 
 
@@ -275,10 +275,13 @@ class LoginUserView(View):
         # client-controlled X-Forwarded-For header unless a trusted proxy layer
         # has explicitly normalized it.
         ip = request.META.get("REMOTE_ADDR", "").strip()
-        user_rate_key = auth_rate_key("login-user", (identifier or "").strip().casefold())
+        normalized_identifier = (identifier or "").strip().casefold()
+        user_rate_key = auth_rate_key(
+            "login-user-ip", f"{normalized_identifier}\0{ip or 'unknown'}"
+        )
         ip_rate_key = auth_rate_key("login-ip", ip) if ip else None
         try:
-            throttled = auth_rate_count(user_rate_key) >= LOGIN_RATE_LIMIT_USER_MAX
+            throttled = auth_rate_count(user_rate_key) >= LOGIN_RATE_LIMIT_USER_IP_MAX
             if ip_rate_key:
                 throttled = throttled or (
                     auth_rate_count(ip_rate_key) >= LOGIN_RATE_LIMIT_IP_MAX
@@ -322,7 +325,7 @@ class LoginUserView(View):
                 response["Cache-Control"] = "no-store"
                 return response
 
-            if user_attempts in (1, LOGIN_RATE_LIMIT_USER_MAX) or ip_attempts in (
+            if user_attempts in (1, LOGIN_RATE_LIMIT_USER_IP_MAX) or ip_attempts in (
                 1,
                 LOGIN_RATE_LIMIT_IP_MAX,
             ):
@@ -332,7 +335,7 @@ class LoginUserView(View):
 
         # Clear failed attempt counters on successful login
         try:
-            clear_auth_rate(user_rate_key, ip_rate_key)
+            clear_auth_rate(user_rate_key)
             # Clear legacy counters created by the former per-IP lockout.
             cache.delete(f"login_attempts_{ip}")
             cache.delete(f"login_lockout_{ip}")

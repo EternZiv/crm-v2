@@ -19,6 +19,8 @@ from finlo_crm.accounts.models import Account
 @receiver(post_save, sender=User)
 def create_account_shortcuts(sender, instance, created, **kwargs):
     """Create default keyboard shortcuts for accounts when a user is created."""
+    if kwargs.get("raw", False) or not created:
+        return
     page = resolve_page_url("accounts:accounts_view")
     if not page:
         return

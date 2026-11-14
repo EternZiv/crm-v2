@@ -26,31 +26,41 @@ from finlo_crm.leads.models import Lead, LeadStatus
 logger = logging.getLogger(__name__)
 
 CACHE_TTL = 300  # 5 minutes bounded TTL for aggregated analytics
+REVISION_TTL = 86400 * 7  # bounded metadata retention; reinitialization is random
+
+
+def _get_or_create_revision(key):
+    """Read a shared revision, initializing it without a stale-value collision.
+
+    Revision metadata is deliberately non-expiring: it is one bounded key per
+    company (and per user for authorization scope). If Redis evicts or loses a
+    key, a fresh random revision prevents old result keys from becoming current
+    again. On cache failure, ``None`` disables shared result caching safely.
+    """
+    try:
+        version = cache.get(key)
+        if version is not None:
+            return version
+        candidate = uuid.uuid4().hex
+        if cache.add(key, candidate, timeout=REVISION_TTL):
+            return candidate
+        # Another worker initialized it between get and add.
+        return cache.get(key)
+    except Exception:
+        logger.warning("Lead cache revision unavailable; bypassing cache", exc_info=True)
+        return None
 
 
 def get_lead_cache_version(company_id=None, user_id=None):
-    """Return the company-wide data revision used by user-scoped cache entries.
-
-    Results remain keyed per user, since authorization scopes can differ. A
-    company-wide revision ensures mutations by one user invalidate every
-    user's derived aggregates without sharing their cached results.
-    """
+    """Return the tenant data revision while keeping results user-scoped."""
     v_key = f"finlo:leads:v:{company_id if company_id is not None else 'all'}"
-    version = cache.get(v_key)
-    if version is None:
-        cache.add(v_key, 1, timeout=86400 * 7)
-        version = cache.get(v_key, 1)
-    return version
+    return _get_or_create_revision(v_key)
 
 
 def get_lead_user_cache_version(user_id):
     """Return the per-user authorization-scope revision for cached aggregates."""
     key = f"finlo:leads:user:v:{user_id}"
-    version = cache.get(key)
-    if version is None:
-        cache.add(key, 1, timeout=86400 * 7)
-        version = cache.get(key, 1)
-    return version
+    return _get_or_create_revision(key)
 
 
 def bump_lead_cache_version(company_id=None, user_id=None):
@@ -62,7 +72,7 @@ def bump_lead_cache_version(company_id=None, user_id=None):
     """
     key = f"finlo:leads:v:{company_id if company_id is not None else 'all'}"
     try:
-        cache.set(key, uuid.uuid4().hex, timeout=86400 * 7)
+        cache.set(key, uuid.uuid4().hex, timeout=REVISION_TTL)
     except Exception:
         logger.exception("Could not invalidate lead analytics cache for company=%s", company_id)
     logger.debug("Lead cache version bumped for company=%s", company_id)
@@ -72,7 +82,7 @@ def bump_lead_user_cache_version(user_id):
     """Invalidate only one user's aggregates after an individual scope change."""
     try:
         cache.set(
-            f"finlo:leads:user:v:{user_id}", uuid.uuid4().hex, timeout=86400 * 7
+            f"finlo:leads:user:v:{user_id}", uuid.uuid4().hex, timeout=REVISION_TTL
         )
     except Exception:
         logger.exception("Could not invalidate lead analytics cache for user=%s", user_id)
@@ -80,6 +90,27 @@ def bump_lead_user_cache_version(user_id):
 
 class LeadDataService:
     """Centralized service for high-efficiency authorized lead aggregations."""
+
+    @classmethod
+    def _can_read_leads(cls, user):
+        """Check current effective Lead read access before any cache lookup.
+
+        The scoped queryset enforces company and ownership boundaries when an
+        aggregate is computed. A cache hit skips that queryset, so the current
+        effective permission must be checked independently on every call.
+        """
+        if not user or not getattr(user, "is_authenticated", False):
+            return False
+        if not getattr(user, "is_active", False):
+            return False
+        if getattr(user, "is_superuser", False):
+            return True
+
+        from finlo.contrib.core.sales_authorization import has_effective_permission
+
+        return has_effective_permission(user, "leads.view_lead") or (
+            has_effective_permission(user, "leads.view_own_lead")
+        )
 
     @classmethod
     def _get_base_queryset(cls, user, company=None, date_range=None, date_from=None, date_to=None):
@@ -99,9 +130,38 @@ class LeadDataService:
     @classmethod
     def _build_cache_key(cls, user, prefix, **kwargs):
         """Construct canonical, security-scoped cache key."""
-        company_id = getattr(getattr(user, "company", None), "pk", None)
-        version = get_lead_cache_version(company_id)
+        # A caller may query a switched/active company different from the
+        # user's home company. Keep both the revision and key tied to the
+        # actual data scope passed to the service.
+        company_id = kwargs.get("company_id")
+        if company_id is None:
+            role_key = getattr(getattr(user, "role", None), "system_key", None)
+            if getattr(user, "is_superuser", False) is True or role_key == "SUPER_ADMIN":
+                # An all-company query cannot safely be invalidated by a
+                # single tenant generation. Leave this rare path uncached.
+                return None
+            company_id = getattr(getattr(user, "company", None), "pk", None)
+        if company_id is None:
+            return None
+        # Include the global generation as well, so an explicitly global
+        # mutation (for example an authorized all-company bulk update) can
+        # invalidate every tenant key without enumerating tenant IDs.
+        global_revision = get_lead_cache_version("all")
+        company_revision = (
+            get_lead_cache_version(company_id) if company_id is not None else None
+        )
+        if global_revision is None or (
+            company_id is not None and company_revision is None
+        ):
+            return None
+        version = (
+            global_revision
+            if company_id is None
+            else f"{global_revision}:{company_revision}"
+        )
         user_version = get_lead_user_cache_version(user.pk)
+        if version is None or user_version is None:
+            return None
         raw = f"{prefix}:{sorted(kwargs.items())}"
         h = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
         return f"lead_svc:{user.pk}:{company_id if company_id is not None else 'none'}:{version}:{user_version}:{h}"
@@ -112,6 +172,9 @@ class LeadDataService:
         Compute total, open, and converted leads using a SINGLE aggregate query.
         Replaces 3 separate full count queries across dashboard and module headers.
         """
+        if not cls._can_read_leads(user):
+            return {"total": 0, "open": 0, "converted": 0}
+
         request = get_current_request()
         req_cache = getattr(request, "_lead_kpi_cache", None) if request else None
         cache_key = cls._build_cache_key(
@@ -123,10 +186,14 @@ class LeadDataService:
             dt=str(date_to),
         )
 
-        if req_cache and cache_key in req_cache:
+        if cache_key is not None and req_cache and cache_key in req_cache:
             return req_cache[cache_key]
 
-        cached = cache.get(cache_key)
+        try:
+            cached = cache.get(cache_key) if cache_key is not None else None
+        except Exception:
+            logger.warning("Lead KPI cache read failed; querying database", exc_info=True)
+            cached = None
         if cached is not None:
             if req_cache is not None:
                 req_cache[cache_key] = cached
@@ -146,8 +213,12 @@ class LeadDataService:
             "converted": res["converted"] or 0,
         }
 
-        cache.set(cache_key, kpi_data, timeout=CACHE_TTL)
-        if request is not None:
+        if cache_key is not None:
+            try:
+                cache.set(cache_key, kpi_data, timeout=CACHE_TTL)
+            except Exception:
+                logger.warning("Lead KPI cache write failed", exc_info=True)
+        if request is not None and cache_key is not None:
             if not hasattr(request, "_lead_kpi_cache"):
                 request._lead_kpi_cache = {}
             request._lead_kpi_cache[cache_key] = kpi_data
@@ -162,6 +233,9 @@ class LeadDataService:
         Aggregate lead counts grouped by pipeline stage.
         Shared between Dashboard (Leads by Stage chart) and Leads module (LeadChartView).
         """
+        if not cls._can_read_leads(user):
+            return []
+
         request = get_current_request()
         req_cache = getattr(request, "_lead_stage_cache", None) if request else None
         cache_key = cls._build_cache_key(
@@ -174,10 +248,14 @@ class LeadDataService:
             ic=is_convert,
         )
 
-        if req_cache and cache_key in req_cache:
+        if cache_key is not None and req_cache and cache_key in req_cache:
             return req_cache[cache_key]
 
-        cached = cache.get(cache_key)
+        try:
+            cached = cache.get(cache_key) if cache_key is not None else None
+        except Exception:
+            logger.warning("Lead stage cache read failed; querying database", exc_info=True)
+            cached = None
         if cached is not None:
             if req_cache is not None:
                 req_cache[cache_key] = cached
@@ -193,8 +271,12 @@ class LeadDataService:
             .order_by("-count")
         )
 
-        cache.set(cache_key, rows, timeout=CACHE_TTL)
-        if request is not None:
+        if cache_key is not None:
+            try:
+                cache.set(cache_key, rows, timeout=CACHE_TTL)
+            except Exception:
+                logger.warning("Lead stage cache write failed", exc_info=True)
+        if request is not None and cache_key is not None:
             if not hasattr(request, "_lead_stage_cache"):
                 request._lead_stage_cache = {}
             request._lead_stage_cache[cache_key] = rows
@@ -206,6 +288,9 @@ class LeadDataService:
         cls, user, company=None, date_range=None, date_from=None, date_to=None, is_convert=False
     ):
         """Aggregate lead counts grouped by lead source for dashboard charts."""
+        if not cls._can_read_leads(user):
+            return []
+
         request = get_current_request()
         req_cache = getattr(request, "_lead_source_cache", None) if request else None
         cache_key = cls._build_cache_key(
@@ -218,10 +303,14 @@ class LeadDataService:
             ic=is_convert,
         )
 
-        if req_cache and cache_key in req_cache:
+        if cache_key is not None and req_cache and cache_key in req_cache:
             return req_cache[cache_key]
 
-        cached = cache.get(cache_key)
+        try:
+            cached = cache.get(cache_key) if cache_key is not None else None
+        except Exception:
+            logger.warning("Lead source cache read failed; querying database", exc_info=True)
+            cached = None
         if cached is not None:
             if req_cache is not None:
                 req_cache[cache_key] = cached
@@ -237,8 +326,12 @@ class LeadDataService:
             .order_by("-count")
         )
 
-        cache.set(cache_key, rows, timeout=CACHE_TTL)
-        if request is not None:
+        if cache_key is not None:
+            try:
+                cache.set(cache_key, rows, timeout=CACHE_TTL)
+            except Exception:
+                logger.warning("Lead source cache write failed", exc_info=True)
+        if request is not None and cache_key is not None:
             if not hasattr(request, "_lead_source_cache"):
                 request._lead_source_cache = {}
             request._lead_source_cache[cache_key] = rows

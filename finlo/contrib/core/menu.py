@@ -310,4 +310,31 @@ class IntegrationsSettings:
     title = _("Integrations")
     icon = "/assets/icons/integration.svg"
     order = 4
-    items = []
+    items = [
+        {
+            "label": _("Connect MCP Server"),
+            "url": reverse_lazy("core:connect_mcp_settings"),
+            "hx-target": "#settings-content",
+            "hx-push-url": "true",
+            "hx-select": "#connect-mcp-settings-view",
+            "hx-select-oob": "#settings-sidebar",
+            "perm": "",
+        }
+    ]
+
+
+@my_settings_menu.register
+class ConnectMCPMySettings:
+    """Registers Connect MCP Server in the My Settings sidebar."""
+
+    title = _("Connect MCP Server")
+    url = reverse_lazy("core:connect_mcp_settings")
+    active_urls = "core:connect_mcp_settings"
+    order = 7
+    attrs = {
+        "hx-boost": "true",
+        "hx-target": "#my-settings-content",
+        "hx-push-url": "true",
+        "hx-select": "#connect-mcp-settings-view",
+        "hx-select-oob": "#my-settings-sidebar",
+    }

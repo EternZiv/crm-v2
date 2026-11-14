@@ -92,7 +92,7 @@ def sync_shortcut_keys_on_company_change(sender, instance, created, **kwargs):
     When a user's company changes, update all their shortcut keys to the new company
     so they remain visible regardless of which active company is selected.
     """
-    if created:
+    if kwargs.get("raw", False) or created:
         return
     ShortcutKey.all_objects.filter(user=instance).update(company=instance.company)
 
@@ -104,7 +104,7 @@ def create_all_default_shortcuts(sender, instance, created, **kwargs):
     using a single bulk insert.
     """
 
-    if not created:
+    if kwargs.get("raw", False) or not created:
         return
 
     predefined = list(DEFAULT_SHORTCUTS)

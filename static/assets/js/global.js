@@ -433,10 +433,13 @@ const SidebarManager = {
 
     setActiveNavLink($link, sectionId) {
         const $navLinks = $("nav a.nav-link");
-        $navLinks.removeClass('bg-primary-600 hover:bg-primary-800');
-        $link.addClass('bg-primary-600 hover:bg-primary-800');
+        $navLinks.removeClass("finlo-nav-active");
+        $navLinks.removeAttr("aria-current");
+        $link.addClass("finlo-nav-active");
+        $link.attr("aria-current", "page");
         localStorage.setItem("activeNavLinkId", sectionId);
         localStorage.setItem("currentActiveSection", sectionId);
+        setNavGroupExpanded(sectionId, true);
 
         if (sectionId === "home") {
             localStorage.setItem("sidebarClicked", "false");
@@ -446,8 +449,11 @@ const SidebarManager = {
     },
 
     setActiveSubsectionLink($link, sectionId) {
-        $("ul a.sidebar-link").removeClass("bg-primary-600 text-white");
-        $link.addClass("bg-primary-600 text-white");
+        $("ul a.sidebar-link").removeClass("finlo-nav-active");
+        $("ul a.sidebar-link").removeAttr("aria-current");
+        $link.addClass("finlo-nav-active");
+        $link.attr("aria-current", "page");
+        setNavGroupExpanded(sectionId, true);
 
         const linkId = $link.attr("id");
         if (linkId && sectionId) {
@@ -516,6 +522,16 @@ const SidebarManager = {
     }
 };
 
+function setNavGroupExpanded(sectionId, expanded) {
+    if (!sectionId) return;
+    const button = document.querySelector(`[data-nav-group-toggle="${CSS.escape(sectionId)}"]`);
+    const group = document.querySelector(`[data-nav-group="${CSS.escape(sectionId)}"]`);
+    if (!button || !group) return;
+    button.setAttribute("aria-expanded", expanded ? "true" : "false");
+    group.classList.toggle("hidden", !expanded);
+    localStorage.setItem(`finloNavGroupExpanded_${sectionId}`, expanded ? "true" : "false");
+}
+
 let pendingSectionNavigation = null;
 let latestSectionNavigationId = 0;
 const sectionNavigationRequests = new WeakMap();
@@ -530,13 +546,10 @@ window.addEventListener("finlo:cachedNavigation", function () {
 
 // Sidebar collapse/expand
 let initializedSidebarMainContent = null;
-let initialSidebarTransitionSuppressed = false;
 let collapseSidebarAfterMobileNavigation = null;
 
 function syncSidebarSpace() {
     const mainContent = document.getElementById("mainContent");
-    const sideMenu = document.getElementById("sideMenu");
-    const sideMenuContainer = document.getElementById("sideMenuContainer");
     if (!mainContent) return;
 
     const STORAGE_KEY = "sidebarCollapsed";
@@ -547,57 +560,18 @@ function syncSidebarSpace() {
     } else {
         isCollapsed = false;
     }
-    const isSubMenuMissing = !sideMenu || !sideMenuContainer || sideMenuContainer.classList.contains("hidden");
-    if (isSubMenuMissing) {
-        isCollapsed = true;
-    }
-
-    const isRtl = document.documentElement.dir === "rtl";
-    const inlineStartProp = isRtl ? "right" : "left";
-    const arrowIcon = document.getElementById("arrowIcon");
-    const toggleBtn = document.getElementById("toggleSideMenu");
-    const kanbanView = document.getElementById("kanbanview");
-    const subSidebarMarginClass = isRtl ? "mr-[230px]" : "ml-[230px]";
-
     if (isCollapsed) {
-        mainContent.classList.remove("leftspace");
-        mainContent.style.paddingInlineStart = "0px";
         document.documentElement.setAttribute("data-sidebar-collapsed", "true");
-        if (sideMenu) {
-            sideMenu.classList.add("w-0");
-            sideMenu.classList.remove("w-[230px]");
-        }
-        if (arrowIcon) {
-            arrowIcon.classList.add("scale-x-[-1]");
-        }
-        if (toggleBtn) {
-            toggleBtn.style.left = "";
-            toggleBtn.style.right = "";
-            toggleBtn.style[inlineStartProp] = "calc(5rem - 10px)";
-        }
-        if (kanbanView) {
-            kanbanView.classList.add("w-full");
-            kanbanView.classList.remove(subSidebarMarginClass);
-        }
     } else {
-        mainContent.classList.add("leftspace");
-        mainContent.style.paddingInlineStart = "";
         document.documentElement.removeAttribute("data-sidebar-collapsed");
-        if (sideMenu) {
-            sideMenu.classList.remove("w-0");
-            sideMenu.classList.add("w-[230px]");
-        }
-        if (arrowIcon) {
-            arrowIcon.classList.remove("scale-x-[-1]");
-        }
-        if (toggleBtn) {
-            toggleBtn.style.left = "";
-            toggleBtn.style.right = "";
-            toggleBtn.style[inlineStartProp] = "calc(5rem + 230px - 10px)";
-        }
-        if (kanbanView) {
-            kanbanView.classList.remove("w-full");
-        }
+    }
+    mainContent.classList.remove("leftspace");
+    mainContent.style.removeProperty("padding-inline-start");
+    const toggleBtn = document.getElementById("toggleSideMenu");
+    if (toggleBtn) {
+        toggleBtn.setAttribute("aria-label", isCollapsed ? "Expand navigation" : "Collapse navigation");
+        toggleBtn.setAttribute("title", isCollapsed ? "Expand navigation" : "Collapse navigation");
+        toggleBtn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
     }
 }
 window.syncSidebarSpace = syncSidebarSpace;
@@ -610,7 +584,13 @@ function openMobileSidebar() {
     document.documentElement.classList.add("finlo-mobile-navigation-open");
     const primarySidebar = document.getElementById("primarySidebar");
     const backdrop = document.getElementById("mobileSidebarBackdrop");
-    if (primarySidebar) primarySidebar.classList.add("mobile-open");
+    const menuToggle = document.getElementById("mobileMenuToggle");
+    if (primarySidebar) {
+        primarySidebar.classList.add("mobile-open");
+        primarySidebar.inert = false;
+        primarySidebar.setAttribute("aria-hidden", "false");
+    }
+    if (menuToggle) menuToggle.setAttribute("aria-expanded", "true");
     if (backdrop) backdrop.classList.remove("hidden");
 }
 
@@ -619,7 +599,15 @@ function closeMobileSidebar() {
     document.documentElement.classList.remove("finlo-mobile-navigation-open");
     const primarySidebar = document.getElementById("primarySidebar");
     const backdrop = document.getElementById("mobileSidebarBackdrop");
-    if (primarySidebar) primarySidebar.classList.remove("mobile-open");
+    const menuToggle = document.getElementById("mobileMenuToggle");
+    if (primarySidebar) {
+        primarySidebar.classList.remove("mobile-open");
+        if (window.innerWidth < 1024) {
+            primarySidebar.inert = true;
+            primarySidebar.setAttribute("aria-hidden", "true");
+        }
+    }
+    if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
     if (backdrop) backdrop.classList.add("hidden");
 }
 
@@ -629,14 +617,24 @@ function handleGlobalSidebarResize() {
 }
 
 function initSidebar() {
-    const sideMenu = document.getElementById("sideMenu");
-    const toggleBtn = document.getElementById("toggleSideMenu");
-    const mainContent = document.getElementById("mainContent");
-
     syncSidebarSpace();
+    document.querySelectorAll("[data-nav-group-toggle]").forEach((button) => {
+        const sectionId = button.dataset.navGroupToggle;
+        const activeSection = SidebarManager.getActiveSection();
+        const remembered = localStorage.getItem(`finloNavGroupExpanded_${sectionId}`) === "true";
+        setNavGroupExpanded(sectionId, sectionId === activeSection || remembered);
+    });
 
     if (!sidebarDelegationBound) {
         document.addEventListener("click", function (e) {
+            const groupToggle = e.target && e.target.closest ? e.target.closest("[data-nav-group-toggle]") : null;
+            if (groupToggle) {
+                e.preventDefault();
+                const sectionId = groupToggle.dataset.navGroupToggle;
+                const currentlyExpanded = groupToggle.getAttribute("aria-expanded") === "true";
+                setNavGroupExpanded(sectionId, !currentlyExpanded);
+                return;
+            }
             const btn = e.target && e.target.closest ? e.target.closest("#toggleSideMenu") : null;
             if (!btn) return;
             e.preventDefault();
@@ -646,21 +644,17 @@ function initSidebar() {
             localStorage.setItem("sidebarCollapsed", nextState ? "true" : "false");
             syncSidebarSpace();
         });
+        document.addEventListener("keydown", function (e) {
+            const input = e.target;
+            if (e.key === "Enter" && input instanceof HTMLInputElement && input.matches('input[name="floating-menu"]')) {
+                e.preventDefault();
+                input.click();
+            }
+        });
         window.addEventListener("resize", handleGlobalSidebarResize);
         sidebarDelegationBound = true;
     }
 
-    if (!sideMenu || !toggleBtn || !mainContent) {
-        return;
-    }
-
-    if (!initialSidebarTransitionSuppressed) {
-        sideMenu.style.transition = "none";
-        requestAnimationFrame(() => {
-            sideMenu.style.transition = "";
-        });
-        initialSidebarTransitionSuppressed = true;
-    }
 }
 window.initSidebar = initSidebar;
 
@@ -682,6 +676,9 @@ function initMobileSidebar() {
                 closeMobileSidebar();
                 return;
             }
+            if (target.closest("#primarySidebar a[href]") && window.innerWidth < 1024) {
+                closeMobileSidebar();
+            }
         });
 
         document.addEventListener("keydown", function (e) {
@@ -698,8 +695,15 @@ function initMobileSidebar() {
 
     const primarySidebar = document.getElementById("primarySidebar");
     const backdrop = document.getElementById("mobileSidebarBackdrop");
-    const isOpen = window.innerWidth < 768 && localStorage.getItem("finloMobileSidebarClosed") !== "true";
-    if (primarySidebar) primarySidebar.classList.toggle("mobile-open", isOpen);
+    const isOpen = window.innerWidth < 1024 && localStorage.getItem("finloMobileSidebarClosed") === "false";
+    const isMobile = window.innerWidth < 1024;
+    const menuToggle = document.getElementById("mobileMenuToggle");
+    if (primarySidebar) {
+        primarySidebar.classList.toggle("mobile-open", isOpen);
+        primarySidebar.inert = isMobile && !isOpen;
+        primarySidebar.setAttribute("aria-hidden", isMobile && !isOpen ? "true" : "false");
+    }
+    if (menuToggle) menuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
     if (backdrop) backdrop.classList.toggle("hidden", !isOpen);
     document.documentElement.classList.toggle("finlo-mobile-navigation-open", isOpen);
 }

@@ -2,6 +2,7 @@
 
 # Local imports
 from finlo_crm.leads.views.core import (
+    lead_cache_revision,
     LeadView,
     LeadNavbar,
     LeadListView,

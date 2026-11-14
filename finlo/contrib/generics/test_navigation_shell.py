@@ -18,6 +18,9 @@ class ImmediateNavigationShellTests(SimpleTestCase):
         cls.global_script = (root / "static/assets/js/global.js").read_text(
             encoding="utf-8"
         )
+        cls.sidebar_css = (root / "static/assets/css/style.css").read_text(
+            encoding="utf-8"
+        )
         cls.index_template = (root / "templates/index.html").read_text(
             encoding="utf-8"
         )
@@ -60,9 +63,21 @@ class ImmediateNavigationShellTests(SimpleTestCase):
     def test_transient_shells_are_not_saved_as_htmx_history_pages(self):
         self.assertIn('historyElement.setAttribute("hx-history", "false")', self.navigation_script)
         self.assertIn("restoreHistorySnapshots()", self.navigation_script)
-        self.assertIn('mainContent.querySelector("[data-finlo-navigation-shell]")', self.navigation_script)
+        self.assertIn('mainContent.querySelector(".finlo-skeleton")', self.navigation_script)
         self.assertIn("const path = window.location.pathname + window.location.search", self.navigation_script)
-        self.assertIn("window.location.reload()", self.navigation_script)
+        self.assertIn("restoreInvalidHistorySnapshot(key)", self.navigation_script)
+        self.assertIn("scheduleHistoryValidation(path, Boolean(event.detail?.cacheMiss))", self.navigation_script)
+        history_restore = self.navigation_script.split(
+            'document.addEventListener("htmx:historyRestore"', maxsplit=1
+        )[1].split("// --- Tab Visibility", maxsplit=1)[0]
+        self.assertNotIn("window.location.reload()", history_restore)
+
+    def test_history_restore_reinitializes_charts_and_clears_protected_cache_on_auth_failure(self):
+        self.assertIn("function initializeRestoredDashboard(mainContent)", self.navigation_script)
+        self.assertIn("initializeRestoredDashboard(mainContent);", self.navigation_script)
+        self.assertIn("if (response.status === 401", self.navigation_script)
+        self.assertIn("if (response.status === 403)", self.navigation_script)
+        self.assertIn("clearProtectedHistoryCaches();", self.navigation_script)
 
     def test_history_cache_miss_shows_destination_shell_and_clears_on_failure(self):
         self.assertIn('addEventListener("htmx:historyCacheMiss"', self.navigation_script)
@@ -86,4 +101,16 @@ class ImmediateNavigationShellTests(SimpleTestCase):
             self.assertEqual(len(global_script_tags), 1)
             self.assertIn('id="finlo-global-js"', global_script_tags[0])
             self.assertIn("hx-preserve", global_script_tags[0])
+
+    def test_unified_sidebar_arrows_toggle_group_visibility(self):
+        self.assertIn('closest("[data-nav-group-toggle]")', self.global_script)
+        self.assertIn(
+            "setNavGroupExpanded(sectionId, !currentlyExpanded);",
+            self.global_script,
+        )
+        self.assertIn('group.classList.toggle("hidden", !expanded)', self.global_script)
+        self.assertIn(
+            ".finlo-nav-children.hidden {\n  display: none !important;",
+            self.sidebar_css,
+        )
 

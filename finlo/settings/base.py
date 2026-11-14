@@ -369,21 +369,43 @@ if not _ISOLATED_SECURITY_TEST_SETTINGS and any(
         "Finlo CRM requires PostgreSQL. Configure DATABASE_URL for Supabase."
     )
 
-# Connection persistence for better performance
-DATABASES["default"]["CONN_MAX_AGE"] = env.int(
-    "DB_CONN_MAX_AGE", default=0 if (IS_VERCEL or not IS_PRODUCTION) else 60
-)
-DATABASES["default"]["CONN_HEALTH_CHECKS"] = env.bool(
-    "DB_CONN_HEALTH_CHECKS", default=True
-)
-DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = env.bool(
-    "DISABLE_SERVER_SIDE_CURSORS", default=True
-)
+# Connection persistence & connection pooling
+ENABLE_DB_POOL = env.bool("ENABLE_DB_POOL", default=True)
 
-if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
-    DATABASES["default"].setdefault("OPTIONS", {})["sslmode"] = "require"
-elif IS_VERCEL:
-    raise ImproperlyConfigured("Vercel deployments must use PostgreSQL.")
+if ENABLE_DB_POOL and DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
+    # Django 6 connection pooling requires CONN_MAX_AGE == 0
+    DATABASES["default"]["CONN_MAX_AGE"] = 0
+    DATABASES["default"]["CONN_HEALTH_CHECKS"] = env.bool(
+        "DB_CONN_HEALTH_CHECKS", default=True
+    )
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = env.bool(
+        "DISABLE_SERVER_SIDE_CURSORS", default=True
+    )
+    default_options = DATABASES["default"].setdefault("OPTIONS", {})
+    default_options["sslmode"] = "require"
+    # prepare_threshold = None disables server-side prepared statements (mandatory for Supabase PgBouncer transaction mode)
+    default_options["prepare_threshold"] = None
+    default_options["pool"] = {
+        "min_size": env.int("DB_POOL_MIN_SIZE", default=1),
+        "max_size": env.int("DB_POOL_MAX_SIZE", default=4),
+        "timeout": env.float("DB_POOL_TIMEOUT", default=10.0),
+        "max_idle": env.float("DB_POOL_MAX_IDLE", default=300.0),
+    }
+else:
+    # Fallback / unpooled configuration (instant rollback via ENABLE_DB_POOL=False)
+    DATABASES["default"]["CONN_MAX_AGE"] = env.int(
+        "DB_CONN_MAX_AGE", default=0 if (IS_VERCEL or not IS_PRODUCTION) else 60
+    )
+    DATABASES["default"]["CONN_HEALTH_CHECKS"] = env.bool(
+        "DB_CONN_HEALTH_CHECKS", default=True
+    )
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = env.bool(
+        "DISABLE_SERVER_SIDE_CURSORS", default=True
+    )
+    if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
+        DATABASES["default"].setdefault("OPTIONS", {})["sslmode"] = "require"
+    elif IS_VERCEL:
+        raise ImproperlyConfigured("Vercel deployments must use PostgreSQL.")
 
 # -----------------------------------------------------------------------------
 # Cache Configuration (24-Hour Default Expiration)

@@ -13,6 +13,7 @@ app_name = "leads"
 
 urlpatterns = [
     path("", RedirectView.as_view(url="leads-view/?section=sales", permanent=False)),
+    path("cache-revision/", views.lead_cache_revision, name="cache_revision"),
     path("leads-view/", views.LeadView.as_view(), name="leads_view"),
     path("leads-nav/", views.LeadNavbar.as_view(), name="leads_nav"),
     path("leads-list/", views.LeadListView.as_view(), name="leads_list"),

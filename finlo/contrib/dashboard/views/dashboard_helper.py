@@ -504,7 +504,7 @@ def get_table_data(component, request):
                 "hx-swap": "outerHTML",
                 "hx-push-url": "true",
                 "hx-select": "#mainContent",
-                "hx-select-oob": "#sideMenuContainer",
+                "hx-select-oob": "#finloUnifiedNavigation",
                 "class": "hover:text-primary-600",
                 "style": "cursor:pointer;",
             }

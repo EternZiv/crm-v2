@@ -18,9 +18,9 @@ Shared constants:
         Use this on every sub-section menu item that navigates inside the app
         shell so behavior stays consistent across modules.
     MAIN_SECTION_HX_ATTRS - Same as MAIN_CONTENT_HX_ATTRS, plus
-        `hx-select-oob` for `#sideMenuContainer`. Top-level sidebar links
-        (Home, Sales, People, ...) switch sections, so the sub-sidebar
-        rendered inside `#sideMenuContainer` must be replaced too - relying
+        `hx-select-oob` for `#finloUnifiedNavigation`. Top-level sidebar links
+        switch sections, so the permission-filtered unified navigation is
+        refreshed too - relying
         on the response's own `hx-swap-oob` tag is not enough because the
         target page (e.g. Home) may not render that element at all. Use this
         on every main-section menu item.
@@ -36,5 +36,5 @@ MAIN_CONTENT_HX_ATTRS = {
 
 MAIN_SECTION_HX_ATTRS = {
     **MAIN_CONTENT_HX_ATTRS,
-    "hx-select-oob": "#sideMenuContainer",
+    "hx-select-oob": "#finloUnifiedNavigation",
 }
