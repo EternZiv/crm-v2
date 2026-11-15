@@ -130,6 +130,8 @@ class FinloView(TemplateView):
 
     def dispatch(self, request, *args, **kwargs):
         """Validate URL configuration before handling request."""
+        if request.headers.get("HX-Request") == "true":
+            request._skip_header_context = True
         self._validate_required_urls()
         return super().dispatch(request, *args, **kwargs)
 

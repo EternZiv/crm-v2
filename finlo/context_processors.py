@@ -223,25 +223,29 @@ def menu_context_processor(request):
 def currency_context(request):
     """
     Add currency information to all templates automatically
-    This makes user_currency and default_currency available in ALL templates
+    This makes user_currency and default_currency available in ALL templates lazily.
     """
     if not request.user.is_authenticated:
         return {}
 
-    from finlo.contrib.core.models import MultipleCurrency
+    def _get_default_currency():
+        if not hasattr(request, "_cached_default_currency"):
+            from finlo.contrib.core.models import MultipleCurrency
 
-    company = getattr(request.user, "company", None)
-    if not hasattr(request, "_cached_default_currency"):
-        request._cached_default_currency = (
-            MultipleCurrency.get_default_currency(company) if company else None
-        )
-    default_currency = request._cached_default_currency
+            company = getattr(request.user, "company", None)
+            request._cached_default_currency = (
+                MultipleCurrency.get_default_currency(company) if company else None
+            )
+        return request._cached_default_currency
 
-    user_currency = getattr(request.user, "currency", None) or default_currency
+    def _get_user_currency():
+        default_curr = _get_default_currency()
+        user_curr = getattr(request.user, "currency", None)
+        return user_curr or default_curr
 
     return {
-        "user_currency": user_currency,
-        "default_currency": default_currency,
+        "user_currency": SimpleLazyObject(_get_user_currency),
+        "default_currency": SimpleLazyObject(_get_default_currency),
     }
 
 

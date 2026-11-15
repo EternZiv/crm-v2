@@ -1147,9 +1147,15 @@ class FinloListView(FinloListViewMixin, ListView):
         from finlo.contrib.core.views.export_data import get_export_queryset
 
         qs = self.object_list
-        context["selected_ids"] = list(qs.values_list("id", flat=True))
-        context["total_records_count"] = len(context["selected_ids"])
-        context["selected_ids_json"] = json.dumps(context["selected_ids"])
+        paginator = context.get("paginator")
+        if paginator is not None and getattr(paginator, "count", None) == 0:
+            context["selected_ids"] = []
+            context["total_records_count"] = 0
+            context["selected_ids_json"] = "[]"
+        else:
+            context["selected_ids"] = list(qs.values_list("id", flat=True))
+            context["total_records_count"] = len(context["selected_ids"])
+            context["selected_ids_json"] = json.dumps(context["selected_ids"])
 
         editable_bulk_field_names = get_editable_fields(
             self.request.user, self.model, self.bulk_update_fields

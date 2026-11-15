@@ -1,4 +1,4 @@
-{% extends "index.html" %}
+{% extends request.headers.HX_Request|yesno:"components/htmx_layout.html,index.html" %}
 {% block content %}
     <div class="modelcontent">
         <div class="relative h-full" id="sideMenuContainer"></div>

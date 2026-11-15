@@ -1,76 +1,82 @@
+{% load i18n static finlo_tags %}
+
 <div id="mobileSidebarBackdrop" class="finlo-sidebar-backdrop hidden" aria-hidden="true"></div>
 
 <aside
     id="primarySidebar"
-    class="finlo-sidebar fixed inset-y-0 {% if LANGUAGE_BIDI %}right-0 border-l{% else %}left-0 border-r{% endif %} border-primary-100 bg-white z-40"
+    class="finlo-sidebar fixed inset-y-0 {% if LANGUAGE_BIDI %}right-0 border-l{% else %}left-0 border-r{% endif %} border-gray-200 bg-white z-40 flex flex-col"
     aria-label="{% trans 'Main navigation' %}"
 >
-    <div class="finlo-sidebar-brand">
-        <div class="finlo-brand-link" aria-label="{{ TITLE }}">
-            <img src="{% static LOGO_PATH %}" alt="{{ TITLE }}" class="finlo-brand-logo">
-        </div>
+    <!-- Top Branding & Sidebar Toggle -->
+    <div class="finlo-sidebar-brand flex items-center justify-between px-4 py-3 border-b border-gray-200 min-h-[60px] bg-white">
+        <a href="/dashboard/?section=home" class="finlo-brand-link flex items-center gap-2.5 overflow-hidden no-underline text-gray-900" aria-label="FINLONEXA">
+            <img src="{% static LOGO_PATH %}" alt="FINLONEXA" class="finlo-brand-logo h-7 w-auto object-contain">
+            <span class="finlo-brand-title font-bold text-base tracking-wide text-gray-900 whitespace-nowrap">FINLONEXA</span>
+        </a>
         <button
             type="button"
             id="toggleSideMenu"
-            class="finlo-sidebar-collapse"
+            class="finlo-sidebar-collapse inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 border border-gray-200 transition focus:outline-none"
             aria-controls="finloUnifiedNavigation"
             aria-label="{% trans 'Collapse navigation' %}"
             title="{% trans 'Collapse navigation' %}"
         >
-            <i class="fa-solid fa-angles-left" aria-hidden="true"></i>
+            <i class="fa-solid fa-angles-left text-xs transition-transform duration-200" aria-hidden="true"></i>
         </button>
         <button
             type="button"
             id="closeMobileSidebar"
-            class="mobile-close-btn"
+            class="mobile-close-btn hidden items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition focus:outline-none"
             title="{% trans 'Close menu' %}"
             aria-label="{% trans 'Close menu' %}"
         >
-            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            <i class="fa-solid fa-xmark text-sm" aria-hidden="true"></i>
         </button>
     </div>
 
-    <div id="finloUnifiedNavigation" class="finlo-sidebar-navigation" hx-swap-oob="true">
-        <nav id="subSidebar" class="finlo-sidebar-menu" aria-label="{% trans 'CRM modules' %}">
+    <!-- Navigation Scroll Container -->
+    <div id="finloUnifiedNavigation" class="finlo-sidebar-navigation flex-1 overflow-y-auto custom-scroll py-3 px-3" hx-swap-oob="true">
+        <nav id="subSidebar" class="finlo-sidebar-menu flex flex-col gap-1" aria-label="{% trans 'CRM modules' %}">
+            
             {% for item in main_section_menu %}
                 {% has_section_perm_url request.user item.section as perm_url %}
                 {% if perm_url %}
                     {% with section_items=sub_section_menu|get_item:item.section %}
-                        <section class="finlo-nav-section" data-nav-section="{{ item.section }}">
-                            <div class="finlo-nav-section-heading">{{ item.name }}</div>
-                            <div class="finlo-nav-section-row">
-                                <a
-                                    href="{{ item.url|default:perm_url }}?section={{ item.section }}"
-                                    class="nav-link"
-                                    id="{{ item.section }}"
+                        
+                        {# Group Category Headings #}
+                        {% if item.section == "home" %}
+                            <div class="finlo-nav-section-heading">{% trans "Main" %}</div>
+                        {% elif item.section == "sales" %}
+                            <div class="finlo-nav-section-heading">{% trans "CRM & Sales" %}</div>
+                        {% elif item.section == "analytics" %}
+                            <div class="finlo-nav-section-heading">{% trans "Analytics" %}</div>
+                        {% elif item.section == "schedule" %}
+                            <div class="finlo-nav-section-heading">{% trans "Workspace" %}</div>
+                        {% endif %}
+
+                        <div class="finlo-nav-section" data-nav-section="{{ item.section }}">
+                            {% if section_items %}
+                                {# Accordion Group Header #}
+                                <button
+                                    type="button"
+                                    class="finlo-nav-group-row w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition font-medium text-sm group focus:outline-none"
+                                    data-nav-group-toggle="{{ item.section }}"
+                                    aria-controls="nav-group-{{ item.section }}"
+                                    aria-expanded="{% if current_section == item.section %}true{% else %}false{% endif %}"
                                     title="{{ item.name }}"
                                     aria-label="{{ item.name }}"
-                                    data-tooltip-placement="{% if LANGUAGE_BIDI %}left{% else %}right{% endif %}"
-                                    {% for attr, value in item.attrs.items %}
-                                        {{ attr }}="{{ value }}"
-                                    {% endfor %}
                                 >
-                                    <span class="nav-link-icon" style="--icon-url: url('{% static item.icon %}')" aria-hidden="true"></span>
-                                    <span class="nav-link-label">{{ item.name }}</span>
-                                </a>
-                                {% if section_items %}
-                                    <button
-                                        type="button"
-                                        class="finlo-nav-group-toggle"
-                                        data-nav-group-toggle="{{ item.section }}"
-                                        aria-controls="nav-group-{{ item.section }}"
-                                        aria-expanded="{% if current_section == item.section %}true{% else %}false{% endif %}"
-                                        aria-label="{% blocktrans with section=item.name %}Toggle {{ section }} links{% endblocktrans %}"
-                                    >
-                                        <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
-                                    </button>
-                                {% endif %}
-                            </div>
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <span class="nav-link-icon w-4 h-4 flex-shrink-0 text-gray-500 group-hover:text-gray-900 transition" style="--icon-url: url('{% static item.icon %}')" aria-hidden="true"></span>
+                                        <span class="nav-link-label truncate text-sm font-medium">{{ item.name }}</span>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-down text-[10px] text-gray-400 group-hover:text-gray-600 transition-transform duration-200" aria-hidden="true"></i>
+                                </button>
 
-                            {% if section_items %}
+                                {# Accordion Children #}
                                 <ul
                                     id="nav-group-{{ item.section }}"
-                                    class="finlo-nav-children{% if current_section != item.section %} hidden{% endif %}"
+                                    class="finlo-nav-children mt-1 mb-1 pl-4 flex flex-col gap-0.5 border-l border-gray-200 ml-4{% if current_section != item.section %} hidden{% endif %}"
                                     data-nav-group="{{ item.section }}"
                                 >
                                     {% for child in section_items %}
@@ -92,31 +98,73 @@
                                                     hx-swap="outerHTML"
                                                     hx-push-url="true"
                                                 {% endif %}
-                                                class="sidebar-link"
+                                                class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition"
                                             >
                                                 {% if child.icon %}
-                                                    <span class="sidebar-link-icon" style="--icon-url: url('{% static child.icon %}')" aria-hidden="true"></span>
+                                                    <span class="sidebar-link-icon w-3.5 h-3.5 flex-shrink-0 text-gray-400" style="--icon-url: url('{% static child.icon %}')" aria-hidden="true"></span>
                                                 {% endif %}
-                                                <span class="nav-sub-link-label">{{ child.label }}</span>
+                                                <span class="nav-sub-link-label truncate">{{ child.label }}</span>
                                             </a>
                                         </li>
                                     {% endfor %}
                                 </ul>
+                            {% else %}
+                                {# Single Top-Level Link (Home/Dashboard) #}
+                                <a
+                                    href="{{ item.url|default:perm_url }}?section={{ item.section }}"
+                                    class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition font-medium text-sm group"
+                                    id="{{ item.section }}"
+                                    title="{{ item.name }}"
+                                    aria-label="{{ item.name }}"
+                                    data-tooltip-placement="{% if LANGUAGE_BIDI %}left{% else %}right{% endif %}"
+                                    {% for attr, value in item.attrs.items %}
+                                        {{ attr }}="{{ value }}"
+                                    {% endfor %}
+                                >
+                                    <span class="nav-link-icon w-4 h-4 flex-shrink-0 text-gray-500 group-hover:text-gray-900 transition" style="--icon-url: url('{% static item.icon %}')" aria-hidden="true"></span>
+                                    <span class="nav-link-label truncate text-sm font-medium">{{ item.name }}</span>
+                                </a>
                             {% endif %}
-                        </section>
+                        </div>
+
                     {% endwith %}
                 {% endif %}
             {% endfor %}
+
+            {# SYSTEM / SETTINGS SECTION FOR SUPERADMIN & AUTHORIZED USERS #}
+            {% has_perm "core.can_view_finlo_settings" as view_global_settings %}
+            {% if request.user.is_superuser or view_global_settings %}
+                <div class="finlo-nav-section-heading mt-2">{% trans "System" %}</div>
+                <div class="finlo-nav-section" data-nav-section="settings">
+                    <a
+                        href="{% url 'core:settings_view' %}?section=settings"
+                        class="nav-link sidebar-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition font-medium text-sm group"
+                        id="settings"
+                        title="{% trans 'Settings' %}"
+                        aria-label="{% trans 'Settings' %}"
+                        hx-boost="true"
+                        hx-target="#mainContent"
+                        hx-select="#mainContent"
+                        hx-swap="outerHTML"
+                        hx-push-url="true"
+                    >
+                        <i class="fas fa-cog w-4 h-4 flex items-center justify-center flex-shrink-0 text-gray-500 group-hover:text-gray-900 transition text-sm" aria-hidden="true"></i>
+                        <span class="nav-link-label truncate text-sm font-medium">{% trans "Settings" %}</span>
+                    </a>
+                </div>
+            {% endif %}
+
         </nav>
     </div>
 
-    <footer class="finlo-sidebar-footer">
-        <span class="finlo-sidebar-product">{{ TITLE|default:'Finlo CRM' }}</span>
-        <span class="finlo-sidebar-version">v2</span>
+    <!-- Sidebar Footer -->
+    <footer class="finlo-sidebar-footer flex items-center justify-between px-4 py-2.5 border-t border-gray-200 text-xs text-gray-400 bg-white">
+        <span class="finlo-sidebar-product font-medium truncate">{{ TITLE|default:'FINLONEXA CRM' }}</span>
+        <span class="finlo-sidebar-version font-semibold text-[10px] uppercase bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">v2</span>
     </footer>
 
     {% if floating_menu %}
-        <div class="floating-menu bg-primary-600">
+        <div class="floating-menu bg-green-600">
             <input
                 type="checkbox"
                 name="floating-menu"
@@ -124,10 +172,10 @@
                 aria-label="{% trans 'Quick actions' %}"
                 data-tooltip-placement="{% if LANGUAGE_BIDI %}left{% else %}right{% endif %}"
             >
-            <span class="plus-icon bg-primary-600"><span class="fa fa-plus" aria-hidden="true"></span></span>
+            <span class="plus-icon bg-green-600"><span class="fa fa-plus" aria-hidden="true"></span></span>
             <ul class="floating-nav">
                 {% for menu in floating_menu %}
-                    <li class="bg-primary-600">
+                    <li class="bg-green-600">
                         <button
                             type="button"
                             hx-get="{{ menu.url }}{% if request.GET.urlencode %}{% if '?' in menu.url %}&{% else %}?{% endif %}{{ request.GET.urlencode }}{% endif %}"

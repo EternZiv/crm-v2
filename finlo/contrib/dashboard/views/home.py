@@ -59,6 +59,11 @@ class HomePageView(LoginRequiredMixin, TemplateView):
 
     template_name = "home/default_home.html"
 
+    def dispatch(self, request, *args, **kwargs):
+        if request.headers.get("HX-Request") == "true":
+            request._skip_header_context = True
+        return super().dispatch(request, *args, **kwargs)
+
     def get(self, request, *args, **kwargs):
         """Validate date range, then render default or dynamic dashboard as home."""
         redirect_url = validate_date_range_request(request)

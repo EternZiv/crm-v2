@@ -20,9 +20,10 @@ def get_company_scope(user, request=None):
     if not user or not user.is_authenticated:
         return CompanyScope(company_id=None)
 
-    role = getattr(user, "role", None)
-    if user.is_superuser:
+    if getattr(user, "is_superuser", False):
         return CompanyScope(company_id=None, all_companies=True)
+
+    role = getattr(user, "role", None)
     if role and not role.is_active:
         return CompanyScope(company_id=None)
     if getattr(role, "system_key", None) == "SUPER_ADMIN":

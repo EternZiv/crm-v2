@@ -621,15 +621,11 @@ input[type="checkbox"] {
 
 .nav-link {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  padding: 0.5rem 0.4rem;
-  border-radius: 0.625rem;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
   color: #374151;
-  /* text-gray-700 */
-  min-width: 3.5rem;
   transition: background-color 120ms ease, color 120ms ease;
 }
 
@@ -640,18 +636,17 @@ input[type="checkbox"] {
 }
 
 .nav-link-label {
-  font-size: 0.6rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  line-height: 1;
-  text-align: center;
+  line-height: 1.25;
+  text-align: start;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 3.2rem;
 }
 
 .sidebar-link {
-  color: #7b7b7b;
+  color: #4b5563;
 }
 
 .nav-link-icon,
@@ -1064,11 +1059,12 @@ canvas {
   width: 45px;
   height: 45px;
   border-radius: 50%;
-  background: #7c87c2;
+  background: #16a34a;
   position: fixed;
-  bottom: 15px;
-  left: 15px;
-  z-index: 9;
+  bottom: 20px;
+  right: 20px;
+  left: auto;
+  z-index: 30;
 }
 
 .floating-menu input {
@@ -2337,10 +2333,10 @@ button[aria-disabled="true"],
    Unified FINLO navigation
    =========================================================================== */
 :root {
-  --finlo-sidebar-expanded: 18rem;
-  --finlo-sidebar-collapsed: 4.75rem;
+  --finlo-sidebar-expanded: 16.5rem;
+  --finlo-sidebar-collapsed: 4.5rem;
   --finlo-sidebar-width: var(--finlo-sidebar-expanded);
-  --finlo-sidebar-active: var(--menu-arrow-fg, #7c87c2);
+  --finlo-sidebar-active: #16a34a;
 }
 
 html[data-sidebar-collapsed="true"] {
@@ -2361,18 +2357,22 @@ html[data-sidebar-collapsed="true"] {
   display: flex;
   flex-direction: column;
   height: 100dvh;
+  background-color: #ffffff;
+  border-inline-end: 1px solid #e5e7eb;
   transition: width 160ms ease, transform 200ms ease;
   overflow: hidden;
+  z-index: 40;
 }
 
 .finlo-sidebar-brand {
-  min-height: 4.1rem;
+  min-height: 3.75rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.7rem 1rem;
-  border-bottom: 1px solid #edf0f2;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #ffffff;
 }
 
 .finlo-brand-link {
@@ -2380,130 +2380,138 @@ html[data-sidebar-collapsed="true"] {
   align-items: center;
   min-width: 0;
   flex: 1 1 auto;
-  color: #26364b;
+  color: #111827;
   text-decoration: none;
 }
 
 .finlo-brand-logo {
-  width: min(10.5rem, 100%);
-  height: 2.35rem;
-  flex: 0 1 auto;
+  height: 1.75rem;
+  width: auto;
+  flex: 0 0 auto;
   object-fit: contain;
-  object-position: left center;
+}
+
+.finlo-brand-title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #111827;
 }
 
 .finlo-sidebar-collapse {
   display: inline-flex;
-  width: 2.15rem;
-  height: 2.15rem;
+  width: 2rem;
+  height: 2rem;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
   border: 1px solid #e5e7eb;
-  border-radius: 0.65rem;
-  background: #fff;
-  color: var(--menu-arrow-fg, #7c87c2);
+  border-radius: 0.5rem;
+  background: #ffffff;
+  color: #6b7280;
   cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.finlo-sidebar-collapse:hover {
+  background-color: #f3f4f6;
+  color: #111827;
 }
 
 .finlo-sidebar-navigation {
   min-height: 0;
   flex: 1 1 auto;
-  overflow: hidden auto;
+  overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: #d2d8df transparent;
+  scrollbar-color: #d1d5db transparent;
 }
 
 .finlo-sidebar-menu {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  padding: 1.15rem 0.85rem;
+  gap: 0.25rem;
+  padding: 0.75rem 0.65rem;
 }
 
 .finlo-nav-section-heading {
-  padding: 0.25rem 0.8rem 0.15rem;
-  color: #9aa2ad;
-  font-size: 0.68rem;
+  padding: 0.75rem 0.75rem 0.25rem;
+  color: #9ca3af;
+  font-size: 0.6875rem;
   font-weight: 700;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.08em;
   line-height: 1.2;
   text-transform: uppercase;
+  user-select: none;
 }
 
-.finlo-nav-section-row {
+.finlo-nav-section {
   display: flex;
-  align-items: center;
-  gap: 0.25rem;
+  flex-direction: column;
+  width: 100%;
 }
 
 #primarySidebar .nav-link,
-#primarySidebar .sidebar-link {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0.7rem;
-  border-radius: 0.65rem;
-  color: #273b55;
-  text-decoration: none;
-  transition: color 120ms ease, background-color 120ms ease;
+#primarySidebar .sidebar-link,
+#primarySidebar .finlo-nav-group-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 0.75rem !important;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 0.5rem !important;
+  color: #374151 !important;
+  text-decoration: none !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  cursor: pointer !important;
+  background: transparent;
+  border: none;
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
-#primarySidebar .nav-link {
-  min-height: 2.6rem;
-  flex: 1 1 auto;
-  padding: 0.55rem 0.8rem;
+#primarySidebar .finlo-nav-group-row {
+  justify-content: space-between !important;
 }
 
 #primarySidebar .nav-link-icon,
 #primarySidebar .sidebar-link-icon {
-  width: 1.1rem;
-  height: 1.1rem;
-  flex: 0 0 1.1rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: 0 0 1.125rem;
   background-color: currentColor;
+  transition: background-color 120ms ease;
 }
 
 #primarySidebar .nav-link-label,
 #primarySidebar .nav-sub-link-label {
-  overflow: hidden;
-  font-size: 0.95rem;
-  font-weight: 500;
-  line-height: 1.25;
-  text-align: start;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  line-height: 1.25 !important;
+  text-align: start !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: none !important;
 }
 
-.finlo-nav-group-toggle {
-  display: inline-flex;
-  width: 2rem;
-  height: 2.4rem;
-  flex: 0 0 2rem;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 0.55rem;
-  background: transparent;
-  color: #8994a2;
+#primarySidebar .finlo-nav-group-row i.fa-chevron-down {
+  transition: transform 150ms ease;
 }
 
-.finlo-nav-group-toggle[aria-expanded="true"] i {
+#primarySidebar .finlo-nav-group-row[aria-expanded="true"] i.fa-chevron-down {
   transform: rotate(180deg);
-}
-
-.finlo-nav-group-toggle i {
-  transition: transform 120ms ease;
 }
 
 .finlo-nav-children {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  margin: 0.2rem 0 0.15rem 0.85rem;
-  padding: 0 0 0 0.75rem;
-  border-inline-start: 1px solid #e8ebef;
+  margin: 0.2rem 0 0.25rem 1rem;
+  padding: 0 0 0 0.5rem;
+  border-inline-start: 1px solid #e5e7eb;
   list-style: none;
 }
 
@@ -2512,39 +2520,64 @@ html[data-sidebar-collapsed="true"] {
 }
 
 #primarySidebar .sidebar-link {
-  min-height: 2.4rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.65rem !important;
+  font-size: 0.8125rem !important;
+  border-radius: 0.375rem !important;
+  color: #4b5563 !important;
 }
 
-#primarySidebar .nav-link:hover,
-#primarySidebar .sidebar-link:hover {
-  background: color-mix(in srgb, var(--finlo-sidebar-active) 12%, white);
-  color: var(--finlo-sidebar-active);
+#primarySidebar .nav-link:hover:not(.finlo-nav-active),
+#primarySidebar .sidebar-link:hover:not(.finlo-nav-active),
+#primarySidebar .finlo-nav-group-row:hover:not(.finlo-nav-active) {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
 }
 
+#primarySidebar .nav-link:hover:not(.finlo-nav-active) .nav-link-icon,
+#primarySidebar .sidebar-link:hover:not(.finlo-nav-active) .sidebar-link-icon {
+  background-color: #111827 !important;
+}
+
+/* Vibrant Green Active Navigation Item (Power2Go MES style) */
 #primarySidebar .finlo-nav-active,
 #primarySidebar .finlo-nav-active:hover {
-  background: var(--finlo-sidebar-active);
-  color: #fff;
+  background-color: #16a34a !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 3px 0 rgba(22, 163, 74, 0.3) !important;
+}
+
+#primarySidebar .finlo-nav-active .nav-link-label,
+#primarySidebar .finlo-nav-active .nav-sub-link-label,
+#primarySidebar .finlo-nav-active span,
+#primarySidebar .finlo-nav-active i {
+  color: #ffffff !important;
+}
+
+#primarySidebar .finlo-nav-active .nav-link-icon,
+#primarySidebar .finlo-nav-active .sidebar-link-icon {
+  background-color: #ffffff !important;
 }
 
 .finlo-sidebar-footer {
   display: flex;
-  min-height: 2.75rem;
+  min-height: 2.5rem;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.55rem 1rem;
-  border-top: 1px solid #edf0f2;
-  color: #96a0ad;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  color: #9ca3af;
   font-size: 0.75rem;
+  background-color: #ffffff;
 }
 
 .finlo-sidebar-product {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  font-weight: 500;
 }
 
 .finlo-sidebar-backdrop {
@@ -2556,60 +2589,43 @@ html[data-sidebar-collapsed="true"] {
   display: none !important;
 }
 
+/* Collapsed Mode */
 html[data-sidebar-collapsed="true"] .finlo-nav-section-heading,
-html[data-sidebar-collapsed="true"] .finlo-nav-group-toggle,
-html[data-sidebar-collapsed="true"] .finlo-sidebar-footer {
+html[data-sidebar-collapsed="true"] .finlo-brand-title,
+html[data-sidebar-collapsed="true"] .finlo-sidebar-footer,
+html[data-sidebar-collapsed="true"] .finlo-nav-children,
+html[data-sidebar-collapsed="true"] .finlo-nav-group-row i.fa-chevron-down {
   display: none !important;
 }
 
 html[data-sidebar-collapsed="true"] .finlo-sidebar-brand {
-  justify-content: space-between;
-  gap: 0.15rem;
-  padding-inline: 0.25rem;
+  justify-content: center;
+  padding-inline: 0.5rem;
 }
 
 html[data-sidebar-collapsed="true"] .finlo-brand-link {
-  flex: 0 0 2.15rem;
-  overflow: hidden;
-}
-
-html[data-sidebar-collapsed="true"] .finlo-brand-logo {
-  width: 2.15rem;
-  height: 2.15rem;
-  max-width: none;
-  object-fit: cover;
-  object-position: left center;
+  display: none;
 }
 
 html[data-sidebar-collapsed="true"] .finlo-sidebar-collapse {
-  width: 1.55rem;
-  height: 1.55rem;
-  border: 0;
-  background: transparent;
-  font-size: 0.75rem;
+  width: 2.25rem;
+  height: 2.25rem;
 }
 
 html[data-sidebar-collapsed="true"] .finlo-sidebar-collapse i {
   transform: rotate(180deg);
 }
 
-html[data-sidebar-collapsed="true"] .finlo-nav-section-row {
-  justify-content: center;
-}
-
-html[data-sidebar-collapsed="true"] #primarySidebar .nav-link {
-  justify-content: center;
-  padding-inline: 0.5rem;
-}
-
 html[data-sidebar-collapsed="true"] #primarySidebar .nav-link-label,
 html[data-sidebar-collapsed="true"] #primarySidebar .nav-sub-link-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
+  display: none !important;
+}
+
+html[data-sidebar-collapsed="true"] #primarySidebar .nav-link,
+html[data-sidebar-collapsed="true"] #primarySidebar .sidebar-link,
+html[data-sidebar-collapsed="true"] #primarySidebar .finlo-nav-group-row {
+  justify-content: center !important;
+  padding: 0.65rem 0.25rem !important;
 }
 
 #header {

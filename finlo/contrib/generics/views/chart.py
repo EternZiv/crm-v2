@@ -663,6 +663,16 @@ class FinloChartView(FinloListView):
             "urls": urls,
         }, None
 
+    def _build_bulk_context(self, context, filter_fields):
+        """Chart views do not render bulk action tables or require ID lists."""
+        context["selected_ids"] = []
+        context["total_records_count"] = 0
+        context["selected_ids_json"] = "[]"
+        context["bulk_update_fields"] = []
+        context["bulk_export_option"] = False
+        context["bulk_update_option"] = False
+        context["bulk_delete_enabled"] = False
+
     def get_context_data(self, **kwargs):
         if not hasattr(self, "object_list"):
             self.object_list = self.get_queryset()

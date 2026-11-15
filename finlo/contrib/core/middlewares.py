@@ -11,6 +11,7 @@ import logging
 
 # Third-party imports (Django)
 from django.utils.deprecation import MiddlewareMixin
+from django.utils.functional import SimpleLazyObject
 
 from finlo.menu.sub_section_menu import sub_section_menu as menu_registry
 from finlo.shortcuts import redirect, render
@@ -52,19 +53,26 @@ class ActiveCompanyMiddleware:
             else:
                 request.active_company = user_company
 
-            if request.active_company:
-                try:
-                    from finlo.contrib.theme.models import CompanyTheme
-                    request.active_theme = CompanyTheme.get_theme_for_company(request.active_company)
-                except Exception:
-                    pass
-            if request.active_theme is None:
-                try:
-                    from finlo.contrib.theme.models import CompanyTheme
-                    request.active_theme = CompanyTheme.get_default_theme()
-                except Exception:
-                    pass
+            request.active_theme = SimpleLazyObject(lambda: _resolve_active_theme(request))
         return self.get_response(request)
+
+
+def _resolve_active_theme(request):
+    """Resolve active company theme or system default theme lazily."""
+    theme = None
+    if getattr(request, "active_company", None):
+        try:
+            from finlo.contrib.theme.models import CompanyTheme
+            theme = CompanyTheme.get_theme_for_company(request.active_company)
+        except Exception:
+            pass
+    if theme is None:
+        try:
+            from finlo.contrib.theme.models import CompanyTheme
+            theme = CompanyTheme.get_default_theme()
+        except Exception:
+            pass
+    return theme
 
 
 class TimezoneMiddleware:

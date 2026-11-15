@@ -507,20 +507,76 @@ const SidebarManager = {
     },
 
     initFromUrl() {
-        const currentSection = this.getActiveSection();
-        const $navLinks = $("nav a.nav-link");
-        const $sectionLink = $navLinks.filter(`#${currentSection}`);
-
-        if ($sectionLink.length) {
-            this.setActiveNavLink($sectionLink, currentSection);
+        if (typeof window.syncActiveNavigation === "function") {
+            window.syncActiveNavigation(window.location.href);
         }
-
         const currentHref = window.location.href;
         localStorage.setItem('last-visited-url', currentHref);
-
-        this.activateFirstSubsectionItem(currentSection);
     }
 };
+
+function syncActiveNavigation(urlOrPath) {
+    const rawUrl = urlOrPath || window.location.href;
+    let url;
+    try {
+        url = new URL(rawUrl, window.location.origin);
+    } catch (_e) {
+        return;
+    }
+    const currentPath = url.pathname.replace(/\/+$/, "") || "/";
+    const section = url.searchParams.get("section");
+
+    const $nav = $("#subSidebar");
+    if (!$nav.length) return;
+
+    // Remove active indicators from all navigation links
+    $nav.find("a.nav-link, a.sidebar-link").removeClass("finlo-nav-active bg-primary-600 hover:bg-primary-800").removeAttr("aria-current");
+
+    let $matched = null;
+    let longestMatchLen = 0;
+
+    // 1. Search for matching link by href pathname
+    $nav.find("a.nav-link, a.sidebar-link").each(function () {
+        const href = $(this).attr("href");
+        if (!href) return;
+        try {
+            const linkUrl = new URL(href, window.location.origin);
+            const linkPath = linkUrl.pathname.replace(/\/+$/, "") || "/";
+            if (currentPath === linkPath && linkPath.length >= longestMatchLen) {
+                longestMatchLen = linkPath.length;
+                $matched = $(this);
+            } else if (linkPath !== "/" && currentPath.startsWith(linkPath) && linkPath.length > longestMatchLen) {
+                longestMatchLen = linkPath.length;
+                $matched = $(this);
+            }
+        } catch (_e) {}
+    });
+
+    // 2. If no path match or current is root/dashboard, try matching by section or #home
+    if ((!$matched || currentPath === "/" || currentPath === "/dashboard") && section) {
+        const $bySection = $nav.find(`a.sidebar-link[data-section="${CSS.escape(section)}"]`);
+        if ($bySection.length) {
+            $matched = $bySection.first();
+        } else {
+            const $secLink = $nav.find(`a#${CSS.escape(section)}`);
+            if ($secLink.length) $matched = $secLink;
+        }
+    }
+
+    // 3. Fallback: if root or /dashboard/, match #home
+    if (!$matched && (currentPath === "/" || currentPath.startsWith("/dashboard"))) {
+        $matched = $nav.find("a#home");
+    }
+
+    if ($matched && $matched.length) {
+        $matched.addClass("finlo-nav-active").attr("aria-current", "page");
+        const parentSection = $matched.attr("data-section") || $matched.closest("[data-nav-section]").attr("data-nav-section");
+        if (parentSection) {
+            setNavGroupExpanded(parentSection, true);
+        }
+    }
+}
+window.syncActiveNavigation = syncActiveNavigation;
 
 function setNavGroupExpanded(sectionId, expanded) {
     if (!sectionId) return;
@@ -625,12 +681,21 @@ function initSidebar() {
         setNavGroupExpanded(sectionId, sectionId === activeSection || remembered);
     });
 
+    syncActiveNavigation();
+
     if (!sidebarDelegationBound) {
         document.addEventListener("click", function (e) {
             const groupToggle = e.target && e.target.closest ? e.target.closest("[data-nav-group-toggle]") : null;
             if (groupToggle) {
                 e.preventDefault();
                 const sectionId = groupToggle.dataset.navGroupToggle;
+                const isCollapsed = document.documentElement.getAttribute("data-sidebar-collapsed") === "true";
+                if (isCollapsed) {
+                    localStorage.setItem("sidebarCollapsed", "false");
+                    syncSidebarSpace();
+                    setNavGroupExpanded(sectionId, true);
+                    return;
+                }
                 const currentlyExpanded = groupToggle.getAttribute("aria-expanded") === "true";
                 setNavGroupExpanded(sectionId, !currentlyExpanded);
                 return;
@@ -643,6 +708,15 @@ function initSidebar() {
             const nextState = !currentlyCollapsed;
             localStorage.setItem("sidebarCollapsed", nextState ? "true" : "false");
             syncSidebarSpace();
+        });
+        document.body.addEventListener("htmx:afterSwap", function (event) {
+            const target = event.target;
+            if (target && (target.id === "mainContent" || target.closest("#mainContent"))) {
+                syncActiveNavigation();
+            }
+        });
+        window.addEventListener("popstate", function () {
+            syncActiveNavigation();
         });
         document.addEventListener("keydown", function (e) {
             const input = e.target;

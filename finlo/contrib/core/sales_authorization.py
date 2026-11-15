@@ -44,6 +44,8 @@ def invalidate_role_permission_cache(**_kwargs):
 
 
 def _role_key(user):
+    if getattr(user, "is_superuser", False):
+        return "SUPER_ADMIN"
     role = getattr(user, "role", None)
     return getattr(role, "system_key", None)
 
@@ -230,13 +232,14 @@ def has_effective_permission(user, permission, obj=None):
 
 def _custom_role_scope(user, model):
     """Return a configured scope for a custom role, defaulting to deny."""
-    role = getattr(user, "role", None)
     if (
-        not role
-        or role.system_key
-        or getattr(user, "is_superuser", False)
+        not user
         or not getattr(user, "is_authenticated", False)
+        or getattr(user, "is_superuser", False)
     ):
+        return None
+    role = getattr(user, "role", None)
+    if not role or role.system_key:
         return None
     if not role.is_active:
         return "deny_all"
@@ -523,13 +526,15 @@ def get_sales_scope_team_ids(user):
 
 def scope_queryset_to_sales_hierarchy(queryset, user):
     """Narrow sales records and hierarchy rows to the caller's assigned scope."""
+    if getattr(user, "is_superuser", False):
+        return queryset
     role_key = _role_key(user)
     if role_key not in SALES_ROLE_KEYS:
         return queryset
+    if role_key == "SUPER_ADMIN":
+        return queryset
     if not getattr(getattr(user, "role", None), "is_active", False):
         return queryset.none()
-    if role_key == "SUPER_ADMIN" or getattr(user, "is_superuser", False):
-        return queryset
 
     model = queryset.model
     if model._meta.app_label == "core":
@@ -553,12 +558,15 @@ def scope_queryset_to_sales_hierarchy(queryset, user):
 
 def can_access_sales_record(user, record):
     """Return whether a sales-role user may access this record's hierarchy scope."""
-    if _role_key(user) not in SALES_ROLE_KEYS:
+    if getattr(user, "is_superuser", False):
+        return True
+    role_key = _role_key(user)
+    if role_key not in SALES_ROLE_KEYS:
+        return True
+    if role_key == "SUPER_ADMIN":
         return True
     if not getattr(getattr(user, "role", None), "is_active", False):
         return False
-    if _role_key(user) == "SUPER_ADMIN" or getattr(user, "is_superuser", False):
-        return True
 
     model = record._meta
     if model.app_label == "core" and model.model_name == "salesregion":

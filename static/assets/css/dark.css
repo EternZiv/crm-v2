@@ -21,37 +21,70 @@ body.dark .bg-white {
   background-color: rgb(42 42 42) !important;
 }
 
-/* Unified navigation follows the active FINLO theme in dark mode. */
+/* Unified navigation: Clean white sidebar matching Power2Go MES design */
 body.dark #primarySidebar {
-  background-color: #2a2a2a !important;
-  border-color: #565656 !important;
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+body.dark #primarySidebar .finlo-sidebar-brand,
+body.dark #primarySidebar .finlo-sidebar-footer {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+body.dark #primarySidebar .finlo-brand-title {
+  color: #111827 !important;
+}
+body.dark #primarySidebar .finlo-nav-section-heading {
+  color: #9ca3af !important;
 }
 body.dark #primarySidebar .nav-link,
 body.dark #primarySidebar .sidebar-link,
-body.dark #primarySidebar .finlo-sidebar-collapse,
-body.dark #primarySidebar .finlo-nav-group-toggle {
-  color: rgb(255 255 255 / 88%) !important;
+body.dark #primarySidebar .finlo-nav-group-row {
+  color: #374151 !important;
+}
+body.dark #primarySidebar .nav-link-icon,
+body.dark #primarySidebar .sidebar-link-icon {
+  background-color: currentColor !important;
+}
+body.dark #primarySidebar .nav-link:hover:not(.finlo-nav-active),
+body.dark #primarySidebar .sidebar-link:hover:not(.finlo-nav-active),
+body.dark #primarySidebar .finlo-nav-group-row:hover:not(.finlo-nav-active) {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
 }
 body.dark #primarySidebar .finlo-sidebar-collapse {
-  background-color: #2a2a2a !important;
-  border-color: #565656 !important;
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: #6b7280 !important;
+}
+body.dark #primarySidebar .finlo-sidebar-collapse:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
 }
 body.dark #primarySidebar .finlo-nav-active,
 body.dark #primarySidebar .finlo-nav-active:hover {
-  background-color: var(--menu-arrow-fg, #7c87c2) !important;
-  color: #fff !important;
+  background-color: #16a34a !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(22, 163, 74, 0.3) !important;
 }
-body.dark #primarySidebar .nav-link:hover:not(.finlo-nav-active),
-body.dark #primarySidebar .sidebar-link:hover:not(.finlo-nav-active) {
-  background-color: color-mix(in srgb, var(--menu-arrow-fg, #7c87c2) 18%, #2a2a2a) !important;
-  color: #fff !important;
+body.dark #primarySidebar .finlo-nav-active .nav-link-label,
+body.dark #primarySidebar .finlo-nav-active .nav-sub-link-label,
+body.dark #primarySidebar .finlo-nav-active span,
+body.dark #primarySidebar .finlo-nav-active i {
+  color: #ffffff !important;
+}
+body.dark #primarySidebar .finlo-nav-active .nav-link-icon,
+body.dark #primarySidebar .finlo-nav-active .sidebar-link-icon {
+  background-color: #ffffff !important;
 }
 body.dark #primarySidebar .finlo-brand-logo {
-  filter: brightness(0) invert(1);
+  filter: none !important;
 }
-body.dark #primarySidebar .finlo-nav-section-heading,
 body.dark #primarySidebar .finlo-sidebar-footer {
-  color: #aeb4bd;
+  color: #9ca3af !important;
+}
+body.dark #primarySidebar .finlo-nav-children {
+  border-color: #e5e7eb !important;
 }
 
 body.dark input:checked ~ .peer.bg-gray-200 {

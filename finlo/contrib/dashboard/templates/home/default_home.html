@@ -1,4 +1,4 @@
-{% extends "index.html" %}
+{% extends request.headers.HX_Request|yesno:"components/htmx_layout.html,index.html" %}
 {% load dashboard_tags %}
 {% block content %}
     <div class="flex modelcontent">

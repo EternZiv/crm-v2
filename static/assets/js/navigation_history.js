@@ -758,16 +758,20 @@
 
     // --- Active Sidebar Navigation Styling ---
     function setActiveSectionFromUrl(path) {
+        if (typeof window.syncActiveNavigation === "function") {
+            window.syncActiveNavigation(path);
+            return;
+        }
         try {
             const sectionId = new URL(path, window.location.href).searchParams.get("section");
             if (!sectionId) return;
 
             const activeLink = document.getElementById(sectionId);
-            if (activeLink && activeLink.matches("nav a.nav-link")) {
-                document.querySelectorAll("nav a.nav-link").forEach((link) => {
-                    link.classList.remove("bg-primary-600", "hover:bg-primary-800");
+            if (activeLink) {
+                document.querySelectorAll("#primarySidebar a").forEach((link) => {
+                    link.classList.remove("finlo-nav-active", "bg-primary-600", "hover:bg-primary-800");
                 });
-                activeLink.classList.add("bg-primary-600", "hover:bg-primary-800");
+                activeLink.classList.add("finlo-nav-active");
                 window.localStorage.setItem("activeNavLinkId", sectionId);
                 window.localStorage.setItem("currentActiveSection", sectionId);
                 window.localStorage.setItem("lastActiveSection", sectionId);
@@ -777,28 +781,19 @@
 
     function highlightLinkImmediately(link) {
         if (!link) return;
-        if (link.matches("nav a.nav-link")) {
-            document.querySelectorAll("nav a.nav-link").forEach((l) => {
-                l.classList.remove("bg-primary-600", "hover:bg-primary-800");
-            });
-            link.classList.add("bg-primary-600", "hover:bg-primary-800");
-            const sectionId = link.id;
-            if (sectionId) {
-                window.localStorage.setItem("activeNavLinkId", sectionId);
-                window.localStorage.setItem("currentActiveSection", sectionId);
-            }
-        } else if (link.matches("ul a.sidebar-link")) {
-            document.querySelectorAll("ul a.sidebar-link").forEach((l) => {
-                l.classList.remove("bg-primary-600", "text-white");
-            });
-            link.classList.add("bg-primary-600", "text-white");
-            const sectionId = link.getAttribute("data-section") || link.closest("[data-section]")?.getAttribute("data-section");
-            const linkId = link.id;
-            if (linkId && sectionId) {
-                window.localStorage.setItem(`activeSidebarLinkId_${sectionId}`, linkId);
-                window.localStorage.setItem("activeSidebarLinkId", linkId);
-                window.localStorage.setItem("sidebarClicked", "true");
-            }
+        document.querySelectorAll("#primarySidebar a").forEach((l) => {
+            l.classList.remove("finlo-nav-active", "bg-primary-600", "text-white", "hover:bg-primary-800");
+        });
+        link.classList.add("finlo-nav-active");
+        if (typeof window.syncActiveNavigation === "function") {
+            window.syncActiveNavigation(link.href || window.location.href);
+        }
+        const sectionId = link.getAttribute("data-section") || link.closest("[data-nav-section]")?.getAttribute("data-nav-section") || link.id;
+        const linkId = link.id;
+        if (linkId && sectionId) {
+            window.localStorage.setItem(`activeSidebarLinkId_${sectionId}`, linkId);
+            window.localStorage.setItem("activeSidebarLinkId", linkId);
+            window.localStorage.setItem("sidebarClicked", "true");
         }
     }
 

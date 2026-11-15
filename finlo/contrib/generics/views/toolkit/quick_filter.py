@@ -180,6 +180,9 @@ def apply_quick_filters(queryset, view):
     if not _quick_filters_enabled(view):
         return queryset
 
+    if not any(k.startswith("qf_") for k in getattr(view.request, "GET", ())):
+        return queryset
+
     for qf in get_quick_filters(view):
         filter_value = view.request.GET.get(f"qf_{qf.field_name}")
         if not filter_value or not is_valid_quick_filter_value(
