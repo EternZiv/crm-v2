@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "finlo/asgi.py": {
+      "excludeFiles": "{**/load_data/**,**/tests/**,docs/**,*.md,windows-installer/**,debian/**,scratch/**,static/assets/fontawesome/metadata/**,static/assets/fontawesome/sprites/**,static/assets/fontawesome/js/**,FINLO_*.json,*.log,*.err,*.out}"
+    },
+    "finlo/wsgi.py": {
+      "excludeFiles": "{**/load_data/**,**/tests/**,docs/**,*.md,windows-installer/**,debian/**,scratch/**,static/assets/fontawesome/metadata/**,static/assets/fontawesome/sprites/**,static/assets/fontawesome/js/**,FINLO_*.json,*.log,*.err,*.out}"
+    },
+    "manage.py": {
+      "excludeFiles": "{**/load_data/**,**/tests/**,docs/**,*.md,windows-installer/**,debian/**,scratch/**,static/assets/fontawesome/metadata/**,static/assets/fontawesome/sprites/**,static/assets/fontawesome/js/**,FINLO_*.json,*.log,*.err,*.out}"
+    }
+  }
+}
+

@@ -170,3 +170,7 @@ load_tests/reports/
 /.ruff_cache/
 scratch/
 
+# Local-only Windows installer assets (not pushed to GitHub)
+windows-installer/
+
+

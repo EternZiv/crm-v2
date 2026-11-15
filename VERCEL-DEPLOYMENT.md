@@ -8,8 +8,10 @@ architecture; the long-term handoff target is an Oracle Cloud VPS.
 
 Import `EternZiv/crm-v2` from GitHub and set the project root to the repository
 root. Keep framework detection, build command, and output directory on their
-defaults. **Do not add `vercel.json` for this project:** Vercel detects Django
-from root `manage.py`, uses the configured ASGI application
+defaults. The repository includes `vercel.json` and `.vercelignore` to configure
+`excludeFiles` for AWS Lambda bundle size limits (staying well under 500 MB by
+excluding large seed fixtures, docs, tests, and non-runtime artifacts). Vercel detects
+Django from root `manage.py`, uses the configured ASGI application
 (`finlo.asgi.application`), and runs `collectstatic` because `STATIC_ROOT` is
 configured. No persistent web-server `start` command is used; requests run as
 Vercel Functions. Do not add migration or seeding commands to build or startup.

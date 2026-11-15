@@ -5,10 +5,38 @@
 .git/
 media/
 *.log
+*.err
+*.out
 *_profile.py
 pool_*.py
 bounded_pool_diagnostic.py
+page_*.py
+build_*.py
+.startup_diag.py
+.focused_test_no_db.py
 windows-installer/
 debian/
 .init_password
 .encryption_key
+.pytest_cache/
+
+# Large fixtures and demo data (65.8 MB)
+**/load_data/*.json
+
+# Test suites and development tests
+tests/
+**/tests/
+test_*.py
+*_test.py
+
+# Documentation and markdown artifacts
+docs/
+*.md
+!README.md
+scratch/
+FINLO_*.json
+
+# Vendored fontawesome unused files (safety net)
+static/assets/fontawesome/metadata/
+static/assets/fontawesome/sprites/
+static/assets/fontawesome/js/
